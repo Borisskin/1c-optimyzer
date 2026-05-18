@@ -6,6 +6,7 @@ __pycache__/
 venv/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 
 # Node
 node_modules/
@@ -16,6 +17,7 @@ dist/
 # Tauri
 src-tauri/target/
 src-tauri/Cargo.lock
+src-tauri/gen/
 
 # IDE
 .idea/
@@ -35,3 +37,6 @@ src-tauri/Cargo.lock
 *.sqlite
 .env
 .env.local
+
+# Local fixtures (real TJ archives — too large + sensitive)
+backend/tests/fixtures/real-archive/

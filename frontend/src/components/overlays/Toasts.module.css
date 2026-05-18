@@ -1,0 +1,28 @@
+.stack {
+  position: fixed;
+  bottom: 40px;
+  right: 16px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  min-width: 260px;
+  max-width: 420px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  border: 1px solid var(--o-border-2);
+  border-radius: var(--o-radius-md);
+  background: var(--o-panel);
+  box-shadow: var(--o-shadow-pop);
+  animation: slide-in-right 0.18s ease-out;
+}
+
+.tone_ok   { border-color: var(--o-ok);   background: var(--o-ok-bg);   color: var(--o-ok); }
+.tone_warn { border-color: var(--o-warn); background: var(--o-warn-bg); color: var(--o-warn); }
+.tone_err  { border-color: var(--o-err);  background: var(--o-err-bg);  color: var(--o-err); }
+.tone_info { border-color: var(--o-info); background: var(--o-info-bg); color: var(--o-info); }
