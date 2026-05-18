@@ -9,6 +9,7 @@ from typing import Any
 
 from optimyzer_backend.rpc.dispatcher import Dispatcher
 from optimyzer_backend.rpc import handlers  # noqa: F401  — регистрирует методы
+from optimyzer_backend.rpc import sql_rpc  # noqa: F401  — регистрирует SQL RPC
 
 
 def _err(code: int, message: str, request_id: Any = None, data: Any = None) -> dict:

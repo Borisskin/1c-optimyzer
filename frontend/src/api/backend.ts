@@ -110,6 +110,24 @@ async function rpc<T = unknown>(method: string, params: Record<string, unknown> 
   return invoke<T>("rpc_call", { method, params });
 }
 
+export interface SQLExecuteResult {
+  ok: boolean;
+  error?: string;
+  phase?: "validate" | "execute" | string;
+  columns?: QueryColumn[];
+  rows?: unknown[][];
+  row_count?: number;
+  truncated?: boolean;
+  executed_ms?: number;
+}
+
+export interface SQLValidationResult {
+  ok: boolean;
+  error: string | null;
+}
+
+export type TableSchema = Record<string, Array<{ name: string; type: string }>>;
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -137,6 +155,12 @@ export const backend = {
     rpc<QueryResult>("query_events_preset", { archive_id, preset, limit }),
   getStorageStats: (archive_id: string) => rpc<StorageStats>("get_storage_stats", { archive_id }),
   sidecarStatus: () => invoke<boolean>("sidecar_status"),
+
+  // SQL Engine (Sprint 2 Phase B)
+  executeSql: (archive_id: string, sql: string, max_rows = 10000) =>
+    rpc<SQLExecuteResult>("execute_sql", { archive_id, sql, max_rows }),
+  validateSql: (sql: string) => rpc<SQLValidationResult>("validate_sql", { sql }),
+  getSchema: (archive_id: string) => rpc<TableSchema>("get_schema", { archive_id }),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),

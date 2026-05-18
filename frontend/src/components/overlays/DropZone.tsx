@@ -63,7 +63,7 @@ export function DropZone({ onPath }: { onPath: (path: string) => void }) {
   return (
     <div className={styles.overlay}>
       <div className={styles.panel}>
-        <Icon name="Folder" size={32} color="var(--o-accent)" />
+        <Icon name="Upload" size={32} color="var(--o-accent)" />
         <div className={styles.title}>{t.drop.titleFolder}</div>
         <div className={styles.sub}>{t.drop.sub}</div>
       </div>
