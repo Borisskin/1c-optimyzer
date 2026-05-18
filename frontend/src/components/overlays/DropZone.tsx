@@ -3,7 +3,7 @@ import { Icon } from "@/components/icons/Icon";
 import { t } from "@/i18n/ru";
 import styles from "./DropZone.module.css";
 
-export function DropZone({ onFile }: { onFile: (path: string) => void }) {
+export function DropZone({ onPath }: { onPath: (path: string) => void }) {
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export function DropZone({ onFile }: { onFile: (path: string) => void }) {
       // @ts-expect-error tauri-extended File
       const tauriPath: string | undefined = file.path;
       if (tauriPath) {
-        onFile(tauriPath);
+        onPath(tauriPath);
       }
     };
     window.addEventListener("dragenter", onEnter);
@@ -44,7 +44,7 @@ export function DropZone({ onFile }: { onFile: (path: string) => void }) {
       window.removeEventListener("dragover", onOver);
       window.removeEventListener("drop", onDrop);
     };
-  }, [onFile]);
+  }, [onPath]);
 
   if (!active) return null;
   return (

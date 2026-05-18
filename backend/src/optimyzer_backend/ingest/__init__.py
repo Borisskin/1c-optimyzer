@@ -10,6 +10,7 @@ from .folder_source import FolderSource
 from .log_detector import is_tj_log_file
 from .process_role_extractor import extract_process_role
 from .encoding_detector import detect_encoding
+from .progress_reporter import ProgressReporter
 from .zip_source import ZipSource
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "is_tj_log_file",
     "extract_process_role",
     "detect_encoding",
+    "ProgressReporter",
 ]

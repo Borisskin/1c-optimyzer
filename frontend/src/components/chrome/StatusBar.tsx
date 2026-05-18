@@ -5,6 +5,7 @@ import styles from "./StatusBar.module.css";
 export function StatusBar() {
   const archive = useAppStore((s) => s.archive);
   const stats = useAppStore((s) => s.storageStats);
+  const ingest = useAppStore((s) => s.ingest);
 
   const statusLabels: Record<string, string> = {
     ready: t.statusbar.ready,
@@ -25,6 +26,13 @@ export function StatusBar() {
     ? `${t.statusbar.parsedIn} ${formatSeconds(archive.parsing_time_sec)}`
     : "—";
 
+  // Inline progress в StatusBar: показываем во время активного ingestion.
+  const isActive = ingest && ingest.phase !== "done" && ingest.phase !== "error";
+  const percent =
+    isActive && ingest.bytes_total > 0
+      ? Math.min(100, (ingest.bytes_done / ingest.bytes_total) * 100)
+      : 0;
+
   return (
     <div className={styles.statusbar}>
       <span className={styles.cell}>
@@ -33,10 +41,22 @@ export function StatusBar() {
           {stateLabel} · {archName}
         </span>
       </span>
-      <span className={styles.divider} />
-      <span className={styles.cell}>
-        {t.statusbar.duckdb}: {formatNumber(eventsCount)} {t.statusbar.events} · {dbSize}
-      </span>
+      {isActive && ingest ? (
+        <>
+          <span className={styles.divider} />
+          <span className={styles.cell}>
+            {ingest.current_file ?? "—"} · {formatBytes(ingest.bytes_done)}/{formatBytes(ingest.bytes_total)} ·{" "}
+            {percent.toFixed(0)}% · {formatNumber(ingest.events_inserted)} {t.statusbar.events}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className={styles.divider} />
+          <span className={styles.cell}>
+            {t.statusbar.duckdb}: {formatNumber(eventsCount)} {t.statusbar.events} · {dbSize}
+          </span>
+        </>
+      )}
 
       <span className={styles.right}>
         <span>{parseTime}</span>

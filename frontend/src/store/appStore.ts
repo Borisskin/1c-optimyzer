@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ArchiveState, QueryResult, StorageStats } from "@/api/backend";
+import type { ArchiveState, ProgressEvent, QueryResult, StorageStats } from "@/api/backend";
 
 export type ScreenId =
   | "oql"
@@ -40,6 +40,11 @@ interface AppStore {
   archive: ArchiveState | null;
   setArchive: (a: ArchiveState | null) => void;
 
+  ingest: ProgressEvent | null;
+  setIngest: (p: ProgressEvent | null) => void;
+  progressCardMinimized: boolean;
+  setProgressCardMinimized: (v: boolean) => void;
+
   storageStats: StorageStats | null;
   setStorageStats: (s: StorageStats | null) => void;
 
@@ -65,6 +70,11 @@ export const useAppStore = create<AppStore>((set) => ({
 
   archive: null,
   setArchive: (a) => set({ archive: a }),
+
+  ingest: null,
+  setIngest: (p) => set({ ingest: p }),
+  progressCardMinimized: false,
+  setProgressCardMinimized: (v) => set({ progressCardMinimized: v }),
 
   storageStats: null,
   setStorageStats: (s) => set({ storageStats: s }),

@@ -1,13 +1,25 @@
 // JSON-RPC wrapper over Tauri invoke -> Rust shell -> Python sidecar.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+
+export type ArchivePhase =
+  | "discovering"
+  | "extracting"
+  | "parsing"
+  | "indexing"
+  | "ready"
+  | "error";
+
+export type SourceType = "folder" | "archive";
 
 export interface ArchiveState {
   archive_id: string;
   path: string;
+  source_type: SourceType;
   size_bytes: number;
   file_count: number;
-  status: "loading" | "extracting" | "parsing" | "ready" | "error";
+  status: ArchivePhase;
   progress: number;
   events_parsed: number;
   errors: string[];
@@ -56,6 +68,20 @@ export interface RecentArchive {
   parsing_time_sec: number | null;
 }
 
+export type ProgressPhase = "discovering" | "parsing" | "indexing" | "done" | "error";
+
+export interface ProgressEvent {
+  archive_id: string;
+  phase: ProgressPhase;
+  files_done: number;
+  files_total: number;
+  bytes_done: number;
+  bytes_total: number;
+  events_inserted: number;
+  current_file: string | null;
+  error_message: string | null;
+}
+
 async function rpc<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
   return invoke<T>("rpc_call", { method, params });
 }
@@ -64,6 +90,9 @@ export const backend = {
   ping: () => rpc<{ status: string; version: string }>("ping"),
   getAppInfo: () => rpc<AppInfo>("get_app_info"),
   loadArchive: (path: string) => rpc<ArchiveState>("load_archive", { path }),
+  loadDirectory: (path: string) => rpc<ArchiveState>("load_directory", { path }),
+  cancelIngestion: (archive_id: string) =>
+    rpc<{ ok: boolean; reason?: string }>("cancel_ingestion", { archive_id }),
   getArchiveStatus: (archive_id: string) => rpc<ArchiveState>("get_archive_status", { archive_id }),
   listRecentArchives: () => rpc<RecentArchive[]>("list_recent_archives"),
   unloadArchive: (archive_id: string) => rpc<{ ok: boolean }>("unload_archive", { archive_id }),
@@ -74,3 +103,25 @@ export const backend = {
 };
 
 export type Backend = typeof backend;
+
+/** Подписка на push-notifications прогресса от backend (ADR-012).
+ *
+ *  Возвращает функцию отписки. Под капотом — Tauri event 'rpc-notification:progress'.
+ */
+export function onProgress(cb: (e: ProgressEvent) => void): () => void {
+  let unlisten: UnlistenFn | undefined;
+  let cancelled = false;
+  listen<ProgressEvent>("rpc-notification:progress", (event) => {
+    cb(event.payload);
+  }).then((fn) => {
+    if (cancelled) {
+      fn();
+    } else {
+      unlisten = fn;
+    }
+  });
+  return () => {
+    cancelled = true;
+    unlisten?.();
+  };
+}
