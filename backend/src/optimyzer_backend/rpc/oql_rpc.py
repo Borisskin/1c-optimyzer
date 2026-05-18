@@ -1,4 +1,4 @@
-"""RPC методы execute_oql_query / validate_oql_query (Sprint 1)."""
+"""RPC методы для OQL: execute / validate / templates / saved queries (Sprint 1)."""
 
 from __future__ import annotations
 
@@ -12,8 +12,9 @@ from optimyzer_backend.oql import (
     parse_oql,
     validate,
 )
+from optimyzer_backend.oql.templates import TEMPLATES
 from optimyzer_backend.rpc.dispatcher import rpc
-from optimyzer_backend.rpc.handlers import _ARCHIVES
+from optimyzer_backend.rpc.handlers import _ARCHIVES, _sqlite
 from optimyzer_backend.storage.duckdb_store import DuckDBStore
 
 
@@ -101,3 +102,47 @@ def _serialize_cell(v: Any) -> Any:
     if isinstance(v, (str, int, float, bool, list, dict)):
         return v
     return str(v)
+
+
+# ---------- Templates (Sprint 1, Phase H) ----------
+
+
+@rpc("list_templates")
+def list_templates() -> list[dict[str, Any]]:
+    """Возвращает встроенные OQL-шаблоны (read-only)."""
+    return [dict(t) for t in TEMPLATES]
+
+
+# ---------- Saved queries (Sprint 1, Phase I) ----------
+
+
+@rpc("list_saved_queries")
+def list_saved_queries() -> list[dict[str, Any]]:
+    return _sqlite().list_saved_queries()
+
+
+@rpc("save_query")
+def save_query(name: str, query: str, description: str | None = None) -> dict[str, Any]:
+    if not name.strip():
+        raise ValueError("Имя сохранённого запроса не должно быть пустым")
+    if not query.strip():
+        raise ValueError("Запрос не должен быть пустым")
+    new_id = _sqlite().save_query(name=name.strip(), query=query, description=description)
+    return {"id": new_id}
+
+
+@rpc("delete_saved_query")
+def delete_saved_query(id: int) -> dict[str, Any]:
+    return {"ok": _sqlite().delete_saved_query(id)}
+
+
+@rpc("rename_saved_query")
+def rename_saved_query(id: int, new_name: str) -> dict[str, Any]:
+    if not new_name.strip():
+        raise ValueError("Новое имя не должно быть пустым")
+    return {"ok": _sqlite().rename_saved_query(id, new_name.strip())}
+
+
+@rpc("mark_query_run")
+def mark_query_run(id: int) -> dict[str, Any]:
+    return {"ok": _sqlite().mark_query_run(id)}

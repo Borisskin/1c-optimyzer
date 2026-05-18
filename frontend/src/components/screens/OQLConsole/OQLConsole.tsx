@@ -1,49 +1,87 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { Badge, KBD, PageHeader, Tabs, Th, Td } from "@/components/primitives/Primitives";
-import { backend } from "@/api/backend";
+import { backend, type OQLExecuteResult, type QueryResult } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
+import { Editor } from "./Editor";
+import { TemplatesBar } from "./TemplatesBar";
+import { SavedQueriesMenu } from "./SavedQueriesMenu";
 import styles from "./OQLConsole.module.css";
 
 type ResultTab = "table" | "chart" | "timeline" | "raw";
 
-type PresetId = "first_100" | "longest" | "deadlocks";
+const DEFAULT_QUERY = `// OptimyzerQL — декларативный язык запросов поверх ТЖ.
+// Sprint 1 — встроенный редактор + компилятор в SQL.
+// Выберите шаблон ниже или напишите свой запрос.
 
-interface PresetSpec {
-  id: PresetId;
-  label: string;
+events
+| order by ts asc
+| take 100
+`;
+
+interface ExecutedResult {
+  ok: boolean;
+  columns: { name: string; type: string }[];
+  rows: unknown[][];
+  total_count: number;
+  truncated: boolean;
+  executed_in_ms: number;
+  error?: string;
+  phase?: string;
+  render?: string | null;
+  sql_compiled?: string;
 }
 
-const PRESETS: PresetSpec[] = [
-  { id: "first_100", label: "Первые 100 событий" },
-  { id: "longest",   label: "Самые долгие 100" },
-  { id: "deadlocks", label: "Дедлоки" },
-];
+function adaptResult(r: OQLExecuteResult): ExecutedResult {
+  return {
+    ok: r.ok,
+    columns: r.columns ?? [],
+    rows: r.rows ?? [],
+    total_count: r.row_count ?? (r.rows?.length ?? 0),
+    truncated: false,
+    executed_in_ms: r.executed_ms ?? 0,
+    error: r.error,
+    phase: r.phase,
+    render: r.render,
+    sql_compiled: r.sql_compiled,
+  };
+}
 
 export function OQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void }) {
   const [rtab, setRtab] = useState<ResultTab>("table");
-  const [running, setRunning] = useState<PresetId | null>(null);
+  const [query, setQuery] = useState<string>(DEFAULT_QUERY);
+  const [running, setRunning] = useState(false);
+  const [lastResult, setLastResult] = useState<ExecutedResult | null>(null);
   const archive = useAppStore((s) => s.archive);
-  const lastResult = useAppStore((s) => s.lastResult);
-  const setLastResult = useAppStore((s) => s.setLastResult);
   const pushToast = useAppStore((s) => s.pushToast);
 
   const ready = archive?.status === "ready";
 
-  async function runPreset(id: PresetId) {
+  const runQuery = useCallback(async () => {
     if (!archive || !ready) return;
-    setRunning(id);
+    setRunning(true);
     try {
-      const r = await backend.queryEventsPreset(archive.archive_id, id, 100);
-      setLastResult(r);
-      pushToast(`${id}: ${r.total_count} ${t.oql.results.rowsCounter} · ${r.executed_in_ms.toFixed(0)} мс`, "ok");
+      const raw = await backend.executeOqlQuery(archive.archive_id, query);
+      const result = adaptResult(raw);
+      setLastResult(result);
+      if (result.ok) {
+        pushToast(
+          `${result.total_count} ${t.oql.results.rowsCounter} · ${result.executed_in_ms.toFixed(0)} мс`,
+          "ok",
+        );
+      } else {
+        pushToast(
+          format(t.errors.oqlExecuteError, { detail: result.error ?? "—" }),
+          "err",
+        );
+      }
     } catch (e) {
       pushToast(format(t.errors.queryFailed, { detail: String(e) }), "err");
     } finally {
-      setRunning(null);
+      setRunning(false);
     }
-  }
+  }, [archive, ready, query, pushToast]);
 
   return (
     <div className={styles.screen}>
@@ -58,10 +96,6 @@ export function OQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
         sub={t.oql.description}
         right={
           <>
-            <button className={styles.btn} disabled title={t.oql.actions.templates}>
-              <Icon name="Book" size={11} />
-              {t.oql.actions.templates}
-            </button>
             <button className={styles.btn} disabled title={t.oql.actions.docs}>
               <Icon name="FileText" size={11} />
               {t.oql.actions.docs}
@@ -70,9 +104,14 @@ export function OQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
               <Icon name="Share" size={11} />
               {t.oql.actions.share}
             </button>
-            <button className={styles.btn_primary} disabled title={t.oql.actions.run}>
+            <button
+              className={styles.btn_primary}
+              onClick={runQuery}
+              disabled={!ready || running}
+              title={t.oql.actions.run}
+            >
               <Icon name="Play" size={11} />
-              {t.oql.actions.run} <KBD>⌘↵</KBD>
+              {running ? t.oql.runningPlaceholder : t.oql.actions.run} <KBD>Ctrl+↵</KBD>
             </button>
           </>
         }
@@ -84,16 +123,8 @@ export function OQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
             <span className={styles.tab_label}>
               <Icon name="FileText" size={11} color="var(--o-text-3)" /> {t.oql.editor.filenameDefault}
             </span>
-            <Badge tone="mute">{t.oql.editor.readonly}</Badge>
-            <span className={styles.cursor_info}>
-              {t.oql.editor.cursor} 1 · {t.oql.editor.column} 1 · 0 {t.oql.editor.rows}
-            </span>
           </div>
-          <textarea
-            className={styles.editor}
-            readOnly
-            value={t.oql.editor.placeholderSprint0}
-          />
+          <Editor value={query} onChange={setQuery} onRun={runQuery} />
         </section>
 
         <section className={styles.results_pane}>
@@ -109,19 +140,21 @@ export function OQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
                 { id: "raw",      label: t.oql.results.tabs.raw,      icon: "Code" },
               ]}
             />
-            {lastResult && (
+            {lastResult && lastResult.ok && (
               <span className={styles.exec_info}>
                 <span>{lastResult.total_count} {t.oql.results.rowsCounter}</span>
                 <span>
                   {t.oql.results.executedIn} {lastResult.executed_in_ms.toFixed(0)} мс
                 </span>
-                {lastResult.truncated && <Badge tone="warn">{t.oql.results.truncated}</Badge>}
               </span>
             )}
           </div>
 
           {!ready && <EmptyState onLoadArchive={onLoadArchive} archive={archive} />}
-          {ready && rtab === "table" && lastResult && <ResultsTable result={lastResult} />}
+          {ready && lastResult && !lastResult.ok && (
+            <div className={styles.placeholder}>{lastResult.error}</div>
+          )}
+          {ready && rtab === "table" && lastResult?.ok && <ResultsTable result={asQueryResult(lastResult)} />}
           {ready && rtab === "table" && !lastResult && (
             <div className={styles.placeholder}>{t.oql.results.placeholderTable}</div>
           )}
@@ -138,21 +171,21 @@ export function OQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
       </div>
 
       <div className={styles.templates_bar}>
-        <span className={styles.templates_label}>{t.oql.presets.label}</span>
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            disabled={!ready || running != null}
-            className={styles.template_btn}
-            onClick={() => runPreset(p.id)}
-          >
-            {running === p.id ? t.oql.runningPlaceholder : p.label}
-          </button>
-        ))}
-        <span className={styles.saved_label}>{t.oql.saved.label}</span>
+        <TemplatesBar onLoadTemplate={setQuery} />
+        <SavedQueriesMenu currentQuery={query} onLoadQuery={setQuery} />
       </div>
     </div>
   );
+}
+
+function asQueryResult(r: ExecutedResult): QueryResult {
+  return {
+    columns: r.columns,
+    rows: r.rows,
+    total_count: r.total_count,
+    truncated: r.truncated,
+    executed_in_ms: r.executed_in_ms,
+  };
 }
 
 function EmptyState({

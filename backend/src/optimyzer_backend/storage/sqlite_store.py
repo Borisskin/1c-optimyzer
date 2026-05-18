@@ -23,6 +23,16 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS saved_queries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    query TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_run_at TEXT,
+    run_count INTEGER DEFAULT 0
+);
 """
 
 
@@ -95,3 +105,42 @@ class SqliteStore:
                 "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                 (key, value),
             )
+
+    # ---------- saved queries (Sprint 1) ----------
+
+    def list_saved_queries(self) -> list[dict[str, Any]]:
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT id, name, description, query, created_at, last_run_at, run_count "
+                "FROM saved_queries ORDER BY COALESCE(last_run_at, created_at) DESC"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def save_query(self, name: str, query: str, description: str | None = None) -> int:
+        with self._conn() as c:
+            cur = c.execute(
+                "INSERT INTO saved_queries (name, description, query) VALUES (?, ?, ?)",
+                (name, description, query),
+            )
+            return int(cur.lastrowid or 0)
+
+    def delete_saved_query(self, query_id: int) -> bool:
+        with self._conn() as c:
+            cur = c.execute("DELETE FROM saved_queries WHERE id = ?", (query_id,))
+            return cur.rowcount > 0
+
+    def rename_saved_query(self, query_id: int, new_name: str) -> bool:
+        with self._conn() as c:
+            cur = c.execute(
+                "UPDATE saved_queries SET name = ? WHERE id = ?",
+                (new_name, query_id),
+            )
+            return cur.rowcount > 0
+
+    def mark_query_run(self, query_id: int) -> bool:
+        with self._conn() as c:
+            cur = c.execute(
+                "UPDATE saved_queries SET last_run_at = ?, run_count = run_count + 1 WHERE id = ?",
+                (datetime.utcnow().isoformat(), query_id),
+            )
+            return cur.rowcount > 0

@@ -86,6 +86,48 @@ async function rpc<T = unknown>(method: string, params: Record<string, unknown> 
   return invoke<T>("rpc_call", { method, params });
 }
 
+export interface OQLExecuteResult {
+  ok: boolean;
+  error?: string;
+  phase?: string;
+  columns?: QueryColumn[];
+  rows?: unknown[][];
+  row_count?: number;
+  executed_ms?: number;
+  render?: string | null;
+  sql_compiled?: string;
+}
+
+export interface OQLValidationDetail {
+  message: string;
+  phase: string;
+  line?: number;
+  column?: number;
+}
+
+export interface OQLValidationResult {
+  ok: boolean;
+  errors?: OQLValidationDetail[];
+}
+
+export interface OQLTemplate {
+  id: string;
+  label: string;
+  description: string;
+  category: string;
+  query: string;
+}
+
+export interface SavedQuery {
+  id: number;
+  name: string;
+  description: string | null;
+  query: string;
+  created_at: string | null;
+  last_run_at: string | null;
+  run_count: number;
+}
+
 export const backend = {
   ping: () => rpc<{ status: string; version: string }>("ping"),
   getAppInfo: () => rpc<AppInfo>("get_app_info"),
@@ -100,6 +142,22 @@ export const backend = {
     rpc<QueryResult>("query_events_preset", { archive_id, preset, limit }),
   getStorageStats: (archive_id: string) => rpc<StorageStats>("get_storage_stats", { archive_id }),
   sidecarStatus: () => invoke<boolean>("sidecar_status"),
+
+  // OQL Engine (Sprint 1)
+  executeOqlQuery: (archive_id: string, query: string) =>
+    rpc<OQLExecuteResult>("execute_oql_query", { archive_id, query }),
+  validateOqlQuery: (query: string, archive_id?: string) =>
+    rpc<OQLValidationResult>("validate_oql_query", archive_id ? { query, archive_id } : { query }),
+  listTemplates: () => rpc<OQLTemplate[]>("list_templates"),
+
+  // Saved queries (Sprint 1)
+  listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),
+  saveQuery: (name: string, query: string, description?: string) =>
+    rpc<{ id: number }>("save_query", description ? { name, query, description } : { name, query }),
+  deleteSavedQuery: (id: number) => rpc<{ ok: boolean }>("delete_saved_query", { id }),
+  renameSavedQuery: (id: number, new_name: string) =>
+    rpc<{ ok: boolean }>("rename_saved_query", { id, new_name }),
+  markQueryRun: (id: number) => rpc<{ ok: boolean }>("mark_query_run", { id }),
 };
 
 export type Backend = typeof backend;
