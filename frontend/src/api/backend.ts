@@ -110,36 +110,96 @@ async function rpc<T = unknown>(method: string, params: Record<string, unknown> 
   return invoke<T>("rpc_call", { method, params });
 }
 
-export interface OQLExecuteResult {
+export interface SQLExecuteResult {
+  ok: boolean;
+  error?: string;
+  phase?: "validate" | "execute" | string;
+  columns?: QueryColumn[];
+  rows?: unknown[][];
+  row_count?: number;
+  truncated?: boolean;
+  executed_ms?: number;
+}
+
+export interface SQLValidationResult {
+  ok: boolean;
+  error: string | null;
+}
+
+export type TableSchema = Record<string, Array<{ name: string; type: string }>>;
+
+export interface SqlTemplate {
+  id: string;
+  category: string;
+  label: string;
+  description: string;
+  sql: string;
+}
+
+// ----- Multi-archive comparison (Sprint 2 Phase G) -----
+
+export interface ComparisonMetric {
+  key: string;
+  label: string;
+  a: number;
+  b: number;
+  delta: number;
+  delta_percent: number | null;
+}
+
+export interface CompareSummaryResult {
+  ok: boolean;
+  error?: string;
+  metrics?: ComparisonMetric[];
+}
+
+export interface SlowQueryDiffRow {
+  sql_text_hash: string;
+  query: string | null;
+  a_avg_ms: number;
+  b_avg_ms: number;
+  a_calls: number;
+  b_calls: number;
+  delta_percent: number;
+}
+
+export interface SlowQueryOnly {
+  sql_text_hash: string;
+  query: string | null;
+  calls: number;
+  total_ms: number;
+  avg_ms: number;
+}
+
+export interface CompareSlowQueriesResult {
+  ok: boolean;
+  error?: string;
+  in_both?: SlowQueryDiffRow[];
+  regressed?: SlowQueryDiffRow[];
+  improved?: SlowQueryDiffRow[];
+  only_a?: SlowQueryOnly[];
+  only_b?: SlowQueryOnly[];
+}
+
+// ----- Pre-built views (Sprint 2 Phase D) -----
+
+export interface ViewFiltersDto {
+  time_from?: string | null;
+  time_to?: string | null;
+  process_role?: string | null;
+  event_type?: string | null;
+}
+
+export interface ViewResult {
   ok: boolean;
   error?: string;
   phase?: string;
   columns?: QueryColumn[];
   rows?: unknown[][];
   row_count?: number;
+  truncated?: boolean;
   executed_ms?: number;
-  render?: string | null;
-  sql_compiled?: string;
-}
-
-export interface OQLValidationDetail {
-  message: string;
-  phase: string;
-  line?: number;
-  column?: number;
-}
-
-export interface OQLValidationResult {
-  ok: boolean;
-  errors?: OQLValidationDetail[];
-}
-
-export interface OQLTemplate {
-  id: string;
-  label: string;
-  description: string;
-  category: string;
-  query: string;
+  bucket?: string;
 }
 
 export interface SavedQuery {
@@ -170,14 +230,34 @@ export const backend = {
   getStorageStats: (archive_id: string) => rpc<StorageStats>("get_storage_stats", { archive_id }),
   sidecarStatus: () => invoke<boolean>("sidecar_status"),
 
-  // OQL Engine (Sprint 1)
-  executeOqlQuery: (archive_id: string, query: string) =>
-    rpc<OQLExecuteResult>("execute_oql_query", { archive_id, query }),
-  validateOqlQuery: (query: string, archive_id?: string) =>
-    rpc<OQLValidationResult>("validate_oql_query", archive_id ? { query, archive_id } : { query }),
-  listTemplates: () => rpc<OQLTemplate[]>("list_templates"),
+  // SQL Engine (Sprint 2 Phase B)
+  executeSql: (archive_id: string, sql: string, max_rows = 10000) =>
+    rpc<SQLExecuteResult>("execute_sql", { archive_id, sql, max_rows }),
+  validateSql: (sql: string) => rpc<SQLValidationResult>("validate_sql", { sql }),
+  getSchema: (archive_id: string) => rpc<TableSchema>("get_schema", { archive_id }),
+  listSqlTemplates: () => rpc<SqlTemplate[]>("list_sql_templates"),
 
-  // Saved queries (Sprint 1)
+  // Multi-archive comparison (Sprint 2 Phase G)
+  compareSummary: (archive_id_a: string, archive_id_b: string) =>
+    rpc<CompareSummaryResult>("compare_summary", { archive_id_a, archive_id_b }),
+  compareSlowQueries: (archive_id_a: string, archive_id_b: string, limit = 50) =>
+    rpc<CompareSlowQueriesResult>("compare_slow_queries", { archive_id_a, archive_id_b, limit }),
+
+  // Pre-built views (Sprint 2 Phase D)
+  viewSlowQueries: (archive_id: string, filters?: ViewFiltersDto, sort_by = "total_duration", limit = 100) =>
+    rpc<ViewResult>("view_slow_queries", { archive_id, filters, sort_by, limit }),
+  viewLocksTimeline: (archive_id: string, filters?: ViewFiltersDto, limit = 5000) =>
+    rpc<ViewResult>("view_locks_timeline", { archive_id, filters, limit }),
+  viewProcessRoles: (archive_id: string, filters?: ViewFiltersDto) =>
+    rpc<ViewResult>("view_process_roles", { archive_id, filters }),
+  viewDurationHistogram: (archive_id: string, filters?: ViewFiltersDto) =>
+    rpc<ViewResult>("view_duration_histogram", { archive_id, filters }),
+  viewErrorsFeed: (archive_id: string, filters?: ViewFiltersDto, limit = 500) =>
+    rpc<ViewResult>("view_errors_feed", { archive_id, filters, limit }),
+  viewActivityHeatmap: (archive_id: string, filters?: ViewFiltersDto, metric = "count") =>
+    rpc<ViewResult>("view_activity_heatmap", { archive_id, filters, metric }),
+
+  // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),
   saveQuery: (name: string, query: string, description?: string) =>
     rpc<{ id: number }>("save_query", description ? { name, query, description } : { name, query }),

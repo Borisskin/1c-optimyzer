@@ -1,0 +1,299 @@
+"""Pre-built investigation views (Sprint 2 Phase D, ADR-016).
+
+Каждая view — отдельная функция, принимает archive_id + optional filters
+(time_range, process_role, event_type) и возвращает structured dict. Под
+капотом — read-only SQLExecutor → DuckDB. Это базовый строительный блок для
+шести экранов в UI (SlowQueries, LocksTimeline, ProcessRoles,
+DurationHistogram, ErrorsFeed, ActivityHeatmap) и для cross-filtering из
+Phase E.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from optimyzer_backend.sql.executor import SQLExecutor
+
+
+@dataclass(frozen=True)
+class ViewFilters:
+    """Общие cross-filter параметры. None = filter не применяется."""
+
+    time_from: str | None = None  # ISO timestamp
+    time_to: str | None = None
+    process_role: str | None = None
+    event_type: str | None = None
+
+    def where_clause(self, extra: list[str] | None = None) -> tuple[str, list[Any]]:
+        """Возвращает (WHERE ..., params). Без leading WHERE, чтобы caller
+        мог комбинировать со своими условиями.
+        """
+        conditions: list[str] = list(extra or [])
+        params: list[Any] = []
+        if self.time_from:
+            conditions.append("ts >= ?")
+            params.append(self.time_from)
+        if self.time_to:
+            conditions.append("ts <= ?")
+            params.append(self.time_to)
+        if self.process_role:
+            conditions.append("process_role = ?")
+            params.append(self.process_role)
+        if self.event_type:
+            conditions.append("event_type = ?")
+            params.append(self.event_type)
+        if not conditions:
+            return "", []
+        return " AND ".join(conditions), params
+
+
+def _execute(archive_id: str, sql: str, params: list[Any], max_rows: int = 10_000) -> dict[str, Any]:
+    with SQLExecutor(archive_id) as ex:
+        return ex.execute(sql, params=params, max_rows=max_rows)
+
+
+# ---------- D1. Slow Queries ----------
+
+
+def slow_queries(
+    archive_id: str,
+    filters: ViewFilters,
+    *,
+    sort_by: str = "total_duration",
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Топ медленных SQL запросов, агрегированных по sql_text_hash."""
+    where, params = filters.where_clause(
+        [
+            "event_type = 'DBMSSQL'",
+            "sql_text_normalized IS NOT NULL",
+        ]
+    )
+
+    sort_column = {
+        "total_duration": "total_duration_ms",
+        "avg_duration": "avg_duration_ms",
+        "max_duration": "max_duration_ms",
+        "count": "calls",
+    }.get(sort_by, "total_duration_ms")
+
+    sql = f"""
+        SELECT
+            sql_text_hash,
+            ANY_VALUE(sql_text_normalized) AS query,
+            COUNT(*) AS calls,
+            SUM(duration_us) / 1000.0 AS total_duration_ms,
+            AVG(duration_us) / 1000.0 AS avg_duration_ms,
+            MAX(duration_us) / 1000.0 AS max_duration_ms,
+            SUM(COALESCE(rows_read, 0)) AS total_rows_read,
+            MIN(ts) AS first_seen,
+            MAX(ts) AS last_seen,
+            STRING_AGG(DISTINCT process_role, ', ') AS process_roles
+        FROM events
+        {f"WHERE {where}" if where else ""}
+        GROUP BY sql_text_hash
+        ORDER BY {sort_column} DESC NULLS LAST
+        LIMIT ?
+    """
+    return _execute(archive_id, sql, params + [limit])
+
+
+# ---------- D2. Locks Timeline ----------
+
+
+def _time_bucket_expr(filters: ViewFilters) -> tuple[str, str]:
+    """Выбираем bucket (minute / hour / day) по диапазону времени.
+
+    Эвристика: <2 часов = minute, <2 дней = hour, иначе day.
+    Возвращает (sql_expr, label).
+    """
+    # Без точного знания диапазона делаем consistent выбор на основе фильтров.
+    if filters.time_from and filters.time_to:
+        # Грубо: если диапазон <2 часов — minute, <2 дней — hour, иначе day.
+        # Используем простой парсинг ISO; при ошибке fall-back на hour.
+        try:
+            from datetime import datetime
+
+            t_from = datetime.fromisoformat(filters.time_from.replace("Z", "+00:00"))
+            t_to = datetime.fromisoformat(filters.time_to.replace("Z", "+00:00"))
+            delta = (t_to - t_from).total_seconds()
+            if delta < 2 * 3600:
+                return "date_trunc('minute', ts)", "minute"
+            if delta < 2 * 86400:
+                return "date_trunc('hour', ts)", "hour"
+            return "date_trunc('day', ts)", "day"
+        except ValueError:
+            return "date_trunc('hour', ts)", "hour"
+    return "date_trunc('hour', ts)", "hour"
+
+
+def locks_timeline(
+    archive_id: str,
+    filters: ViewFilters,
+    *,
+    limit: int = 5_000,
+) -> dict[str, Any]:
+    """Распределение TLOCK / TDEADLOCK по time buckets."""
+    bucket_expr, bucket_label = _time_bucket_expr(filters)
+    where, params = filters.where_clause(["event_type IN ('TLOCK', 'TDEADLOCK')"])
+    sql = f"""
+        SELECT
+            {bucket_expr} AS bucket,
+            SUM(CASE WHEN event_type = 'TLOCK' THEN 1 ELSE 0 END) AS locks,
+            SUM(CASE WHEN event_type = 'TDEADLOCK' THEN 1 ELSE 0 END) AS deadlocks
+        FROM events
+        {f"WHERE {where}" if where else ""}
+        GROUP BY bucket
+        ORDER BY bucket
+        LIMIT ?
+    """
+    result = _execute(archive_id, sql, params + [limit])
+    result["bucket"] = bucket_label
+    return result
+
+
+# ---------- D3. Process Roles ----------
+
+
+def process_roles(archive_id: str, filters: ViewFilters) -> dict[str, Any]:
+    where, params = filters.where_clause(["process_role IS NOT NULL"])
+    sql = f"""
+        SELECT
+            process_role,
+            COUNT(*) AS events_count,
+            SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
+            COUNT(DISTINCT process_pid) AS unique_processes,
+            AVG(COALESCE(duration_us, 0)) / 1000.0 AS avg_duration_ms
+        FROM events
+        {f"WHERE {where}" if where else ""}
+        GROUP BY process_role
+        ORDER BY events_count DESC
+    """
+    return _execute(archive_id, sql, params)
+
+
+# ---------- D4. Duration Histogram ----------
+
+
+_DURATION_BUCKETS_US: list[tuple[str, int | None]] = [
+    ("< 1 мс", 1_000),
+    ("1-10 мс", 10_000),
+    ("10-100 мс", 100_000),
+    ("100 мс - 1 с", 1_000_000),
+    ("1-10 с", 10_000_000),
+    ("10-60 с", 60_000_000),
+    ("> 60 с", None),
+]
+
+
+def duration_histogram(archive_id: str, filters: ViewFilters) -> dict[str, Any]:
+    """Bucketed distribution of durations. Использует CASE expression."""
+    where, params = filters.where_clause(["duration_us IS NOT NULL"])
+
+    case_parts: list[str] = []
+    prev = 0
+    for i, (label, upper) in enumerate(_DURATION_BUCKETS_US):
+        if upper is None:
+            case_parts.append(f"WHEN duration_us >= {prev} THEN '{label}'")
+        else:
+            case_parts.append(f"WHEN duration_us >= {prev} AND duration_us < {upper} THEN '{label}'")
+            prev = upper
+    case_expr = "CASE " + " ".join(case_parts) + " END"
+
+    sql = f"""
+        SELECT
+            bucket AS label,
+            COUNT(*) AS count
+        FROM (
+            SELECT {case_expr} AS bucket
+            FROM events
+            {f"WHERE {where}" if where else ""}
+        )
+        GROUP BY bucket
+    """
+    raw = _execute(archive_id, sql, params)
+
+    # Преобразуем в фиксированный порядок bucket'ов (для стабильного chart).
+    order = {label: i for i, (label, _) in enumerate(_DURATION_BUCKETS_US)}
+    rows_by_label = {row[0]: row[1] for row in raw["rows"]}
+    ordered_rows: list[list[Any]] = []
+    total = sum(rows_by_label.values()) or 1
+    for label, _ in _DURATION_BUCKETS_US:
+        count = int(rows_by_label.get(label, 0))
+        ordered_rows.append([label, count, round(count * 100.0 / total, 2)])
+    return {
+        "columns": [
+            {"name": "label", "type": "VARCHAR"},
+            {"name": "count", "type": "BIGINT"},
+            {"name": "percent", "type": "DOUBLE"},
+        ],
+        "rows": ordered_rows,
+        "row_count": len(ordered_rows),
+        "truncated": False,
+        "executed_ms": raw.get("executed_ms", 0.0),
+    }
+
+
+# ---------- D5. Errors Feed ----------
+
+
+def errors_feed(
+    archive_id: str,
+    filters: ViewFilters,
+    *,
+    limit: int = 500,
+) -> dict[str, Any]:
+    """Поток исключений (EXCP / TDEADLOCK / TLOCK), последние сначала."""
+    where, params = filters.where_clause(["event_type IN ('EXCP', 'TDEADLOCK', 'TLOCK')"])
+    sql = f"""
+        SELECT
+            ts,
+            event_type,
+            process_role,
+            process_pid,
+            context,
+            duration_us / 1000.0 AS duration_ms,
+            extra,
+            source_file,
+            source_line_start
+        FROM events
+        {f"WHERE {where}" if where else ""}
+        ORDER BY ts DESC
+        LIMIT ?
+    """
+    return _execute(archive_id, sql, params + [limit])
+
+
+# ---------- D6. Activity Heatmap ----------
+
+
+def activity_heatmap(
+    archive_id: str,
+    filters: ViewFilters,
+    *,
+    metric: str = "count",
+) -> dict[str, Any]:
+    """7x24 grid: day_of_week × hour_of_day → metric."""
+    where, params = filters.where_clause()
+
+    metric_expr = {
+        "count": "COUNT(*)",
+        "total_duration_ms": "SUM(COALESCE(duration_us, 0)) / 1000.0",
+        "peak_duration_ms": "MAX(COALESCE(duration_us, 0)) / 1000.0",
+        "error_count": "SUM(CASE WHEN event_type IN ('EXCP', 'TDEADLOCK') THEN 1 ELSE 0 END)",
+    }.get(metric, "COUNT(*)")
+
+    # DuckDB extract(dow FROM ts) — 0=Sunday..6=Saturday по умолчанию.
+    # Перенумеруем в Monday=0 для UI labels.
+    sql = f"""
+        SELECT
+            CAST(((CAST(extract(dow FROM ts) AS INT) + 6) % 7) AS INT) AS y,
+            CAST(extract(hour FROM ts) AS INT) AS x,
+            {metric_expr} AS value
+        FROM events
+        {f"WHERE {where}" if where else ""}
+        GROUP BY y, x
+        ORDER BY y, x
+    """
+    return _execute(archive_id, sql, params)

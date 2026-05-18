@@ -7,7 +7,14 @@ import { CommandPalette } from "@/components/overlays/CommandPalette";
 import { DropZone } from "@/components/overlays/DropZone";
 import { Toasts } from "@/components/overlays/Toasts";
 import { ProgressCard } from "@/components/overlays/ProgressCard";
-import { OQLConsoleScreen } from "@/components/screens/OQLConsole/OQLConsole";
+import { SQLConsoleScreen } from "@/components/screens/SQLConsole/SQLConsole";
+import { SlowQueriesScreen } from "@/components/screens/SlowQueries/SlowQueries";
+import { LocksTimelineScreen } from "@/components/screens/LocksTimeline/LocksTimeline";
+import { ProcessRolesScreen } from "@/components/screens/ProcessRoles/ProcessRoles";
+import { DurationHistogramScreen } from "@/components/screens/DurationHistogram/DurationHistogram";
+import { ErrorsFeedScreen } from "@/components/screens/ErrorsFeed/ErrorsFeed";
+import { ActivityHeatmapScreen } from "@/components/screens/ActivityHeatmap/ActivityHeatmap";
+import { ArchiveComparisonScreen } from "@/components/screens/ArchiveComparison/ArchiveComparison";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
@@ -17,6 +24,8 @@ export function App() {
   const cmdOpen = useAppStore((s) => s.cmdOpen);
   const setCmdOpen = useAppStore((s) => s.setCmdOpen);
   const currentScreen = useAppStore((s) => s.currentScreen);
+  const archive = useAppStore((s) => s.archive);
+  const archiveReady = archive?.status === "ready" ? archive : null;
   const setArchive = useAppStore((s) => s.setArchive);
   const setStorageStats = useAppStore((s) => s.setStorageStats);
   const setIngest = useAppStore((s) => s.setIngest);
@@ -33,14 +42,37 @@ export function App() {
   }, [setArchive, setStorageStats, setIngest, setLastResult, setProgressCardMinimized]);
 
   // Cmd+K / Ctrl+K — открыть Command Palette. Escape — закрыть.
+  // Ctrl+1..8 — switch активный экран (Sprint 2 Phase J).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const meta = e.ctrlKey || e.metaKey;
       if (meta && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
         setCmdOpen(!useAppStore.getState().cmdOpen);
-      } else if (e.key === "Escape") {
+        return;
+      }
+      if (e.key === "Escape") {
         setCmdOpen(false);
+        return;
+      }
+      // Ctrl+1..8 — quick screen switch.
+      if (meta && /^[1-8]$/.test(e.key)) {
+        const screensInOrder: import("@/store/appStore").ScreenId[] = [
+          "sql",
+          "slow-queries",
+          "locks",
+          "process-roles",
+          "duration",
+          "errors",
+          "activity",
+          "comparison",
+        ];
+        const idx = Number(e.key) - 1;
+        const target = screensInOrder[idx];
+        if (target) {
+          e.preventDefault();
+          useAppStore.getState().setScreen(target);
+        }
       }
     };
     window.addEventListener("keydown", handler);
@@ -78,7 +110,7 @@ export function App() {
           pushToast(format(t.errors.rpcError, { detail: String(e) }), "err");
         }
       } else if (event.phase === "error") {
-        const detail = event.error_message ?? t.oql.archiveError.unknown;
+        const detail = event.error_message ?? t.sql.archiveError.unknown;
         pushToast(format(t.errors.loadFailed, { detail }), "err");
       }
     });
@@ -119,12 +151,11 @@ export function App() {
       <TopBar onOpenArchive={onPickFolder} onActiveArchiveDeleted={onActiveArchiveDeleted} />
       <Sidebar />
       <main className="app__main">
-        {currentScreen === "oql" && <OQLConsoleScreen onLoadArchive={onPickFolder} />}
-        {currentScreen !== "oql" && (
-          <div style={{ padding: 32, color: "var(--o-text-3)" }}>
-            {format(t.app.screenPlaceholder, { id: currentScreen })}
-          </div>
-        )}
+        {renderScreen({
+          screen: currentScreen,
+          archiveId: archiveReady?.archive_id ?? null,
+          onLoadArchive: onPickFolder,
+        })}
       </main>
       <StatusBar />
 
@@ -139,4 +170,39 @@ export function App() {
 function formatElapsed(iso: string | null): string {
   if (!iso) return "—";
   return iso;
+}
+
+function renderScreen({
+  screen,
+  archiveId,
+  onLoadArchive,
+}: {
+  screen: import("@/store/appStore").ScreenId;
+  archiveId: string | null;
+  onLoadArchive: () => void;
+}) {
+  switch (screen) {
+    case "sql":
+      return <SQLConsoleScreen onLoadArchive={onLoadArchive} />;
+    case "slow-queries":
+      return <SlowQueriesScreen archiveId={archiveId} />;
+    case "locks":
+      return <LocksTimelineScreen archiveId={archiveId} />;
+    case "process-roles":
+      return <ProcessRolesScreen archiveId={archiveId} />;
+    case "duration":
+      return <DurationHistogramScreen archiveId={archiveId} />;
+    case "errors":
+      return <ErrorsFeedScreen archiveId={archiveId} />;
+    case "activity":
+      return <ActivityHeatmapScreen archiveId={archiveId} />;
+    case "comparison":
+      return <ArchiveComparisonScreen />;
+    default:
+      return (
+        <div style={{ padding: 32, color: "var(--o-text-3)" }}>
+          {format(t.app.screenPlaceholder, { id: screen })}
+        </div>
+      );
+  }
 }

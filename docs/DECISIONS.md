@@ -174,3 +174,65 @@ Backend dependency: `pyarrow>=15`.
 Регистр имени папки приводится к lowercase в результате (1CV8C_NNNN → role="1cv8c").
 
 **Consequences.** + Естественный OQL для типичных вопросов: «покажи дедлоки только в rphost», «summarize by role». + Streamlined schema. − Backwards-incompatible: Sprint 0 значения `process_pid` (из OSThread) другие в новой схеме (из folder). Sprint 0 тесты переписаны или адаптированы.
+
+---
+
+## ADR-015 — Удаление OQL DSL, переход на raw SQL
+
+**Status:** Accepted (Sprint 2)
+
+**Context.** Sprint 1 поставил OptimyzerQL DSL как декларативный язык запросов поверх ТЖ. После закрытия Sprint 1 и стратегического re-evaluation (см. `PROJECT_REACTIVATION_SPRINT_2.md`) выяснилось: OQL имел смысл только как public brand language ("DataDog query language for 1C"), а Module 1 переориентируется на personal/portfolio tool. SQL знают все 1С-эксперты, OQL — никто.
+
+**Decision.** Удалить пакет `optimyzer_backend/oql/` целиком, `rpc/oql_rpc.py`, CodeMirror OQL extensions, OQL-coupled tests. Saved queries RPC-методы переехать в `handlers.py` (они не OQL-specific). Lark dependency удалена. SQL Console и backend SQL Engine приходят в Phase B.
+
+**Consequences.** + Простой стек: один язык, известный целевой аудитории. + Maintenance одного языка вместо двух. + −197 tests (OQL tests) компенсируются +43 SQL Engine + 8 views + 17 templates + 5 comparison в Sprint 2. − Saved queries из Sprint 1 (если есть) становятся unusable до ручного перевода на SQL; решено принять (single-user tool).
+
+---
+
+## ADR-016 — Pre-built Views as Primary UX
+
+**Status:** Accepted (Sprint 2)
+
+**Context.** SQL editor — power-user-инструмент; 80% типичных вопросов performance-engineer'а (медленные запросы / locks / errors / roles / activity) решаются готовыми views без необходимости писать SQL. Demo сценарий "загрузил архив за 4 часа prod-нагрузки, вот Top 20 slow queries, вот deadlocks" должен быть drag-drop + clicks.
+
+**Decision.** Шесть pre-built investigation views: Top Slow Queries / Locks Timeline / Process Roles / Duration Histogram / Errors Feed / Activity Heatmap. Каждая — отдельный sidebar item + backend SQL aggregation в `sql/views.py`. SQL Console — secondary tab для custom queries.
+
+**Consequences.** + Demo-ready без обучения. + Power-users всё ещё имеют SQL Console. − Pre-built views — additional code surface для maintenance.
+
+---
+
+## ADR-017 — Cross-Filtering поверх views
+
+**Status:** Accepted (Sprint 2)
+
+**Context.** Главная боль 1С performance-engineer'а — найти **корреляции**: spike в lock conflicts ↔ slow queries в этот же момент ↔ memory growth. Изолированные views не дают эту картину; пользователь не должен вручную копировать time range между табами.
+
+**Decision.** `CrossFilters` state в Zustand (time_range, process_role, event_type, source_view). FilterBar в каждом view показывает active filters как chips. Click-to-filter interactions: DonutChart slice в Process Roles → set process_role; HeatmapChart cell в Activity → set time_range. Все views subscribe на filters и re-fetch при изменениях через `useView` hook.
+
+**Consequences.** + Investigation workbench → user может drilling down. + Lazy evaluation: только active view re-fetch'ится при switch фильтра. − Two-way mapping иногда требует heuristics (Activity heatmap → week-relative из current date).
+
+---
+
+## ADR-018 — Multi-archive Comparison
+
+**Status:** Accepted (Sprint 2)
+
+**Context.** Killer-фича для portfolio: "релизнули новую версию УТ, провалилась производительность, сравни до/после". Конкурентов с event-level diff на нашем уровне детализации нет (1С:ЦКК делает comparison на агрегатах).
+
+**Decision.** Comparison не требует special slot tracking в backend — просто принимает два `archive_id` уже загруженных в `_ARCHIVES`. `compare_summary` возвращает 6 high-level metrics с delta/delta_percent. `compare_slow_queries` partition'ит результат на in_both / only_a / only_b / regressed (avg ≥ +50%) / improved (avg ≤ -30%). Side-by-side UI с tabs (Summary + Slow Queries Diff).
+
+**Consequences.** + Direct answer на release-regression вопрос без SQL. + Side effect: testable self-comparison (archive vs itself → delta=0 everywhere). − Memory: две DuckDB connections одновременно (~2x RAM); acceptable на dev-машине 16+GB. − Only Slow Queries diff в Sprint 2; Errors/Roles/Histogram diff отложены на Sprint 3 если будет нужно.
+
+---
+
+## ADR-019 — Read-Only SQL Execution (Defense in Depth)
+
+**Status:** Accepted (Sprint 2)
+
+**Context.** SQL Console позволяет пользователю выполнять arbitrary SQL. Tool — analytical, не data manipulation. Случайный `DELETE FROM events` пользователем должен быть невозможен.
+
+**Decision.** Два защитных слоя:
+1. **SQL Validator** (`sql/validator.py`) на parse stage: regex-проверка по списку blocked keywords (INSERT/UPDATE/DELETE/MERGE/TRUNCATE/CREATE/DROP/ALTER/GRANT/REVOKE/ATTACH/DETACH/COPY/PRAGMA/CALL/EXECUTE/VACUUM/...) после strip strings/comments. Только SELECT/WITH allowed на top level. Multi-statement (`;`-separated) запрещён.
+2. **Read-only DuckDB connection** (`SQLExecutor`) в `sql/executor.py`: `duckdb.connect(path, read_only=True)`. Даже если validator пропустит что-то — DuckDB сам отклонит write.
+
+**Consequences.** + Two-layer защита: validator должен не пропустить, и connection должен не пропустить. + `INSERT/UPDATE/DELETE` блокируются на двух уровнях (validator → connection). − Read-only connection не позволяет создавать temp tables в SQL Console (acceptable trade-off — CTE достаточно для аналитики).

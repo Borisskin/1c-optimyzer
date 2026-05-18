@@ -1,14 +1,12 @@
 # 1C-Optimyzer
 
-**Анализ архивов технологического журнала 1С через специализированный DSL.**
+**Анализ архивов технологического журнала 1С — performance investigation workbench.**
 
 ## Status
 
-⏸️ **Active development paused** (2026-05-18). Project в maintenance mode.
+🚀 **Active development.** Sprint 2 (Performance Investigation Workbench) завершён 2026-05-19. Module 1 production-ready.
 
-Module 1 (OptimyzerQL Standalone Tool) функционально завершён — рабочий desktop-инструмент с verified parsing 12 GiB real-world архивов. Module 2+ (real-time monitoring, AI Co-pilot, и др.) отложены indefinitely по стратегическим причинам.
-
-Подробное обоснование статуса — в [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md).
+После Sprint 1 проект кратко был paused — это решение отменено в Sprint 2 reactivation. См. [`docs/PROJECT_REACTIVATION_SPRINT_2.md`](docs/PROJECT_REACTIVATION_SPRINT_2.md).
 
 ## Что работает
 
@@ -17,20 +15,23 @@ Module 1 (OptimyzerQL Standalone Tool) функционально завершё
 - **Encoding auto-detect** (UTF-8 BOM / plain / cp1251 / cp866)
 - **Streaming parser** для архивов произвольного размера (verified на 12 GiB)
 - **DuckDB storage** с pyarrow Appender (production-grade bulk insert)
-- **OptimyzerQL DSL** — declarative query language для аналитических запросов поверх ТЖ
-- **CodeMirror 6 editor** с syntax highlighting + autocomplete + linter
-- **Templates library** — 8 предустановленных запросов
+- **SQL Console** — raw SQL поверх событий с syntax highlighting, autocomplete по schema, read-only execution (Sprint 2)
+- **6 Pre-built Views** — Slow Queries / Locks Timeline / Process Roles / Duration Histogram / Errors Feed / Activity Heatmap (Sprint 2)
+- **Cross-filtering** — клик в одном view применяется ко всем (Sprint 2)
+- **Multi-archive Comparison** — side-by-side diff baseline vs compared с regression detection (Sprint 2)
+- **SQL Templates library** — 13 готовых запросов по категориям (Sprint 2)
+- **Export** — CSV / TSV / JSON из каждого view (Sprint 2)
 - **Saved queries** через SQLite
-- **Live progress UI** — animated event counter (не замирает на больших файлах)
 - **Archive management** — список загруженных архивов с per-item и bulk удалением
+- **Live progress UI** — animated event counter (не замирает на больших файлах)
 - **Full ru-RU localization**
 
 ## Architecture
 
-- **Frontend:** Tauri 2 + React 18 + TypeScript + CodeMirror 6
-- **Backend:** Python sidecar (JSON-RPC over stdio) с Lark grammar parser
+- **Frontend:** Tauri 2 + React 18 + TypeScript + CodeMirror 6 + Recharts
+- **Backend:** Python sidecar (JSON-RPC over stdio) + DuckDB read-only executor + sqlparse validator
 - **Storage:** DuckDB (per-archive analytical store) + SQLite (app metadata)
-- **Test coverage:** 197 unit tests + 5 acceptance tests (12 GiB real-data verified)
+- **Test coverage:** 183 unit tests + 15 env-gated acceptance tests
 
 ## Setup для разработки
 
@@ -49,23 +50,22 @@ cd ..\..
 .\start.bat
 ```
 
-## Maintenance policy
+## Keyboard shortcuts
 
-См. [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md) section 4.
-
-Кратко:
-- Bug fixes — accepted, best-effort response
-- Security issues — приоритетно (~дни response)
-- Feature requests — accepted, **not implemented** в обозримом периоде
-- Critical compatibility issues — устраняются если занимают <1 day
+- `Ctrl/Cmd + K` — Command Palette
+- `Ctrl/Cmd + 1..8` — quick switch между screens (SQL Console / Slow Queries / Locks / Process Roles / Duration / Errors / Activity / Comparison)
+- `Ctrl/Cmd + Enter` в SQL editor — выполнить запрос
 
 ## Documentation
 
-- [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md) — текущий статус проекта
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) — все архитектурные решения (ADR-001..014)
-- [`docs/SPRINT_0_REPORT.md`](docs/SPRINT_0_REPORT.md), [`docs/SPRINT_1_REPORT.md`](docs/SPRINT_1_REPORT.md) — детальные отчёты по спринтам
+- [`docs/SPRINT_2_REPORT.md`](docs/SPRINT_2_REPORT.md) — полный отчёт Sprint 2 + DoD checklist
+- [`docs/PROJECT_REACTIVATION_SPRINT_2.md`](docs/PROJECT_REACTIVATION_SPRINT_2.md) — обоснование reactivation после Sprint 1 closure
+- [`docs/SPRINT_2_PROMPT_OPTIMYZER.md`](docs/SPRINT_2_PROMPT_OPTIMYZER.md) — sprint promt с детальным планом
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — все архитектурные решения (ADR-001..019)
+- [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md) — предыдущий closure document (overruled by reactivation)
+- [`docs/SPRINT_0_REPORT.md`](docs/SPRINT_0_REPORT.md), [`docs/SPRINT_1_REPORT.md`](docs/SPRINT_1_REPORT.md) — отчёты по предыдущим спринтам
 - [`docs/ARCHITECT_NOTES.md`](docs/ARCHITECT_NOTES.md) — observations архитектора
-- [`design/`](design/) — visual design specification (18 screens, premium UI system)
+- [`design/`](design/) — visual design specification (18 screens)
 
 ## Команда
 
@@ -75,7 +75,7 @@ cd ..\..
 
 ## License
 
-TBD (см. PROJECT_CLOSURE_MODULE_1.md раздел 4 "Open source status")
+TBD (см. `docs/PROJECT_CLOSURE_MODULE_1.md` раздел 4 — open source status pending)
 
 ---
 
