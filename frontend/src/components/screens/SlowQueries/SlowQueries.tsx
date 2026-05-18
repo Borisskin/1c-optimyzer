@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { backend } from "@/api/backend";
+import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
@@ -26,6 +27,13 @@ export function SlowQueriesScreen({ archiveId }: Props) {
       breadcrumbs={["Анализ", "Медленные запросы"]}
       title={<>Медленные запросы</>}
       sub="Топ агрегированных SQL запросов по суммарной длительности"
+      right={
+        <ExportMenu
+          defaultName="slow_queries"
+          columns={data?.columns ?? []}
+          rows={data?.rows ?? []}
+        />
+      }
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>

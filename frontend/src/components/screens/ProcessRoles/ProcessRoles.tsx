@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { backend } from "@/api/backend";
 import { DonutChart } from "@/components/charts";
+import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
@@ -37,6 +38,13 @@ export function ProcessRolesScreen({ archiveId }: Props) {
       breadcrumbs={["Анализ", "Роли процессов"]}
       title={<>Роли процессов</>}
       sub="Распределение событий по rphost / rmngr / ragent / 1cv8 ..."
+      right={
+        <ExportMenu
+          defaultName="process_roles"
+          columns={data?.columns ?? []}
+          rows={data?.rows ?? []}
+        />
+      }
     >
       <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1fr) 2fr", gap: 16 }}>
         <div className={vshellStyles.panel}>

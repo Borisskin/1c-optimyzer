@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { backend } from "@/api/backend";
 import { LineChart } from "@/components/charts";
+import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
@@ -38,6 +39,13 @@ export function LocksTimelineScreen({ archiveId }: Props) {
       breadcrumbs={["Анализ", "Блокировки"]}
       title={<>Блокировки</>}
       sub={`Распределение TLOCK и TDEADLOCK по времени (bucket: ${data?.bucket ?? "—"})`}
+      right={
+        <ExportMenu
+          defaultName="locks_timeline"
+          columns={data?.columns ?? []}
+          rows={data?.rows ?? []}
+        />
+      }
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>

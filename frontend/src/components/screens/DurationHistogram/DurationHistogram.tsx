@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { backend } from "@/api/backend";
 import { HistogramChart } from "@/components/charts";
+import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
@@ -37,6 +38,13 @@ export function DurationHistogramScreen({ archiveId }: Props) {
       breadcrumbs={["Анализ", "Распределение длительностей"]}
       title={<>Распределение длительностей</>}
       sub="Гистограмма events по бакетам длительности (логарифмическая Y-шкала)"
+      right={
+        <ExportMenu
+          defaultName="duration_histogram"
+          columns={data?.columns ?? []}
+          rows={data?.rows ?? []}
+        />
+      }
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { backend } from "@/api/backend";
+import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
@@ -36,16 +37,23 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
       title={<>Ошибки и исключения</>}
       sub="EXCP / TDEADLOCK / TLOCK — последние сначала"
       right={
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as typeof filter)}
-          style={selectStyle}
-        >
-          <option value="all">Все типы</option>
-          <option value="EXCP">EXCP</option>
-          <option value="TDEADLOCK">TDEADLOCK</option>
-          <option value="TLOCK">TLOCK</option>
-        </select>
+        <>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as typeof filter)}
+            style={selectStyle}
+          >
+            <option value="all">Все типы</option>
+            <option value="EXCP">EXCP</option>
+            <option value="TDEADLOCK">TDEADLOCK</option>
+            <option value="TLOCK">TLOCK</option>
+          </select>
+          <ExportMenu
+            defaultName="errors_feed"
+            columns={data?.columns ?? []}
+            rows={rows}
+          />
+        </>
       }
     >
       <div className={vshellStyles.panel}>

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { backend } from "@/api/backend";
 import { HeatmapChart } from "@/components/charts";
 import type { HeatmapCell } from "@/components/charts";
+import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
@@ -43,16 +44,23 @@ export function ActivityHeatmapScreen({ archiveId }: Props) {
       title={<>Активность</>}
       sub="Тепловая карта events по часам и дням недели"
       right={
-        <select
-          value={metric}
-          onChange={(e) => setMetric(e.target.value as Metric)}
-          style={selectStyle}
-        >
-          <option value="count">Количество событий</option>
-          <option value="total_duration_ms">Σ длительность</option>
-          <option value="peak_duration_ms">Пик длительности</option>
-          <option value="error_count">Количество ошибок</option>
-        </select>
+        <>
+          <select
+            value={metric}
+            onChange={(e) => setMetric(e.target.value as Metric)}
+            style={selectStyle}
+          >
+            <option value="count">Количество событий</option>
+            <option value="total_duration_ms">Σ длительность</option>
+            <option value="peak_duration_ms">Пик длительности</option>
+            <option value="error_count">Количество ошибок</option>
+          </select>
+          <ExportMenu
+            defaultName="activity_heatmap"
+            columns={data?.columns ?? []}
+            rows={data?.rows ?? []}
+          />
+        </>
       }
     >
       <div className={vshellStyles.panel}>
