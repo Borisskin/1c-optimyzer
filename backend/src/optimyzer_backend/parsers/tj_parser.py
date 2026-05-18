@@ -8,17 +8,24 @@
 
 Multi-line events: значения могут содержать переносы строк (Sql='...\n...'),
 balanced single quotes используются для определения границы значения.
+
+Sprint 1: process_role/process_pid берутся из имени родительской папки
+(`rphost_28220` → role='rphost', pid=28220), не из OSThread. OSThread
+теперь попадает в ``extra`` JSON, см. ADR-014.
 """
 
 from __future__ import annotations
 
 import hashlib
 import re
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from optimyzer_backend.ingest.source import LogFile, LogSource
 
 # Имя файла: YYMMDDHH.log
 _FILE_TS_RE = re.compile(r"(\d{2})(\d{2})(\d{2})(\d{2})\.log$", re.IGNORECASE)
@@ -74,6 +81,7 @@ class ParsedEvent:
     user_name: str | None = None
     context: str | None = None
     process: str | None = None
+    process_role: str = "unknown"
     process_pid: int | None = None
     sql_text: str | None = None
     sql_text_normalized: str | None = None
@@ -85,7 +93,7 @@ class ParsedEvent:
     source_line_start: int = 0
 
     def as_row(self, archive_id: str, event_id: int) -> tuple:
-        """Возвращает tuple для batch insert в DuckDB."""
+        """Возвращает tuple для batch insert в DuckDB (порядок = EVENT_COLUMNS в storage)."""
         import json as _json
 
         return (
@@ -98,6 +106,7 @@ class ParsedEvent:
             self.user_name,
             self.context,
             self.process,
+            self.process_role,
             self.process_pid,
             self.sql_text,
             self.sql_text_normalized,
@@ -132,24 +141,46 @@ def iter_raw_events(text: str, source_file: str = "") -> Iterator[RawEvent]:
     Multi-line поддерживается через look-ahead: следующая строка считается продолжением
     текущего события, если она НЕ начинается с pattern `\\d+:\\d+\\.\\d+-`.
     """
-    lines = text.splitlines(keepends=False)
-    i = 0
-    n = len(lines)
-    while i < n:
-        head_match = _EVENT_HEAD_RE.match(lines[i])
-        if not head_match:
-            i += 1
-            continue
+    yield from iter_raw_events_lines(text.splitlines(keepends=False), source_file=source_file)
 
-        buf = [lines[i]]
-        start_idx = i
-        i += 1
-        while i < n and not _EVENT_HEAD_RE.match(lines[i]):
-            buf.append(lines[i])
-            i += 1
 
+def iter_raw_events_lines(lines: Iterable[str], source_file: str = "") -> Iterator[RawEvent]:
+    """Streaming-вариант: принимает итератор строк (без хвостовых ``\\n``).
+
+    Используется FolderSource для построчного чтения без загрузки файла в память.
+    """
+    buf: list[str] = []
+    start_idx = 0
+    head_match: re.Match | None = None
+    line_no = 0
+
+    for line in lines:
+        # Убираем хвостовой \n/\r (Path.open может возвращать строки с ним)
+        if line.endswith("\n"):
+            line = line[:-1]
+        if line.endswith("\r"):
+            line = line[:-1]
+        line_no += 1
+
+        m = _EVENT_HEAD_RE.match(line)
+        if m is not None:
+            # Зафиксировать предыдущее событие, если было
+            if head_match is not None:
+                raw_text = "\n".join(buf)
+                ev = _parse_one(raw_text, head_match, source_file, start_idx)
+                if ev is not None:
+                    yield ev
+            head_match = m
+            buf = [line]
+            start_idx = line_no
+        else:
+            if head_match is not None:
+                buf.append(line)
+            # иначе — мусор до первого header'а, игнорируем
+
+    if head_match is not None:
         raw_text = "\n".join(buf)
-        ev = _parse_one(raw_text, head_match, source_file, start_idx + 1)
+        ev = _parse_one(raw_text, head_match, source_file, start_idx)
         if ev is not None:
             yield ev
 
@@ -160,7 +191,6 @@ def _parse_one(raw: str, head: re.Match, source_file: str, line_no: int) -> RawE
 
     rest_start = head.end()
     tail = raw[rest_start:]
-    # tail обычно начинается с ',key=value,key=value,...' либо пусто
     if tail.startswith(","):
         tail = tail[1:]
 
@@ -197,23 +227,19 @@ def _parse_kv_fields(text: str) -> dict[str, str]:
     i = 0
     n = len(text)
     while i < n:
-        # пропустить leading-разделитель/пробелы
         while i < n and text[i] in ", ":
             i += 1
         if i >= n:
             break
-        # ключ — до '='
         eq = text.find("=", i)
         if eq < 0:
             break
         key = text[i:eq].strip()
         i = eq + 1
         if not key:
-            # битый сегмент — пропустить до следующей запятой
             comma = text.find(",", i)
             i = comma + 1 if comma > 0 else n
             continue
-        # значение
         if i < n and text[i] in "'\"":
             quote = text[i]
             i += 1
@@ -221,7 +247,6 @@ def _parse_kv_fields(text: str) -> dict[str, str]:
             while i < n:
                 ch = text[i]
                 if ch == quote:
-                    # удвоенная кавычка — escape
                     if i + 1 < n and text[i + 1] == quote:
                         value_buf.append(quote)
                         i += 2
@@ -232,7 +257,6 @@ def _parse_kv_fields(text: str) -> dict[str, str]:
                 i += 1
             value = "".join(value_buf)
         else:
-            # значение до следующей запятой (не учитывая запятые внутри возможных вложенных скобок)
             comma = text.find(",", i)
             if comma < 0:
                 value = text[i:]
@@ -247,18 +271,26 @@ def _parse_kv_fields(text: str) -> dict[str, str]:
 # ---------- Interpreter: RawEvent -> ParsedEvent ----------
 
 
-def interpret(raw: RawEvent, file_ts: tuple[int, int, int, int]) -> ParsedEvent:
+def interpret(
+    raw: RawEvent,
+    file_ts: tuple[int, int, int, int],
+    process_role: str = "unknown",
+    file_pid: int | None = None,
+) -> ParsedEvent:
+    """Преобразует RawEvent в ParsedEvent.
+
+    ``process_role`` и ``file_pid`` извлекаются из имени родительской папки
+    (см. ADR-014). Если они не переданы — поля остаются ``unknown``/``None``,
+    а семантика event-уровневых полей сохраняется.
+    """
     year, month, day, hour = file_ts
-    # microseconds in datetime — 0..999_999
     try:
         ts = datetime(year, month, day, hour, raw.minute, raw.second, raw.microsec)
     except ValueError:
-        # invalid date components — fall back to midnight of given day
         ts = datetime(year, month, day, hour, 0, 0, 0)
 
     f = raw.fields
     process = f.get("process") or f.get("p:processName")
-    process_pid = _to_int(f.get("OSThread"))
     session_id = _to_int(f.get("t:clientID") or f.get("SessionID") or f.get("Sid"))
     user_name = f.get("Usr") or f.get("UserName")
     context = f.get("Context")
@@ -277,11 +309,10 @@ def interpret(raw: RawEvent, file_ts: tuple[int, int, int, int]) -> ParsedEvent:
             sql_norm = normalize_sql(sql_text)
             sql_hash = hashlib.blake2b(sql_norm.encode("utf-8"), digest_size=16).hexdigest()
 
-    # Всё, что не известно как явное поле — складываем в extra
+    # Известные поля выносим из extra
     known_keys = {
         "process",
         "p:processName",
-        "OSThread",
         "t:clientID",
         "SessionID",
         "Sid",
@@ -303,7 +334,8 @@ def interpret(raw: RawEvent, file_ts: tuple[int, int, int, int]) -> ParsedEvent:
         user_name=user_name,
         context=context,
         process=process,
-        process_pid=process_pid,
+        process_role=process_role,
+        process_pid=file_pid,
         sql_text=sql_text,
         sql_text_normalized=sql_norm,
         sql_text_hash=sql_hash,
@@ -345,12 +377,19 @@ def normalize_sql(sql: str) -> str:
 # ---------- High-level: parse a file ----------
 
 
-def parse_file(path: str | Path) -> Iterator[ParsedEvent]:
-    """Парсит один .log файл. Возвращает поток ParsedEvent."""
+def parse_file(
+    path: str | Path,
+    process_role: str = "unknown",
+    file_pid: int | None = None,
+) -> Iterator[ParsedEvent]:
+    """Парсит один .log файл целиком в память. Возвращает поток ParsedEvent.
+
+    Для больших файлов (10+ ГБ из discovery) используй ``parse_log_file_streaming``
+    с FolderSource — он читает построчно.
+    """
     p = Path(path)
     file_ts = parse_filename_timestamp(p.name)
     if file_ts is None:
-        # Без timestamp в имени — fall back на mtime
         import time
 
         mtime = p.stat().st_mtime
@@ -359,12 +398,36 @@ def parse_file(path: str | Path) -> Iterator[ParsedEvent]:
 
     text = _read_text_robust(p)
     for raw in iter_raw_events(text, source_file=str(p)):
-        yield interpret(raw, file_ts)
+        yield interpret(raw, file_ts, process_role=process_role, file_pid=file_pid)
+
+
+def parse_log_file_streaming(
+    source: "LogSource",
+    log_file: "LogFile",
+    encoding: str = "utf-8-sig",
+) -> Iterator[ParsedEvent]:
+    """Streaming parser — построчное чтение через LogSource.open()."""
+    file_ts = parse_filename_timestamp(log_file.path.name)
+    if file_ts is None:
+        import time
+
+        mtime = log_file.path.stat().st_mtime
+        st = time.localtime(mtime)
+        file_ts = (st.tm_year, st.tm_mon, st.tm_mday, st.tm_hour)
+
+    lines = source.open(log_file, encoding=encoding)
+    for raw in iter_raw_events_lines(lines, source_file=log_file.relative_path):
+        yield interpret(
+            raw,
+            file_ts,
+            process_role=log_file.process_role,
+            file_pid=log_file.process_pid,
+        )
 
 
 def _read_text_robust(p: Path) -> str:
-    """Читает файл как UTF-8 c fallback на Windows-1251."""
+    """Читает файл как UTF-8 (с BOM или без) c fallback на Windows-1251."""
     try:
-        return p.read_text(encoding="utf-8")
+        return p.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError:
         return p.read_text(encoding="cp1251", errors="replace")
