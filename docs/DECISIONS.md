@@ -1,7 +1,176 @@
 # Architectural Decisions (ADR) — 1C-Optimyzer
 
 > Все принципиальные архитектурные решения проекта.
+> Формат: ADR-N — заголовок · status · context · decision · consequences.
 
-## ADR-001: [пока пустой, наполнится в Sprint 0]
+---
 
-(заполнится архитектором в Sprint 0)
+## ADR-001 — Технологический стек (Tauri 2 + React/TS + Python sidecar)
+
+**Status:** Accepted (Sprint 0)
+
+**Context.** Module 1 — desktop-приложение для Windows, потом Linux/macOS. Требования: offline-only, нулевые зависимости у пользователя, премиальный UI, парсинг ТЖ + DSL-исполнение, embedded analytical DB. У владельца есть опыт работы с Tauri/React/Python на Konvey.
+
+**Decision.** Frontend — Tauri 2 + React 18 + TypeScript + Vite + CSS Modules + Zustand. Backend — Python 3.11+ sidecar (PyInstaller single-file exe в production, dev-mode через `python -m optimyzer_backend`). Связь — JSON-RPC 2.0 over stdio, проксируется через Rust shell (`tauri::command rpc_call` → child process). DB — DuckDB embedded для парсенных событий, SQLite для app metadata.
+
+**Consequences.** + Тот же стек, что у Konvey — нулевой обучающий cost. + Tauri даёт MSI с минимальным размером и быстрым стартом. + Python sidecar — pydantic + duckdb уже зрелые библиотеки. − PyInstaller single-file exe начнёт работать с задержкой (cold start ~1–2s), но Sprint 0 это допустимо. − Связь через stdio удобна, но не годится для streaming чанков >1 МБ; для Module 1 не нужно.
+
+---
+
+## ADR-002 — CSS Modules вместо Tailwind для production app
+
+**Status:** Accepted (Sprint 0)
+
+**Context.** Дизайн-концепт в `design/opt/*.jsx` использует Tailwind через CDN — это нормально для preview, но в production это означало бы дополнительный bundle и runtime overhead.
+
+**Decision.** Production-app использует CSS Modules + один глобальный файл с design tokens (`styles/optimyzer-design.css`). Все стили — через `*.module.css` файлы рядом с компонентами. Inline `style={{...}}` запрещён.
+
+**Consequences.** + Чёткое разделение токенов и компонентных стилей. + Никакого runtime overhead. − Требует больше boilerplate vs Tailwind (нужно писать `styles.btn` вместо `className="h-7 px-2 ..."`). Приемлемо.
+
+---
+
+## ADR-003 — DuckDB per-archive, SQLite для metadata
+
+**Status:** Accepted (Sprint 0)
+
+**Context.** Одно приложение может загружать разные архивы ТЖ. События каждого архива нужно изолировать (чтобы запросы не пересекались), но также нужно хранить app-уровень metadata (recent archives, settings).
+
+**Decision.** Один DuckDB-файл на архив в `%APPDATA%\1c-optimyzer\duckdb\<archive_id>.duckdb` (создаётся при `load_archive`, удаляется по `unload_archive`). Один SQLite-файл `metadata.sqlite` для recent_archives и settings.
+
+**Consequences.** + Каждый архив самодостаточен; можно перенести/удалить отдельно. + DuckDB native analytical engine — Sprint 1 OQL → SQL компилируется тривиально. − Размер на диске = сумма всех загруженных архивов; нужен UI для cleanup в Sprint 2.
+
+---
+
+## ADR-004 — App grid 1280px min-width, светлая тема primary
+
+**Status:** Accepted (Sprint 0)
+
+**Context.** Дизайн заточен на 1С:Экспертов работающих на desktop с мониторами 1440+px. Тёмная тема в дизайне не реализована.
+
+**Decision.** Минимальная ширина окна — 1280px (`min-width: 1280px` в `.app`, `minWidth: 1280` в `tauri.conf.json`). Светлая тема primary; тёмная отложена на Module 2+.
+
+**Consequences.** + Не тратим Sprint 0 на theming. − Не поддерживаются ноутбуки с экраном 1024px. Приемлемо для целевой аудитории.
+
+---
+
+## ADR-005 — Modular release strategy (Module 1 → 2+)
+
+**Status:** Accepted (Sprint 0, рекапитуляция стратегического решения)
+
+**Context.** Видение продукта — APM-стек из 18+ экранов. Big-bang релиз — несколько кварталов работы без validation; пользователь может не получить никакой ценности до самого конца.
+
+**Decision.** Последовательный modular release. Module 1 = OptimyzerQL Standalone Tool (анализ архивов ТЖ через DSL) — самостоятельный продукт. Module 2+ — real-time agents, central server, live monitoring, AI Co-pilot — добавляются после validation Module 1. В UI Sidebar все 18 экранов уже видны, но отключены до соответствующих модулей (с tooltip "Module N").
+
+**Consequences.** + Максимальная скорость до launch (Module 1 ≈ 3–5 спринтов). + Каждый Module даёт ценность сам по себе. + Пользователь видит roadmap при первом запуске. − Требует дисциплины НЕ скатываться в фичи следующего модуля. Sprint 0 это явно фиксирует в коде (см. `frontend/src/components/chrome/nav.ts`).
+
+---
+
+## ADR-006 — TJ-парсер: lexer на regex, multi-line через look-ahead
+
+**Status:** Accepted (Sprint 0)
+
+**Context.** ТЖ — текстовый формат с переменными по содержимому событиями. Каждое событие — одна или несколько строк; начинается с `<mm>:<ss>.<usec>-<duration_us>,<Type>,<level>,...`. Значения могут содержать запятые/переносы (Sql='...'). Имя файла кодирует `YYMMDDHH`.
+
+**Decision.** Lexer — простой regex для head + state-machine для kv-fields со значениями в кавычках (одинарных или двойных, с double-quote escape). Multi-line — look-ahead: следующая строка считается продолжением, если НЕ совпадает с head-pattern.
+
+**Consequences.** + Работает на synthetic fixtures (29 тестов passing). + Корректно обрабатывает unknown event types (без падения, складывая поля в `extra` JSON). − Не parallel — single-threaded. Sprint 2 рассмотрим. − Acceptance gate на real-data — open (Q1 в QUESTIONS.md).
+
+---
+
+## ADR-007 — Conventional commits, один коммит = одна логическая единица
+
+**Status:** Accepted (project-wide rule, унаследовано от Konvey)
+
+**Decision.** Все коммиты — conventional: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`. Один коммит = одна логическая единица работы. Никаких "wip" megacommits. См. git history Sprint 0 как reference.
+
+---
+
+## ADR-008 — Документация на русском, code identifiers на английском
+
+**Status:** Accepted (project-wide rule)
+
+**Decision.** README, ADR, QUESTIONS, ARCHITECT_NOTES, code comments — на русском. Имена функций/классов/переменных — на английском. Pydantic-поля и DuckDB-колонки — на английском.
+
+**Consequences.** + Внутренняя команда на русском, документация легче пишется и читается. + Code identifiers — стандарт индустрии, не вызывает trouble при поиске в Stack Overflow / документации DuckDB/Tauri.
+
+---
+
+## ADR-009 — UI Language Policy: hardcoded ru-RU
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Дизайн-концепт `design/opt/*.jsx` написан на английском как визуальная спецификация. Целевая аудитория Module 1 — русскоязычные 1С-эксперты и DBA. Подключать i18n framework (react-i18next/lingui) ради одного locale — избыточно для standalone-tool.
+
+**Decision.** Все UI strings — на русском, hardcoded в `frontend/src/i18n/ru.ts` как hierarchical const tree. Дополнительный helper `format()` для подстановки `{placeholders}`. Дизайн-файлы `design/opt/*.jsx` остаются английскими как visual reference (см. `design/README.md`).
+
+**Consequences.** + Минимум boilerplate. + Compile-time проверка ключей через TypeScript. − Если в Module 2+ появится международная аудитория, потребуется миграция на i18n framework. Структура `t.section.key` совместима с типовыми API (i18next ожидает дотированные ключи, миграция тривиальна).
+
+---
+
+## ADR-010 — Folder ingestion = primary (и единственный в UI) источник Module 1
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Discovery 2026-05-18 показал: реальные пользователи держат ТЖ как структуру папок (`rphost_NNNN/YYMMDDHH.log`), а не zip-архивы. Никто не пакует логи специально перед анализом. Поддержка ZIP в UI = лишний UX-шаг (распаковать → распарсить) на 12 GiB.
+
+**Decision.** UI Module 1 показывает одну кнопку «Загрузить папку с логами…» и принимает drag-and-drop **только папок** (файлы отклоняются с toast). Backend RPC `load_archive(zip_path)` остаётся как deprecated entry для:
+- backwards compat с Sprint 0 тестовыми fixtures;
+- возможного импорта от техподдержки 1С (если пользовательский запрос).
+
+В Sprint 1 ZIP не появляется в UI ни в каком виде.
+
+**Consequences.** + Чистый UX: один способ загрузки. + Рабочий код Sprint 0 не выбрасывается. + Backend остаётся гибким для будущего. − Пользователь, получивший логи в ZIP, должен распаковать вручную (30 секунд через 7-Zip).
+
+---
+
+## ADR-011 — DuckDB Appender API: Arrow Table batches
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Sprint 0 использовал `executemany` для bulk insert. На 100K событий это занимало 50+ секунд на Windows — каждая строка идёт отдельной транзакцией. Для 12 GiB корпуса (потенциально 100M+ событий) это нереализуемо.
+
+DuckDB Python 1.5.2 не предоставляет row-by-row Appender API. Native bulk-path — через registered Arrow Table или DataFrame.
+
+**Decision.** `AppenderHandle` оборачивает buffered batches (default 10K rows) → Arrow Table → `conn.register("_appender_batch", table)` + `INSERT INTO events SELECT * FROM _appender_batch`. Indexes создаются ПОСЛЕ полного bulk insert через `create_indexes()`. PRIMARY KEY на `id` снят (uniqueness гарантирована Python-логикой; constraint check замедляет вставку).
+
+Backend dependency: `pyarrow>=15`.
+
+**Consequences.** + 10K events в <1 сек (100× ускорение vs executemany). + Контекстный менеджер с автоматическим flush и cleanup. + Buffer drop при exception (partial state guard — следующий ingest не упирается в PK-конфликт). − Дополнительная dependency `pyarrow` (~80 МБ в bundle). − ID uniqueness теперь только в коде, не в DB; компромисс ради скорости.
+
+---
+
+## ADR-012 — Streaming parser с byte-weighted progress
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Discovery показал highly skewed distribution: 87% всего объёма (12 GiB) в одном rphost-файле (10.23 GiB). File-count progress даст ложное «27/28 готово = 96%», после чего ingest подвиснет на 5–10 минут.
+
+**Decision.** Парсер работает построчно через buffered `Path.open(buffering=1 MiB)` + line iterator (`iter_raw_events_lines`). Прогресс репортится в **байтах** через JSON-RPC notifications (без id) с polynomial throttle (250 ms = ~4 emit/sec). Sidecar Rust routit notifications через Tauri event `rpc-notification:progress`, frontend подписан и обновляет ProgressCard + StatusBar inline.
+
+**Consequences.** + Honest UX: пользователь видит реальный progress по байтам. + Streaming не загружает 10 GiB в память — peak RSS << 500 МБ (sanity-check в acceptance gate). − Cancellation token не реализован в Sprint 1 (кнопка «Отменить» disabled с tooltip «Sprint 2»). − Throttle мешает unit-тестам — обходится `force=True` или `throttle_ms=0`.
+
+---
+
+## ADR-013 — Tauri 2 native drag-drop API
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Sprint 0 DropZone использовал DOM listeners (`window.addEventListener("drop", ...)`). В Tauri 2 webview перехватывает file-drag events и эмитит их через свой канал; DOM drop не получает path к файлу/папке. Это был известный bug Sprint 0 (drag-drop ничего не делал).
+
+**Decision.** `tauri.conf.json` → `windows[].dragDropEnabled: true`. DropZone подписан на `tauri://drag-enter`/`tauri://drag-over`/`tauri://drag-leave`/`tauri://drag-drop` events. На drop вызывается Tauri command `classify_path(path)` → `{kind: "folder" | "file" | "missing"}`; при `folder` — `load_directory(path)`, при `file` — toast «Перетащите папку, не файл», при `missing` — toast «Папка не найдена».
+
+**Consequences.** + Drag-drop работает корректно. + Чёткое разграничение валидных таргетов. − DOM-listeners в коде остаются неактивны (для drop-events), но не мешают. Их сохранение лишает refactor этой части — не критично.
+
+---
+
+## ADR-014 — process_role как first-class column
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Discovery показал 6 типов процессов 1С (rphost, rmngr, ragent, 1cv8c, 1cv8s, 1cv8). Эти роли определяются по имени родительской папки (case-insensitive regex `^(1cv8c|1cv8s|1cv8|ragent|rmngr|rphost)_(\d+)$`) и являются значимой dimension для OQL-фильтров (`where role == "rphost"`).
+
+**Decision.** В schema DuckDB `events` добавлен столбец `process_role VARCHAR` + индекс `idx_events_role`. `process_pid` теперь хранит pid из имени папки (NNNN часть), не OSThread из event. OSThread попадает в `extra` JSON. ParsedEvent dataclass получает `process_role: str = "unknown"`. OQL compiler разрешает алиас `role` → `process_role` и `pid` → `process_pid`.
+
+Регистр имени папки приводится к lowercase в результате (1CV8C_NNNN → role="1cv8c").
+
+**Consequences.** + Естественный OQL для типичных вопросов: «покажи дедлоки только в rphost», «summarize by role». + Streamlined schema. − Backwards-incompatible: Sprint 0 значения `process_pid` (из OSThread) другие в новой схеме (из folder). Sprint 0 тесты переписаны или адаптированы.

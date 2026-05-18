@@ -1,37 +1,82 @@
 # 1C-Optimyzer
 
-**AI-инструмент для мониторинга и оптимизации производительности корпоративных систем 1С.**
+**Анализ архивов технологического журнала 1С через специализированный DSL.**
 
-## Статус
+## Status
 
-Проект в активной разработке. Текущая фаза: **Module 1 — OptimyzerQL Standalone Tool** (Sprint 0).
+⏸️ **Active development paused** (2026-05-18). Project в maintenance mode.
 
-## О продукте
+Module 1 (OptimyzerQL Standalone Tool) функционально завершён — рабочий desktop-инструмент с verified parsing 12 GiB real-world архивов. Module 2+ (real-time monitoring, AI Co-pilot, и др.) отложены indefinitely по стратегическим причинам.
 
-1C-Optimyzer — desktop-приложение для real-time мониторинга, расследования и оптимизации производительности корпоративных систем 1С. Целевая аудитория — 1С:Эксперты по технологическим вопросам, DBA, senior 1С-разработчики, ИТ-директора компаний с корпоративными системами 1С (1С:ERP, КА, УПП, УХ, корпоративная УТ).
+Подробное обоснование статуса — в [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md).
 
-Категория продукта: APM (Application Performance Monitoring) + Performance Engineering Workbench, специализированный под 1С.
+## Что работает
 
-## Архитектура разработки
+- **Drag-and-drop папки** с логами ТЖ → автоматический парсинг
+- **6 типов process roles** (rphost, rmngr, ragent, 1cv8c, 1cv8s, 1cv8) с case-insensitive matching
+- **Encoding auto-detect** (UTF-8 BOM / plain / cp1251 / cp866)
+- **Streaming parser** для архивов произвольного размера (verified на 12 GiB)
+- **DuckDB storage** с pyarrow Appender (production-grade bulk insert)
+- **OptimyzerQL DSL** — declarative query language для аналитических запросов поверх ТЖ
+- **CodeMirror 6 editor** с syntax highlighting + autocomplete + linter
+- **Templates library** — 8 предустановленных запросов
+- **Saved queries** через SQLite
+- **Live progress UI** — animated event counter (не замирает на больших файлах)
+- **Archive management** — список загруженных архивов с per-item и bulk удалением
+- **Full ru-RU localization**
 
-Продукт строится **модульно**, последовательным release'ом:
+## Architecture
 
-- **Module 1** (текущий MVP): OptimyzerQL Standalone Tool — анализ архивов технологического журнала 1С через специализированный DSL
-- **Module 2+**: real-time agents, central server, live monitoring, AI Co-pilot, Investigation Workbench, и другие модули, которые будут добавляться после validation Module 1
+- **Frontend:** Tauri 2 + React 18 + TypeScript + CodeMirror 6
+- **Backend:** Python sidecar (JSON-RPC over stdio) с Lark grammar parser
+- **Storage:** DuckDB (per-archive analytical store) + SQLite (app metadata)
+- **Test coverage:** 197 unit tests + 5 acceptance tests (12 GiB real-data verified)
+
+## Setup для разработки
+
+```powershell
+# Backend dependencies
+pwsh scripts/setup-backend.ps1
+
+# Frontend dependencies
+cd frontend
+npm install
+cd src-tauri
+cargo build
+
+# Run dev mode
+cd ..\..
+.\start.bat
+```
+
+## Maintenance policy
+
+См. [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md) section 4.
+
+Кратко:
+- Bug fixes — accepted, best-effort response
+- Security issues — приоритетно (~дни response)
+- Feature requests — accepted, **not implemented** в обозримом периоде
+- Critical compatibility issues — устраняются если занимают <1 day
+
+## Documentation
+
+- [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md) — текущий статус проекта
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — все архитектурные решения (ADR-001..014)
+- [`docs/SPRINT_0_REPORT.md`](docs/SPRINT_0_REPORT.md), [`docs/SPRINT_1_REPORT.md`](docs/SPRINT_1_REPORT.md) — детальные отчёты по спринтам
+- [`docs/ARCHITECT_NOTES.md`](docs/ARCHITECT_NOTES.md) — observations архитектора
+- [`design/`](design/) — visual design specification (18 screens, premium UI system)
 
 ## Команда
 
-- **Архитектор:** Claude Opus 4.7
-- **Исполнитель:** Claude Code
-- **Владелец и domain expert:** Сергей
+- **Owner & domain expert:** Сергей
+- **Architect:** Claude Opus 4.7
+- **Executor:** Claude Code
 
-## Документация
+## License
 
-- [Decisions (ADR)](docs/DECISIONS.md)
-- [Open Questions](docs/QUESTIONS.md)
-- [Architect Notes](docs/ARCHITECT_NOTES.md)
-- [Design Concept](design/1c-optimyzer-design-v1.html) (открой в браузере)
+TBD (см. PROJECT_CLOSURE_MODULE_1.md раздел 4 "Open source status")
 
-## Лицензия
+---
 
-Коммерческий продукт. Все права защищены © 2026 anymasoft.
+© 2026 anymasoft. All rights reserved (pending license decision).

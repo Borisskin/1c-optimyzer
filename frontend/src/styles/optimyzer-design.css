@@ -1,0 +1,205 @@
+/* 1C-Optimyzer — visual identity. Извлечено из design/opt/shared.jsx. */
+
+:root {
+  /* Backgrounds */
+  --o-bg: #fafafa;
+  --o-panel: #ffffff;
+  --o-subtle: #f5f5f5;
+  --o-hover: #f0f0f0;
+  --o-codebox-bg: #fbfbfa;
+
+  /* Text */
+  --o-text-1: #0a0a0a;
+  --o-text-2: #525252;
+  --o-text-3: #a3a3a3;
+  --o-text-4: #737373;
+  --o-text-mute: #d4d4d4;
+
+  /* Accent (deep teal) */
+  --o-accent: #0f766e;
+  --o-accent-hover: #115e59;
+  --o-accent-light: #f0fdfa;
+  --o-accent-50: #f0fdfa;
+  --o-accent-100: #ccfbf1;
+  --o-accent-700: #0f766e;
+  --o-accent-800: #115e59;
+
+  /* Semantic */
+  --o-ok: #16a34a;
+  --o-ok-bg: #f0fdf4;
+  --o-warn: #d97706;
+  --o-warn-bg: #fffbeb;
+  --o-err: #dc2626;
+  --o-err-bg: #fef2f2;
+  --o-info: #2563eb;
+  --o-info-bg: #eff6ff;
+  --o-violet: #7c3aed;
+
+  /* Borders */
+  --o-border: #ededed;
+  --o-border-2: #e5e5e5;
+
+  /* Shadows */
+  --o-shadow-panel: 0 1px 0 rgba(10, 10, 10, 0.04), 0 1px 2px rgba(10, 10, 10, 0.04);
+  --o-shadow-pop: 0 8px 28px -8px rgba(10, 10, 10, 0.18), 0 2px 6px rgba(10, 10, 10, 0.06);
+
+  /* Radii */
+  --o-radius-sm: 3px;
+  --o-radius-md: 6px;
+  --o-radius-lg: 8px;
+
+  /* Fonts */
+  --o-font-sans: "Inter", system-ui, sans-serif;
+  --o-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* App grid */
+  --o-topbar-h: 48px;
+  --o-statusbar-h: 28px;
+  --o-sidebar-collapsed: 56px;
+  --o-sidebar-expanded: 232px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--o-font-sans);
+  font-size: 13px;
+  color: var(--o-text-1);
+  background: var(--o-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.mono {
+  font-family: var(--o-font-mono);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.hairline {
+  border-color: var(--o-border);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+/* ---- App grid ---- */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--o-sidebar-collapsed) 1fr;
+  grid-template-rows: var(--o-topbar-h) 1fr var(--o-statusbar-h);
+  height: 100vh;
+  min-width: 1280px;
+  background: var(--o-bg);
+}
+
+.app[data-sidebar="open"] {
+  grid-template-columns: var(--o-sidebar-expanded) 1fr;
+}
+
+.app__main {
+  grid-row: 2 / 3;
+  grid-column: 2 / 3;
+  overflow: auto;
+  background: var(--o-bg);
+}
+
+/* ---- Animations ---- */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+
+@keyframes slide-in-right {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.slide-in { animation: slide-in-right 0.18s ease-out; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in { animation: fade-in 0.15s ease-out; }
+
+@keyframes flash {
+  0% { background: var(--o-accent-50); }
+  100% { background: transparent; }
+}
+.flash { animation: flash 0.6s ease-out; }
+
+/* ---- Scrollbars (slim) ---- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--o-border-2);
+  border-radius: 5px;
+  border: 2px solid var(--o-bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--o-text-3); }
+
+/* ---- KBD ---- */
+
+kbd {
+  display: inline-block;
+  font-family: var(--o-font-mono);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  border: 1px solid var(--o-border-2);
+  border-radius: 3px;
+  background: var(--o-panel);
+  color: var(--o-text-2);
+  vertical-align: middle;
+}
+
+/* ---- Codebox ---- */
+
+.codebox {
+  background: var(--o-codebox-bg);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-sm);
+  font-family: var(--o-font-mono);
+}
+
+/* ---- Divider helpers ---- */
+
+.div-v {
+  width: 1px;
+  background: var(--o-border);
+  display: inline-block;
+}
+.div-h {
+  height: 1px;
+  background: var(--o-border);
+  width: 100%;
+}

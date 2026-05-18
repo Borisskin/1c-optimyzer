@@ -1,0 +1,268 @@
+// ru-RU UI strings (Sprint 1 — ADR-009).
+// Hardcoded ru-RU; signature совместима с future i18n framework.
+
+export const t = {
+  app: {
+    name: "1C-Optimyzer",
+    edition: "standalone",
+    version: "v0.1.0",
+    devTag: "dev",
+    screenPlaceholder: 'Экран "{id}" появится в Module 2+',
+  },
+  topbar: {
+    loadFolder: "Загрузить папку с логами…",
+    recentSources: "Недавние",
+    searchPlaceholder: "Поиск...",
+    healthIdle: "Готово",
+    healthReady: "Готово",
+    healthError: "Ошибка",
+    healthParsing: "Парсинг",
+    healthDiscovering: "Поиск",
+    healthIndexing: "Индексация",
+    healthExtracting: "Распаковка",
+    eventsSuffix: "событий",
+    aiHelperTooltip: "AI-помощник — доступен в Pro-версии",
+    aiBadge: "AI",
+    aiBadgePro: "Pro",
+    alertsTooltip: "Алерты — Module 2",
+    settingsTooltip: "Настройки",
+    expandProgressTooltip: "Показать карточку прогресса",
+    minimizeProgressTooltip: "Свернуть карточку прогресса",
+  },
+  archives: {
+    menuLoadNew: "Загрузить новую папку…",
+    sectionRecent: "ЗАГРУЖЕННЫЕ АРХИВЫ",
+    empty: "Нет загруженных архивов",
+    currentBadge: "текущий",
+    orphanBadge: "файл утерян",
+    deleteTooltip: "Удалить архив",
+    confirmDelete: "Удалить архив «{name}» ({size})?",
+    confirmDeleteAll: "Удалить ВСЕ архивы ({count} шт., {size})? Действие нельзя отменить.",
+    storageTotal: "Хранилище:",
+    deleteAll: "Очистить всё",
+    deletedToast: "Архив удалён · освобождено {size}",
+    deletedAllToast: "Удалено {count} архивов · освобождено {size}",
+    deleteFailedToast: "Не удалось удалить архив",
+    eventsLabel: "событий",
+    loadedAt: "загружен",
+    close: "Закрыть",
+  },
+  sidebar: {
+    groups: {
+      live: "НАБЛЮДЕНИЕ",
+      analyze: "АНАЛИЗ",
+      config: "КОНФИГУРАЦИЯ",
+      manage: "УПРАВЛЕНИЕ",
+    },
+    items: {
+      oql: "OptimyzerQL",
+      dashboard: "Мониторинг",
+      apdex: "Apdex и SLA",
+      workbench: "Расследование",
+      queries: "Медленные запросы",
+      locks: "Блокировки",
+      cluster: "Здоровье кластера",
+      indexes: "Индексы и статистика",
+      profiler: "BSL-профайлер",
+      health: "Аудит конфигурации",
+      compare: "Сравнение",
+      predictive: "Прогнозы",
+      resolution: "Резолюции",
+      multibase: "Несколько баз",
+      knowledge: "База знаний",
+      alerts: "Алерты",
+      reports: "Отчёты",
+      mobile: "Мобильное приложение",
+    },
+    tooltipModule: "Доступно в модуле",
+    soon: "скоро",
+    collapse: "Свернуть",
+  },
+  statusbar: {
+    idle: "готово",
+    noArchive: "логи не загружены",
+    parsing: "парсинг",
+    discovering: "поиск файлов",
+    indexing: "построение индексов",
+    extracting: "распаковка",
+    ready: "готово",
+    error: "ошибка",
+    duckdb: "DuckDB",
+    events: "событий",
+    parsedIn: "обработано за",
+    devBuild: "dev",
+  },
+  oql: {
+    pageTitle: "OptimyzerQL Console",
+    breadcrumb: "Управление",
+    badgeFreeTier: "free tier",
+    sprintLabel: "Sprint 1 · DSL parser",
+    description:
+      "Декларативный язык запросов поверх технологического журнала",
+    editor: {
+      filenameDefault: "untitled.oql",
+      modified: "не сохранено",
+      saved: "сохранено",
+      readonly: "только чтение",
+      cursor: "стр",
+      column: "кол",
+      rows: "строк",
+      placeholderSprint0: `// OptimyzerQL — декларативный язык запросов поверх ТЖ.
+// Sprint 1 — встроенный редактор и компилятор в SQL.
+// Выберите шаблон ниже или напишите свой запрос.
+//
+//   events
+//   | where event_type == "DBMSSQL" and duration_ms > 1000
+//   | project ts, duration_ms, sql_text_normalized
+//   | order by duration_ms desc
+//   | take 100
+`,
+    },
+    results: {
+      tabs: {
+        table: "Таблица",
+        chart: "График",
+        timeline: "Хронология",
+        raw: "Сырой JSON",
+      },
+      empty: {
+        noArchive: "Загрузите логи ТЖ, чтобы начать запросы",
+        hint: "Перетащите папку с логами в окно или нажмите кнопку ниже",
+        loadButton: "Загрузить папку с логами…",
+      },
+      placeholder: "Напишите OQL-запрос или выберите шаблон ниже",
+      placeholderTable: "Выберите шаблон ниже, чтобы получить результаты.",
+      placeholderChart: "График — Sprint 2.",
+      placeholderTimeline: "Хронология — Sprint 2.",
+      rowsCounter: "строк",
+      executedIn: "выполнено за",
+      scannedEvents: "просканировано событий",
+      truncated: "обрезано",
+      export: "Экспорт CSV",
+      empty_cell: "—",
+    },
+    actions: {
+      run: "Выполнить",
+      runShortcut: "Ctrl+Enter",
+      templates: "Шаблоны",
+      docs: "Документация",
+      share: "Поделиться",
+      save: "Сохранить",
+      saveAs: "Сохранить как…",
+    },
+    presets: {
+      label: "ШАБЛОНЫ",
+    },
+    saved: {
+      label: "СОХРАНЁННЫЕ",
+      empty: "Нет сохранённых запросов",
+      newQuery: "Новый запрос",
+    },
+    docsPanel: {
+      title: "Документация OptimyzerQL",
+      sources: "Источники данных",
+      operators: "Операторы",
+      functions: "Функции",
+      examples: "Примеры",
+    },
+    archiveError: {
+      title: "Не удалось загрузить логи",
+      chooseAnother: "Выбрать другую папку",
+      unknown: "Неизвестная ошибка",
+    },
+    archiveLoading: {
+      extracting: "Распаковка архива…",
+      discovering: "Поиск лог-файлов в папке…",
+      parsing: "Парсинг логов…",
+      indexing: "Построение индексов…",
+    },
+    runningPlaceholder: "выполнение…",
+  },
+  progress: {
+    discovering: "Поиск логов в папке…",
+    parsing: "Парсинг логов",
+    indexing: "Построение индексов",
+    of: "из",
+    files: "файлов",
+    currentFile: "текущий файл",
+    eventsInserted: "событий загружено",
+    minimize: "Свернуть",
+    cancel: "Отменить",
+    cancelTooltip: "Доступно в Sprint 2",
+    done: "Готово",
+    completedToast: "Загружено {events} событий за {time}",
+    cancelled: "Загрузка отменена",
+    errorToast: "Ошибка загрузки: {message}",
+    loadingFromPath: "Загрузка: {name}…",
+  },
+  cmdpalette: {
+    placeholder: "Команды, страницы, источники…",
+    groups: {
+      navigation: "НАВИГАЦИЯ",
+      file: "ФАЙЛ",
+      recent: "НЕДАВНИЕ",
+      help: "СПРАВКА",
+    },
+    commands: {
+      loadFolder: "Загрузить папку с логами…",
+      recentSources: "Недавние источники",
+      recentSourcesHint: "Sprint 1",
+      newQuery: "Новый OQL-запрос",
+      runQuery: "Выполнить запрос",
+      goTo: "Перейти к {label}",
+      about: "О программе",
+      quit: "Выйти",
+      openSettings: "Настройки",
+    },
+    aboutToast: "1C-Optimyzer v0.1.0 · Module 1 (OptimyzerQL Standalone)",
+    hints: {
+      file: "Файл · Module 1",
+      list: "Список · Module 1",
+      navigate: "Навигация",
+      info: "Информация",
+    },
+    noResults: "Ничего не найдено",
+    keys: {
+      navigate: "выбор",
+      open: "открыть",
+      close: "закрыть",
+    },
+    escClose: "ESC — закрыть",
+  },
+  drop: {
+    titleFolder: "Перетащите папку с логами",
+    sub: "Будут найдены все .log файлы с именем YYMMDDHH.log в подпапках",
+  },
+  toast: {
+    success: "Успешно",
+    error: "Ошибка",
+    warning: "Предупреждение",
+    info: "Информация",
+  },
+  errors: {
+    folderNotFound: "Папка не найдена",
+    notADirectory: "Это не папка — перетащите папку с логами",
+    noLogsFound: "Лог-файлы не найдены в указанной папке",
+    invalidDropTarget: "Перетащите папку с логами, не файл",
+    parseError: "Ошибка парсинга: {detail}",
+    oqlSyntaxError: "Синтаксическая ошибка: {detail}",
+    oqlValidationError: "Ошибка валидации: {detail}",
+    oqlExecuteError: "Ошибка выполнения запроса: {detail}",
+    networkError: "Ошибка соединения с backend",
+    rpcError: "Ошибка RPC: {detail}",
+    dialogError: "Ошибка диалога: {detail}",
+    queryFailed: "Запрос не выполнен: {detail}",
+    classifyFailed: "Не удалось проверить путь: {detail}",
+    loadFailed: "Загрузка не удалась: {detail}",
+  },
+} as const;
+
+export type Translations = typeof t;
+
+/** Trivial template — заменяет {placeholders} значениями из объекта. */
+export function format(template: string, values: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    const v = values[key];
+    return v === undefined ? `{${key}}` : String(v);
+  });
+}

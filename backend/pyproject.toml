@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "optimyzer-backend"
+version = "0.1.0"
+description = "Python sidecar для 1C-Optimyzer Module 1 (OptimyzerQL Standalone)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "anymasoft" }]
+
+dependencies = [
+    "pydantic>=2.6,<3",
+    "duckdb>=1.0",
+    "aiofiles>=23.2",
+    "pyarrow>=15",
+    "lark>=1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+build = [
+    "pyinstaller>=6.5",
+]
+
+[project.scripts]
+optimyzer-backend = "optimyzer_backend.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"optimyzer_backend.oql" = ["grammar.lark"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
