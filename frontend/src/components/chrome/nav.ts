@@ -20,14 +20,14 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "apdex",      label: t.sidebar.items.apdex,     icon: "Trend",      group: "live",    enabled: false, tooltip: tooltip(2) },
   { id: "workbench",  label: t.sidebar.items.workbench, icon: "Layers",     group: "live",    enabled: false, tooltip: tooltip(3) },
 
-  { id: "queries",    label: t.sidebar.items.queries,   icon: "Database",   group: "analyze", enabled: false, tooltip: tooltip(3) },
+  { id: "slow-queries", label: t.sidebar.items.queries, icon: "Database",   group: "analyze", enabled: false, tooltip: tooltip(3) },
   { id: "locks",      label: t.sidebar.items.locks,     icon: "Lock",       group: "analyze", enabled: false, tooltip: tooltip(3) },
   { id: "cluster",    label: t.sidebar.items.cluster,   icon: "Cluster",    group: "analyze", enabled: false, tooltip: tooltip(2) },
   { id: "indexes",    label: t.sidebar.items.indexes,   icon: "HardDrive",  group: "analyze", enabled: false, tooltip: tooltip(4) },
   { id: "profiler",   label: t.sidebar.items.profiler,  icon: "Code",       group: "analyze", enabled: false, tooltip: tooltip(4) },
 
   { id: "health",     label: t.sidebar.items.health,    icon: "Scan",       group: "config",  enabled: false, tooltip: tooltip(5) },
-  { id: "compare",    label: t.sidebar.items.compare,   icon: "GitCompare", group: "config",  enabled: false, tooltip: tooltip(5) },
+  { id: "comparison", label: t.sidebar.items.compare,   icon: "GitCompare", group: "config",  enabled: false, tooltip: tooltip(5) },
   { id: "predictive", label: t.sidebar.items.predictive, icon: "Brain",     group: "config",  enabled: false, tooltip: tooltip(6) },
 
   { id: "resolution", label: t.sidebar.items.resolution, icon: "Workflow",  group: "manage",  enabled: false, tooltip: tooltip(4) },

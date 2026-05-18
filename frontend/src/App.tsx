@@ -8,6 +8,12 @@ import { DropZone } from "@/components/overlays/DropZone";
 import { Toasts } from "@/components/overlays/Toasts";
 import { ProgressCard } from "@/components/overlays/ProgressCard";
 import { SQLConsoleScreen } from "@/components/screens/SQLConsole/SQLConsole";
+import { SlowQueriesScreen } from "@/components/screens/SlowQueries/SlowQueries";
+import { LocksTimelineScreen } from "@/components/screens/LocksTimeline/LocksTimeline";
+import { ProcessRolesScreen } from "@/components/screens/ProcessRoles/ProcessRoles";
+import { DurationHistogramScreen } from "@/components/screens/DurationHistogram/DurationHistogram";
+import { ErrorsFeedScreen } from "@/components/screens/ErrorsFeed/ErrorsFeed";
+import { ActivityHeatmapScreen } from "@/components/screens/ActivityHeatmap/ActivityHeatmap";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
@@ -17,6 +23,8 @@ export function App() {
   const cmdOpen = useAppStore((s) => s.cmdOpen);
   const setCmdOpen = useAppStore((s) => s.setCmdOpen);
   const currentScreen = useAppStore((s) => s.currentScreen);
+  const archive = useAppStore((s) => s.archive);
+  const archiveReady = archive?.status === "ready" ? archive : null;
   const setArchive = useAppStore((s) => s.setArchive);
   const setStorageStats = useAppStore((s) => s.setStorageStats);
   const setIngest = useAppStore((s) => s.setIngest);
@@ -119,12 +127,11 @@ export function App() {
       <TopBar onOpenArchive={onPickFolder} onActiveArchiveDeleted={onActiveArchiveDeleted} />
       <Sidebar />
       <main className="app__main">
-        {currentScreen === "sql" && <SQLConsoleScreen onLoadArchive={onPickFolder} />}
-        {currentScreen !== "sql" && (
-          <div style={{ padding: 32, color: "var(--o-text-3)" }}>
-            {format(t.app.screenPlaceholder, { id: currentScreen })}
-          </div>
-        )}
+        {renderScreen({
+          screen: currentScreen,
+          archiveId: archiveReady?.archive_id ?? null,
+          onLoadArchive: onPickFolder,
+        })}
       </main>
       <StatusBar />
 
@@ -139,4 +146,37 @@ export function App() {
 function formatElapsed(iso: string | null): string {
   if (!iso) return "—";
   return iso;
+}
+
+function renderScreen({
+  screen,
+  archiveId,
+  onLoadArchive,
+}: {
+  screen: import("@/store/appStore").ScreenId;
+  archiveId: string | null;
+  onLoadArchive: () => void;
+}) {
+  switch (screen) {
+    case "sql":
+      return <SQLConsoleScreen onLoadArchive={onLoadArchive} />;
+    case "slow-queries":
+      return <SlowQueriesScreen archiveId={archiveId} />;
+    case "locks":
+      return <LocksTimelineScreen archiveId={archiveId} />;
+    case "process-roles":
+      return <ProcessRolesScreen archiveId={archiveId} />;
+    case "duration":
+      return <DurationHistogramScreen archiveId={archiveId} />;
+    case "errors":
+      return <ErrorsFeedScreen archiveId={archiveId} />;
+    case "activity":
+      return <ActivityHeatmapScreen archiveId={archiveId} />;
+    default:
+      return (
+        <div style={{ padding: 32, color: "var(--o-text-3)" }}>
+          {format(t.app.screenPlaceholder, { id: screen })}
+        </div>
+      );
+  }
 }

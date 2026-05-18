@@ -128,6 +128,27 @@ export interface SQLValidationResult {
 
 export type TableSchema = Record<string, Array<{ name: string; type: string }>>;
 
+// ----- Pre-built views (Sprint 2 Phase D) -----
+
+export interface ViewFiltersDto {
+  time_from?: string | null;
+  time_to?: string | null;
+  process_role?: string | null;
+  event_type?: string | null;
+}
+
+export interface ViewResult {
+  ok: boolean;
+  error?: string;
+  phase?: string;
+  columns?: QueryColumn[];
+  rows?: unknown[][];
+  row_count?: number;
+  truncated?: boolean;
+  executed_ms?: number;
+  bucket?: string;
+}
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -161,6 +182,20 @@ export const backend = {
     rpc<SQLExecuteResult>("execute_sql", { archive_id, sql, max_rows }),
   validateSql: (sql: string) => rpc<SQLValidationResult>("validate_sql", { sql }),
   getSchema: (archive_id: string) => rpc<TableSchema>("get_schema", { archive_id }),
+
+  // Pre-built views (Sprint 2 Phase D)
+  viewSlowQueries: (archive_id: string, filters?: ViewFiltersDto, sort_by = "total_duration", limit = 100) =>
+    rpc<ViewResult>("view_slow_queries", { archive_id, filters, sort_by, limit }),
+  viewLocksTimeline: (archive_id: string, filters?: ViewFiltersDto, limit = 5000) =>
+    rpc<ViewResult>("view_locks_timeline", { archive_id, filters, limit }),
+  viewProcessRoles: (archive_id: string, filters?: ViewFiltersDto) =>
+    rpc<ViewResult>("view_process_roles", { archive_id, filters }),
+  viewDurationHistogram: (archive_id: string, filters?: ViewFiltersDto) =>
+    rpc<ViewResult>("view_duration_histogram", { archive_id, filters }),
+  viewErrorsFeed: (archive_id: string, filters?: ViewFiltersDto, limit = 500) =>
+    rpc<ViewResult>("view_errors_feed", { archive_id, filters, limit }),
+  viewActivityHeatmap: (archive_id: string, filters?: ViewFiltersDto, metric = "count") =>
+    rpc<ViewResult>("view_activity_heatmap", { archive_id, filters, metric }),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),
