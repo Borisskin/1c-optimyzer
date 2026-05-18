@@ -37,6 +37,7 @@ src-tauri/gen/
 *.sqlite
 .env
 .env.local
+.env.test
 
 # Local fixtures (real TJ archives — too large + sensitive)
 backend/tests/fixtures/real-archive/
