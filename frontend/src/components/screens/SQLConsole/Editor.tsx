@@ -75,5 +75,10 @@ export function Editor({ value, onChange, onRun, schema }: Props) {
     }
   }, [value]);
 
-  return <div ref={containerRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />;
+  return (
+    <div
+      ref={containerRef}
+      style={{ flex: "1 1 0", minHeight: 0, width: "100%", overflow: "auto" }}
+    />
+  );
 }
