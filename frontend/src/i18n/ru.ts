@@ -56,6 +56,13 @@ export const t = {
     },
     items: {
       sql: "SQL Console",
+      slowQueries: "Медленные запросы",
+      locksView: "Блокировки",
+      processRoles: "Роли процессов",
+      duration: "Длительности",
+      errors: "Ошибки",
+      activity: "Активность",
+      comparison: "Сравнение архивов",
       dashboard: "Мониторинг",
       apdex: "Apdex и SLA",
       workbench: "Расследование",
