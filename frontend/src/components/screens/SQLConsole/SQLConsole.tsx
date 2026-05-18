@@ -15,6 +15,7 @@ import { t, format } from "@/i18n/ru";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { Editor } from "./Editor";
 import { SavedQueriesMenu } from "./SavedQueriesMenu";
+import { TemplatesBar } from "./TemplatesBar";
 import styles from "./SQLConsole.module.css";
 
 type ResultTab = "table" | "raw";
@@ -178,10 +179,7 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
       </div>
 
       <div className={styles.templates_bar}>
-        <span className={styles.templates_label}>{t.sql.presets.label}</span>
-        <span className={styles.placeholder} style={{ padding: 0 }}>
-          {t.sql.results.placeholderChart === t.sql.results.placeholderChart ? "Phase F" : ""}
-        </span>
+        <TemplatesBar onLoadTemplate={setQuery} />
         <SavedQueriesMenu currentQuery={query} onLoadQuery={setQuery} />
       </div>
     </div>

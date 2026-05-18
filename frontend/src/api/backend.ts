@@ -128,6 +128,14 @@ export interface SQLValidationResult {
 
 export type TableSchema = Record<string, Array<{ name: string; type: string }>>;
 
+export interface SqlTemplate {
+  id: string;
+  category: string;
+  label: string;
+  description: string;
+  sql: string;
+}
+
 // ----- Pre-built views (Sprint 2 Phase D) -----
 
 export interface ViewFiltersDto {
@@ -182,6 +190,7 @@ export const backend = {
     rpc<SQLExecuteResult>("execute_sql", { archive_id, sql, max_rows }),
   validateSql: (sql: string) => rpc<SQLValidationResult>("validate_sql", { sql }),
   getSchema: (archive_id: string) => rpc<TableSchema>("get_schema", { archive_id }),
+  listSqlTemplates: () => rpc<SqlTemplate[]>("list_sql_templates"),
 
   // Pre-built views (Sprint 2 Phase D)
   viewSlowQueries: (archive_id: string, filters?: ViewFiltersDto, sort_by = "total_duration", limit = 100) =>

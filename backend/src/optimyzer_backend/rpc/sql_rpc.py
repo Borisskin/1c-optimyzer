@@ -17,6 +17,7 @@ from optimyzer_backend.sql import (
     get_schema,
     validate_sql,
 )
+from optimyzer_backend.sql.templates import TEMPLATES
 
 
 @rpc("execute_sql")
@@ -64,3 +65,9 @@ def validate_sql_rpc(sql: str) -> dict[str, Any]:
 def get_schema_rpc(archive_id: str) -> dict[str, list[dict[str, str]]]:
     """Список таблиц + колонок для autocomplete / docs panel."""
     return get_schema(archive_id)
+
+
+@rpc("list_sql_templates")
+def list_sql_templates_rpc() -> list[dict[str, Any]]:
+    """SQL templates библиотека (Phase F). Read-only список."""
+    return [dict(t) for t in TEMPLATES]
