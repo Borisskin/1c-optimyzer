@@ -40,3 +40,6 @@ src-tauri/gen/
 
 # Local fixtures (real TJ archives — too large + sensitive)
 backend/tests/fixtures/real-archive/
+
+# Local real TJ logs (~12 GiB inspection corpus — never commit)
+/logs/
