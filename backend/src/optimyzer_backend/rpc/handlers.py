@@ -479,6 +479,41 @@ def get_storage_stats(archive_id: str) -> dict[str, Any]:
     }
 
 
+# ---------- Saved queries ----------
+
+
+@rpc("list_saved_queries")
+def list_saved_queries() -> list[dict[str, Any]]:
+    return _sqlite().list_saved_queries()
+
+
+@rpc("save_query")
+def save_query(name: str, query: str, description: str | None = None) -> dict[str, Any]:
+    if not name.strip():
+        raise ValueError("Имя сохранённого запроса не должно быть пустым")
+    if not query.strip():
+        raise ValueError("Запрос не должен быть пустым")
+    new_id = _sqlite().save_query(name=name.strip(), query=query, description=description)
+    return {"id": new_id}
+
+
+@rpc("delete_saved_query")
+def delete_saved_query(id: int) -> dict[str, Any]:
+    return {"ok": _sqlite().delete_saved_query(id)}
+
+
+@rpc("rename_saved_query")
+def rename_saved_query(id: int, new_name: str) -> dict[str, Any]:
+    if not new_name.strip():
+        raise ValueError("Новое имя не должно быть пустым")
+    return {"ok": _sqlite().rename_saved_query(id, new_name.strip())}
+
+
+@rpc("mark_query_run")
+def mark_query_run(id: int) -> dict[str, Any]:
+    return {"ok": _sqlite().mark_query_run(id)}
+
+
 # ---------- helpers ----------
 
 

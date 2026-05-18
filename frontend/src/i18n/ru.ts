@@ -55,7 +55,7 @@ export const t = {
       manage: "УПРАВЛЕНИЕ",
     },
     items: {
-      oql: "OptimyzerQL",
+      sql: "SQL Console",
       dashboard: "Мониторинг",
       apdex: "Apdex и SLA",
       workbench: "Расследование",
@@ -92,30 +92,28 @@ export const t = {
     parsedIn: "обработано за",
     devBuild: "dev",
   },
-  oql: {
-    pageTitle: "OptimyzerQL Console",
-    breadcrumb: "Управление",
+  sql: {
+    pageTitle: "SQL Console",
+    breadcrumb: "Анализ",
     badgeFreeTier: "free tier",
-    sprintLabel: "Sprint 1 · DSL parser",
-    description:
-      "Декларативный язык запросов поверх технологического журнала",
+    sprintLabel: "Sprint 2 · Phase B",
+    description: "SQL-запросы поверх событий технологического журнала",
     editor: {
-      filenameDefault: "untitled.oql",
+      filenameDefault: "untitled.sql",
       modified: "не сохранено",
       saved: "сохранено",
       readonly: "только чтение",
       cursor: "стр",
       column: "кол",
       rows: "строк",
-      placeholderSprint0: `// OptimyzerQL — декларативный язык запросов поверх ТЖ.
-// Sprint 1 — встроенный редактор и компилятор в SQL.
-// Выберите шаблон ниже или напишите свой запрос.
-//
-//   events
-//   | where event_type == "DBMSSQL" and duration_ms > 1000
-//   | project ts, duration_ms, sql_text_normalized
-//   | order by duration_ms desc
-//   | take 100
+      placeholderDefault: `-- Sprint 2 Phase B: SQL Engine появится здесь.
+-- Пример будущего запроса:
+--
+--   SELECT ts, duration_us, sql_text_normalized
+--   FROM events
+--   WHERE event_type = 'DBMSSQL' AND duration_us > 1000000
+--   ORDER BY duration_us DESC
+--   LIMIT 100;
 `,
     },
     results: {
@@ -129,11 +127,13 @@ export const t = {
         noArchive: "Загрузите логи ТЖ, чтобы начать запросы",
         hint: "Перетащите папку с логами в окно или нажмите кнопку ниже",
         loadButton: "Загрузить папку с логами…",
+        ready: "Архив готов",
+        readyHint: "событий · SQL-консоль появится в Phase B",
       },
-      placeholder: "Напишите OQL-запрос или выберите шаблон ниже",
+      placeholder: "Напишите SQL-запрос или выберите шаблон ниже",
       placeholderTable: "Выберите шаблон ниже, чтобы получить результаты.",
-      placeholderChart: "График — Sprint 2.",
-      placeholderTimeline: "Хронология — Sprint 2.",
+      placeholderChart: "График — Phase C.",
+      placeholderTimeline: "Хронология — Phase D.",
       rowsCounter: "строк",
       executedIn: "выполнено за",
       scannedEvents: "просканировано событий",
@@ -159,8 +159,8 @@ export const t = {
       newQuery: "Новый запрос",
     },
     docsPanel: {
-      title: "Документация OptimyzerQL",
-      sources: "Источники данных",
+      title: "Документация SQL",
+      sources: "Таблицы и колонки",
       operators: "Операторы",
       functions: "Функции",
       examples: "Примеры",
@@ -207,7 +207,7 @@ export const t = {
       loadFolder: "Загрузить папку с логами…",
       recentSources: "Недавние источники",
       recentSourcesHint: "Sprint 1",
-      newQuery: "Новый OQL-запрос",
+      newQuery: "Новый SQL-запрос",
       runQuery: "Выполнить запрос",
       goTo: "Перейти к {label}",
       about: "О программе",
@@ -245,9 +245,9 @@ export const t = {
     noLogsFound: "Лог-файлы не найдены в указанной папке",
     invalidDropTarget: "Перетащите папку с логами, не файл",
     parseError: "Ошибка парсинга: {detail}",
-    oqlSyntaxError: "Синтаксическая ошибка: {detail}",
-    oqlValidationError: "Ошибка валидации: {detail}",
-    oqlExecuteError: "Ошибка выполнения запроса: {detail}",
+    sqlSyntaxError: "Синтаксическая ошибка SQL: {detail}",
+    sqlValidationError: "Ошибка валидации SQL: {detail}",
+    sqlExecuteError: "Ошибка выполнения запроса: {detail}",
     networkError: "Ошибка соединения с backend",
     rpcError: "Ошибка RPC: {detail}",
     dialogError: "Ошибка диалога: {detail}",

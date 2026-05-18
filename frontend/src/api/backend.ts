@@ -110,38 +110,6 @@ async function rpc<T = unknown>(method: string, params: Record<string, unknown> 
   return invoke<T>("rpc_call", { method, params });
 }
 
-export interface OQLExecuteResult {
-  ok: boolean;
-  error?: string;
-  phase?: string;
-  columns?: QueryColumn[];
-  rows?: unknown[][];
-  row_count?: number;
-  executed_ms?: number;
-  render?: string | null;
-  sql_compiled?: string;
-}
-
-export interface OQLValidationDetail {
-  message: string;
-  phase: string;
-  line?: number;
-  column?: number;
-}
-
-export interface OQLValidationResult {
-  ok: boolean;
-  errors?: OQLValidationDetail[];
-}
-
-export interface OQLTemplate {
-  id: string;
-  label: string;
-  description: string;
-  category: string;
-  query: string;
-}
-
 export interface SavedQuery {
   id: number;
   name: string;
@@ -170,14 +138,7 @@ export const backend = {
   getStorageStats: (archive_id: string) => rpc<StorageStats>("get_storage_stats", { archive_id }),
   sidecarStatus: () => invoke<boolean>("sidecar_status"),
 
-  // OQL Engine (Sprint 1)
-  executeOqlQuery: (archive_id: string, query: string) =>
-    rpc<OQLExecuteResult>("execute_oql_query", { archive_id, query }),
-  validateOqlQuery: (query: string, archive_id?: string) =>
-    rpc<OQLValidationResult>("validate_oql_query", archive_id ? { query, archive_id } : { query }),
-  listTemplates: () => rpc<OQLTemplate[]>("list_templates"),
-
-  // Saved queries (Sprint 1)
+  // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),
   saveQuery: (name: string, query: string, description?: string) =>
     rpc<{ id: number }>("save_query", description ? { name, query, description } : { name, query }),

@@ -14,7 +14,7 @@ export interface NavItem {
 const tooltip = (module: number) => `${t.sidebar.tooltipModule} ${module}`;
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: "oql", label: t.sidebar.items.oql, icon: "Terminal", group: "manage", enabled: true },
+  { id: "sql", label: t.sidebar.items.sql, icon: "Terminal", group: "analyze", enabled: true },
 
   { id: "dashboard",  label: t.sidebar.items.dashboard, icon: "Gauge",      group: "live",    enabled: false, tooltip: tooltip(2) },
   { id: "apdex",      label: t.sidebar.items.apdex,     icon: "Trend",      group: "live",    enabled: false, tooltip: tooltip(2) },

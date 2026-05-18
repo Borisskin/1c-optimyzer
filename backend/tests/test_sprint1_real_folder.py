@@ -1,9 +1,12 @@
-"""Sprint 1 acceptance gate: ingest реальной папки логов + OQL queries.
+"""Sprint 1 acceptance gate: ingest реальной папки логов + sanity queries.
 
 Тесты env-gated через ``OPTIMYZER_REAL_FOLDER_PATH``. Если переменная не
 установлена или путь не существует — все тесты в файле skip-аются.
 
 См. ``.env.test.example`` и ``docs/SPRINT_0_CLOSURE_NOTES.md`` (Q7).
+
+OQL-specific тест удалён в Sprint 2 Phase A (OQL DSL снят); SQL-coverage
+тесты живут в ``test_sprint2_real_data.py`` (Phase K).
 """
 
 from __future__ import annotations
@@ -15,7 +18,6 @@ from pathlib import Path
 import pytest
 
 from optimyzer_backend.ingest import FolderSource
-from optimyzer_backend.oql import SQLCompiler, parse_oql, validate
 from optimyzer_backend.parsers.tj_parser import parse_log_file_streaming
 from optimyzer_backend.storage.duckdb_store import DuckDBStore
 
@@ -99,34 +101,6 @@ def test_parsed_coverage_above_95_percent(ingested_store) -> None:
             f"Coverage {coverage_lower_bound:.1%} слишком низкое "
             f"(parsed={parsed}, raw_lines={total})"
         )
-
-
-def test_oql_queries_run_on_real_data(ingested_store) -> None:
-    """Acceptance: 10 разных OQL queries возвращают результат без exceptions."""
-    store: DuckDBStore = ingested_store["store"]
-    archive_id = store.archive_id
-
-    queries = [
-        "events | take 100",
-        "events | order by ts asc | take 100",
-        "events | order by duration_us desc | take 100",
-        'events | where event_type == "CALL" | take 50',
-        'events | where event_type == "DBMSSQL" | order by duration_us desc | take 50',
-        'events | where role == "rphost" | take 100',
-        "events | summarize cnt = count(*) by event_type | order by cnt desc",
-        "events | summarize cnt = count(*) by process_role | order by cnt desc",
-        'events | where duration_ms > 1ms | take 100',
-        "events | summarize uniq = countd(process_pid)",
-    ]
-
-    for q in queries:
-        ast = parse_oql(q)
-        errors = validate(ast)
-        assert errors == [], f"{q}: validation errors: {errors}"
-        compiler = SQLCompiler(active_archive_id=archive_id)
-        sql, params = compiler.compile(ast)
-        rows = store.open().execute(sql, params).fetchall()
-        assert isinstance(rows, list), f"{q}: not a list"
 
 
 def test_event_role_distribution_includes_known_roles(ingested_store) -> None:

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { ArchiveState, ProgressEvent, QueryResult, StorageStats } from "@/api/backend";
 
 export type ScreenId =
-  | "oql"
+  | "sql"
   | "dashboard"
   | "apdex"
   | "workbench"
@@ -59,7 +59,7 @@ interface AppStore {
 let _toastCounter = 0;
 
 export const useAppStore = create<AppStore>((set) => ({
-  currentScreen: "oql",
+  currentScreen: "sql",
   setScreen: (s) => set({ currentScreen: s }),
 
   sidebarOpen: false,

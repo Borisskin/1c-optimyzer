@@ -7,7 +7,7 @@ import { CommandPalette } from "@/components/overlays/CommandPalette";
 import { DropZone } from "@/components/overlays/DropZone";
 import { Toasts } from "@/components/overlays/Toasts";
 import { ProgressCard } from "@/components/overlays/ProgressCard";
-import { OQLConsoleScreen } from "@/components/screens/OQLConsole/OQLConsole";
+import { SQLConsoleScreen } from "@/components/screens/SQLConsole/SQLConsole";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
@@ -78,7 +78,7 @@ export function App() {
           pushToast(format(t.errors.rpcError, { detail: String(e) }), "err");
         }
       } else if (event.phase === "error") {
-        const detail = event.error_message ?? t.oql.archiveError.unknown;
+        const detail = event.error_message ?? t.sql.archiveError.unknown;
         pushToast(format(t.errors.loadFailed, { detail }), "err");
       }
     });
@@ -119,8 +119,8 @@ export function App() {
       <TopBar onOpenArchive={onPickFolder} onActiveArchiveDeleted={onActiveArchiveDeleted} />
       <Sidebar />
       <main className="app__main">
-        {currentScreen === "oql" && <OQLConsoleScreen onLoadArchive={onPickFolder} />}
-        {currentScreen !== "oql" && (
+        {currentScreen === "sql" && <SQLConsoleScreen onLoadArchive={onPickFolder} />}
+        {currentScreen !== "sql" && (
           <div style={{ padding: 32, color: "var(--o-text-3)" }}>
             {format(t.app.screenPlaceholder, { id: currentScreen })}
           </div>
