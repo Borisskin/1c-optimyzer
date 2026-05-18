@@ -14,6 +14,7 @@ import { ProcessRolesScreen } from "@/components/screens/ProcessRoles/ProcessRol
 import { DurationHistogramScreen } from "@/components/screens/DurationHistogram/DurationHistogram";
 import { ErrorsFeedScreen } from "@/components/screens/ErrorsFeed/ErrorsFeed";
 import { ActivityHeatmapScreen } from "@/components/screens/ActivityHeatmap/ActivityHeatmap";
+import { ArchiveComparisonScreen } from "@/components/screens/ArchiveComparison/ArchiveComparison";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
@@ -172,6 +173,8 @@ function renderScreen({
       return <ErrorsFeedScreen archiveId={archiveId} />;
     case "activity":
       return <ActivityHeatmapScreen archiveId={archiveId} />;
+    case "comparison":
+      return <ArchiveComparisonScreen />;
     default:
       return (
         <div style={{ padding: 32, color: "var(--o-text-3)" }}>

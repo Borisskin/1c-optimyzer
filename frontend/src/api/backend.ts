@@ -136,6 +136,51 @@ export interface SqlTemplate {
   sql: string;
 }
 
+// ----- Multi-archive comparison (Sprint 2 Phase G) -----
+
+export interface ComparisonMetric {
+  key: string;
+  label: string;
+  a: number;
+  b: number;
+  delta: number;
+  delta_percent: number | null;
+}
+
+export interface CompareSummaryResult {
+  ok: boolean;
+  error?: string;
+  metrics?: ComparisonMetric[];
+}
+
+export interface SlowQueryDiffRow {
+  sql_text_hash: string;
+  query: string | null;
+  a_avg_ms: number;
+  b_avg_ms: number;
+  a_calls: number;
+  b_calls: number;
+  delta_percent: number;
+}
+
+export interface SlowQueryOnly {
+  sql_text_hash: string;
+  query: string | null;
+  calls: number;
+  total_ms: number;
+  avg_ms: number;
+}
+
+export interface CompareSlowQueriesResult {
+  ok: boolean;
+  error?: string;
+  in_both?: SlowQueryDiffRow[];
+  regressed?: SlowQueryDiffRow[];
+  improved?: SlowQueryDiffRow[];
+  only_a?: SlowQueryOnly[];
+  only_b?: SlowQueryOnly[];
+}
+
 // ----- Pre-built views (Sprint 2 Phase D) -----
 
 export interface ViewFiltersDto {
@@ -191,6 +236,12 @@ export const backend = {
   validateSql: (sql: string) => rpc<SQLValidationResult>("validate_sql", { sql }),
   getSchema: (archive_id: string) => rpc<TableSchema>("get_schema", { archive_id }),
   listSqlTemplates: () => rpc<SqlTemplate[]>("list_sql_templates"),
+
+  // Multi-archive comparison (Sprint 2 Phase G)
+  compareSummary: (archive_id_a: string, archive_id_b: string) =>
+    rpc<CompareSummaryResult>("compare_summary", { archive_id_a, archive_id_b }),
+  compareSlowQueries: (archive_id_a: string, archive_id_b: string, limit = 50) =>
+    rpc<CompareSlowQueriesResult>("compare_slow_queries", { archive_id_a, archive_id_b, limit }),
 
   // Pre-built views (Sprint 2 Phase D)
   viewSlowQueries: (archive_id: string, filters?: ViewFiltersDto, sort_by = "total_duration", limit = 100) =>
