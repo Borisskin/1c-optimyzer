@@ -52,11 +52,26 @@ impl SidecarHandle {
 }
 
 pub fn spawn(_app: &AppHandle) -> Result<SidecarHandle> {
-    // Sprint 0: dev mode — запускаем python из ../../backend.
-    let backend_dir = std::env::current_dir()?.join("../backend");
-    let python = if cfg!(windows) { "python" } else { "python3" };
+    // Sprint 0: dev mode — запускаем python из ../../backend относительно src-tauri.
+    let backend_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("backend");
+    // Сначала пробуем venv-интерпретатор (там установлены зависимости backend).
+    let venv_python = if cfg!(windows) {
+        backend_dir.join(".venv").join("Scripts").join("python.exe")
+    } else {
+        backend_dir.join(".venv").join("bin").join("python")
+    };
+    let python: std::ffi::OsString = if venv_python.is_file() {
+        venv_python.into()
+    } else if cfg!(windows) {
+        "python".into()
+    } else {
+        "python3".into()
+    };
 
-    let mut child = Command::new(python)
+    let mut child = Command::new(&python)
         .args(["-m", "optimyzer_backend"])
         .current_dir(&backend_dir)
         .env("PYTHONIOENCODING", "utf-8")
@@ -64,7 +79,7 @@ pub fn spawn(_app: &AppHandle) -> Result<SidecarHandle> {
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
-        .map_err(|e| anyhow!("Не удалось запустить sidecar: {e}"))?;
+        .map_err(|e| anyhow!("Не удалось запустить sidecar ({}): {e}", python.to_string_lossy()))?;
 
     let stdin = child
         .stdin

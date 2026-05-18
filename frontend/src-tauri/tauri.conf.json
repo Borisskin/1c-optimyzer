@@ -29,7 +29,6 @@
     "active": true,
     "targets": ["msi"],
     "icon": ["icons/icon.ico"],
-    "resources": [],
-    "externalBin": ["binaries/optimyzer-backend"]
+    "resources": []
   }
 }
