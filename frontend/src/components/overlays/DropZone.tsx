@@ -1,56 +1,69 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { Icon } from "@/components/icons/Icon";
-import { t } from "@/i18n/ru";
+import { useAppStore } from "@/store/appStore";
+import { t, format } from "@/i18n/ru";
 import styles from "./DropZone.module.css";
+
+type DragDropPayload = {
+  type?: "enter" | "over" | "drop" | "leave";
+  paths?: string[];
+  position?: { x: number; y: number };
+};
+
+type PathKind = "folder" | "file" | "missing";
 
 export function DropZone({ onPath }: { onPath: (path: string) => void }) {
   const [active, setActive] = useState(false);
+  const pushToast = useAppStore((s) => s.pushToast);
 
   useEffect(() => {
-    let counter = 0;
-    const onEnter = (e: DragEvent) => {
-      e.preventDefault();
-      counter += 1;
-      setActive(true);
-    };
-    const onLeave = (e: DragEvent) => {
-      e.preventDefault();
-      counter -= 1;
-      if (counter <= 0) setActive(false);
-    };
-    const onOver = (e: DragEvent) => e.preventDefault();
-    const onDrop = (e: DragEvent) => {
-      e.preventDefault();
-      counter = 0;
-      setActive(false);
-      const file = e.dataTransfer?.files?.[0];
-      if (!file) return;
-      // В Tauri-окне у File нет webkitGetAsEntry с абсолютным путём — но Tauri
-      // предоставляет file.path через onFileDropEvent на уровне окна. Sprint 0:
-      // если path есть — используем; иначе info-toast о необходимости file dialog.
-      // @ts-expect-error tauri-extended File
-      const tauriPath: string | undefined = file.path;
-      if (tauriPath) {
-        onPath(tauriPath);
+    const unlistens: Array<() => void> = [];
+    let cancelled = false;
+
+    const subscribe = async (event: string, handler: (e: { payload: DragDropPayload }) => void) => {
+      const fn = await listen<DragDropPayload>(event, handler);
+      if (cancelled) {
+        fn();
+      } else {
+        unlistens.push(fn);
       }
     };
-    window.addEventListener("dragenter", onEnter);
-    window.addEventListener("dragleave", onLeave);
-    window.addEventListener("dragover", onOver);
-    window.addEventListener("drop", onDrop);
+
+    subscribe("tauri://drag-enter", () => setActive(true));
+    subscribe("tauri://drag-over", () => setActive(true));
+    subscribe("tauri://drag-leave", () => setActive(false));
+    subscribe("tauri://drag-drop", async (event) => {
+      setActive(false);
+      const paths = event.payload.paths ?? [];
+      if (paths.length === 0) return;
+      const first = paths[0];
+      try {
+        const classification = await invoke<{ kind: PathKind }>("classify_path", { path: first });
+        if (classification.kind === "folder") {
+          onPath(first);
+        } else if (classification.kind === "missing") {
+          pushToast(t.errors.folderNotFound, "err");
+        } else {
+          pushToast(t.errors.invalidDropTarget, "err");
+        }
+      } catch (e) {
+        pushToast(format(t.errors.classifyFailed, { detail: String(e) }), "err");
+      }
+    });
+
     return () => {
-      window.removeEventListener("dragenter", onEnter);
-      window.removeEventListener("dragleave", onLeave);
-      window.removeEventListener("dragover", onOver);
-      window.removeEventListener("drop", onDrop);
+      cancelled = true;
+      for (const fn of unlistens) fn();
     };
-  }, [onPath]);
+  }, [onPath, pushToast]);
 
   if (!active) return null;
   return (
     <div className={styles.overlay}>
       <div className={styles.panel}>
-        <Icon name="Upload" size={32} color="var(--o-accent)" />
+        <Icon name="Folder" size={32} color="var(--o-accent)" />
         <div className={styles.title}>{t.drop.titleFolder}</div>
         <div className={styles.sub}>{t.drop.sub}</div>
       </div>

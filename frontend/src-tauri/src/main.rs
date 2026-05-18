@@ -32,6 +32,19 @@ fn sidecar_status(state: State<'_, AppState>) -> Result<bool, String> {
     Ok(guard.is_some())
 }
 
+#[tauri::command]
+fn classify_path(path: String) -> Result<serde_json::Value, String> {
+    let p = std::path::Path::new(&path);
+    let kind = if !p.exists() {
+        "missing"
+    } else if p.is_dir() {
+        "folder"
+    } else {
+        "file"
+    };
+    Ok(serde_json::json!({ "kind": kind }))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -48,7 +61,7 @@ fn main() {
             *state.sidecar.lock().unwrap() = Some(sidecar);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![rpc_call, sidecar_status])
+        .invoke_handler(tauri::generate_handler![rpc_call, sidecar_status, classify_path])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
