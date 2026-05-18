@@ -3,6 +3,7 @@ import { Icon, type IconName } from "@/components/icons/Icon";
 import { KBD } from "@/components/primitives/Primitives";
 import { useAppStore } from "@/store/appStore";
 import { NAV_ITEMS } from "@/components/chrome/nav";
+import { t, format } from "@/i18n/ru";
 import styles from "./CommandPalette.module.css";
 
 export interface CommandItem {
@@ -34,8 +35,8 @@ export function CommandPalette({
     return [
       {
         id: "open-archive",
-        label: "Open TJ archive…",
-        hint: "File · Module 1",
+        label: t.cmdpalette.commands.loadFolder,
+        hint: t.cmdpalette.hints.file,
         icon: "Upload",
         action: () => {
           onClose();
@@ -44,18 +45,18 @@ export function CommandPalette({
       },
       {
         id: "recent",
-        label: "Recent archives",
-        hint: "List · Module 1",
+        label: t.cmdpalette.commands.recentSources,
+        hint: t.cmdpalette.hints.list,
         icon: "FileText",
         action: () => {
           onClose();
-          pushToast("Recent archives view — Sprint 1", "info");
+          pushToast(t.cmdpalette.commands.recentSourcesHint, "info");
         },
       },
       ...NAV_ITEMS.filter((n) => n.enabled).map((n) => ({
         id: `nav-${n.id}`,
-        label: `Go to ${n.label}`,
-        hint: "Navigate",
+        label: format(t.cmdpalette.commands.goTo, { label: n.label }),
+        hint: t.cmdpalette.hints.navigate,
         icon: n.icon,
         action: () => {
           setScreen(n.id);
@@ -64,12 +65,12 @@ export function CommandPalette({
       })),
       {
         id: "about",
-        label: "About 1C-Optimyzer",
-        hint: "Info",
+        label: t.cmdpalette.commands.about,
+        hint: t.cmdpalette.hints.info,
         icon: "Info",
         action: () => {
           onClose();
-          pushToast("1C-Optimyzer v0.1.0 · Module 1 (OQL Standalone)", "info");
+          pushToast(t.cmdpalette.aboutToast, "info");
         },
       },
     ];
@@ -88,7 +89,7 @@ export function CommandPalette({
             autoFocus
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Type a command, page, archive…"
+            placeholder={t.cmdpalette.placeholder}
             className={styles.input}
             onKeyDown={(e) => {
               if (e.key === "Enter" && filtered[0]) {
@@ -96,10 +97,10 @@ export function CommandPalette({
               }
             }}
           />
-          <span className={styles.esc}>ESC to close</span>
+          <span className={styles.esc}>{t.cmdpalette.escClose}</span>
         </div>
         <div className={styles.list}>
-          {filtered.length === 0 && <div className={styles.empty}>No results</div>}
+          {filtered.length === 0 && <div className={styles.empty}>{t.cmdpalette.noResults}</div>}
           {filtered.slice(0, 30).map((it) => (
             <div key={it.id} className={styles.row} onClick={it.action}>
               <Icon name={it.icon} size={14} color="var(--o-text-2)" />
@@ -109,9 +110,16 @@ export function CommandPalette({
           ))}
         </div>
         <div className={styles.foot}>
-          <span><KBD>↑</KBD><KBD>↓</KBD> navigate</span>
-          <span><KBD>↵</KBD> open</span>
-          <span><KBD>Esc</KBD> close</span>
+          <span>
+            <KBD>↑</KBD>
+            <KBD>↓</KBD> {t.cmdpalette.keys.navigate}
+          </span>
+          <span>
+            <KBD>↵</KBD> {t.cmdpalette.keys.open}
+          </span>
+          <span>
+            <KBD>Esc</KBD> {t.cmdpalette.keys.close}
+          </span>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { Icon } from "@/components/icons/Icon";
 import { useAppStore } from "@/store/appStore";
+import { t } from "@/i18n/ru";
 import { GROUPS, NAV_ITEMS } from "./nav";
 import styles from "./Sidebar.module.css";
 
@@ -31,7 +32,7 @@ export function Sidebar() {
                     key={n.id}
                     onClick={() => {
                       if (disabled) {
-                        pushToast(n.tooltip || "Coming soon", "info");
+                        pushToast(n.tooltip || t.sidebar.soon, "info");
                         return;
                       }
                       setScreen(n.id);
@@ -51,7 +52,7 @@ export function Sidebar() {
                       color={active ? "var(--o-accent)" : "var(--o-text-2)"}
                     />
                     {open && <span className={styles.item_label}>{n.label}</span>}
-                    {open && disabled && <span className={styles.item_pill}>soon</span>}
+                    {open && disabled && <span className={styles.item_pill}>{t.sidebar.soon}</span>}
                   </button>
                 );
               })}
@@ -62,7 +63,7 @@ export function Sidebar() {
       <div className={styles.footer}>
         <button onClick={toggle} className={styles.collapse}>
           <Icon name={open ? "ChevronLeft" : "ChevronRight"} size={13} />
-          {open && <span>Collapse</span>}
+          {open && <span>{t.sidebar.collapse}</span>}
         </button>
       </div>
     </aside>

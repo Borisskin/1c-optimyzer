@@ -1,6 +1,7 @@
 import { Icon } from "@/components/icons/Icon";
 import { Badge, KBD } from "@/components/primitives/Primitives";
 import { useAppStore } from "@/store/appStore";
+import { t } from "@/i18n/ru";
 import styles from "./TopBar.module.css";
 
 export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
@@ -8,20 +9,30 @@ export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
   const setCmdOpen = useAppStore((s) => s.setCmdOpen);
   const storageStats = useAppStore((s) => s.storageStats);
 
-  const archiveLabel = archive ? truncateName(archive.path) : "Load TZ archive…";
+  const archiveLabel = archive ? truncateName(archive.path) : t.topbar.loadFolder;
   const archiveSize = archive ? formatBytes(archive.size_bytes) : null;
 
-  let healthLabel = "● Idle";
+  const statusToLabel: Record<string, string> = {
+    extracting: t.topbar.healthExtracting,
+    discovering: t.topbar.healthDiscovering,
+    parsing: t.topbar.healthParsing,
+    indexing: t.topbar.healthIndexing,
+  };
+
+  let healthLabel = `● ${t.topbar.healthIdle}`;
   let healthTone: "ok" | "warn" | "info" = "info";
   if (archive) {
     if (archive.status === "ready") {
-      healthLabel = `● Ready · ${formatNumber(storageStats?.events_count ?? archive.events_parsed)} events`;
+      healthLabel = `● ${t.topbar.healthReady} · ${formatNumber(
+        storageStats?.events_count ?? archive.events_parsed,
+      )} ${t.topbar.eventsSuffix}`;
       healthTone = "ok";
     } else if (archive.status === "error") {
-      healthLabel = "● Error";
+      healthLabel = `● ${t.topbar.healthError}`;
       healthTone = "warn";
     } else {
-      healthLabel = `● ${capitalize(archive.status)}… ${Math.round(archive.progress * 100)}%`;
+      const verb = statusToLabel[archive.status] ?? archive.status;
+      healthLabel = `● ${verb}… ${Math.round(archive.progress * 100)}%`;
       healthTone = "warn";
     }
   }
@@ -31,8 +42,10 @@ export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
       <div className={styles.brand}>
         <div className={styles.brand_box}>1C</div>
         <div className={styles.brand_text}>
-          <div className={styles.brand_name}>1C-Optimyzer</div>
-          <div className={styles.brand_ver}>v0.1.0 · standalone</div>
+          <div className={styles.brand_name}>{t.app.name}</div>
+          <div className={styles.brand_ver}>
+            {t.app.version} · {t.app.edition}
+          </div>
         </div>
       </div>
 
@@ -45,7 +58,7 @@ export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
 
       <button className={styles.search_btn} onClick={() => setCmdOpen(true)}>
         <Icon name="Search" size={13} color="var(--o-text-3)" />
-        <span className={styles.search_placeholder}>Search anything…</span>
+        <span className={styles.search_placeholder}>{t.topbar.searchPlaceholder}</span>
         <span className={styles.search_shortcut}>
           <KBD>Ctrl</KBD> <KBD>K</KBD>
         </span>
@@ -55,16 +68,16 @@ export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
         <div className={styles.health}>
           <Badge tone={healthTone}>{healthLabel}</Badge>
         </div>
-        <button className={styles.icon_btn} title="Alerts — Module 2" disabled>
+        <button className={styles.icon_btn} title={t.topbar.alertsTooltip} disabled>
           <Icon name="Bell" size={15} />
         </button>
-        <button className={styles.ai_btn} title="AI Helper — available in Pro" disabled>
+        <button className={styles.ai_btn} title={t.topbar.aiHelperTooltip} disabled>
           <Icon name="Sparkles" size={13} />
-          <span className={styles.ai_label}>AI</span>
-          <Badge tone="mute">Pro</Badge>
+          <span className={styles.ai_label}>{t.topbar.aiBadge}</span>
+          <Badge tone="mute">{t.topbar.aiBadgePro}</Badge>
         </button>
         <div className="div-v" style={{ height: 20, margin: "0 4px" }} />
-        <button className={styles.settings_btn} title="Settings">
+        <button className={styles.settings_btn} title={t.topbar.settingsTooltip}>
           <Icon name="Settings" size={14} />
         </button>
       </div>
@@ -79,18 +92,14 @@ function truncateName(path: string): string {
 }
 
 function formatBytes(b: number): string {
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  if (b < 1024) return `${b} Б`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} КБ`;
   if (b < 1024 * 1024 * 1024) return `${(b / 1024 / 1024).toFixed(1)} МБ`;
   return `${(b / 1024 / 1024 / 1024).toFixed(2)} ГБ`;
 }
 
 function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} млн`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)} тыс`;
   return String(n);
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }

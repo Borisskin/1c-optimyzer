@@ -9,6 +9,7 @@ import { Toasts } from "@/components/overlays/Toasts";
 import { OQLConsoleScreen } from "@/components/screens/OQLConsole/OQLConsole";
 import { backend } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
+import { t, format } from "@/i18n/ru";
 
 export function App() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
@@ -36,19 +37,26 @@ export function App() {
 
   const loadArchiveFromPath = useCallback(
     async (path: string) => {
-      pushToast(`Loading archive: ${path.split(/[\\/]/).pop()}…`, "info");
+      const name = path.split(/[\\/]/).pop() ?? path;
+      pushToast(format(t.progress.loadingFromPath, { name }), "info");
       try {
         const state = await backend.loadArchive(path);
         setArchive(state);
         if (state.status === "ready") {
           const stats = await backend.getStorageStats(state.archive_id);
           setStorageStats(stats);
-          pushToast(`Loaded ${stats.events_count.toLocaleString("en-US")} events`, "ok");
+          pushToast(
+            format(t.progress.completedToast, {
+              events: stats.events_count.toLocaleString("ru-RU"),
+              time: "—",
+            }),
+            "ok",
+          );
         } else if (state.status === "error") {
-          pushToast(`Load failed: ${state.errors[0] || "unknown"}`, "err");
+          pushToast(format(t.errors.loadFailed, { detail: state.errors[0] || t.oql.archiveError.unknown }), "err");
         }
       } catch (e) {
-        pushToast(`RPC error: ${e}`, "err");
+        pushToast(format(t.errors.rpcError, { detail: String(e) }), "err");
       }
     },
     [pushToast, setArchive, setStorageStats],
@@ -65,7 +73,7 @@ export function App() {
         await loadArchiveFromPath(selected);
       }
     } catch (e) {
-      pushToast(`Dialog error: ${e}`, "err");
+      pushToast(format(t.errors.dialogError, { detail: String(e) }), "err");
     }
   }, [loadArchiveFromPath, pushToast]);
 
@@ -77,7 +85,7 @@ export function App() {
         {currentScreen === "oql" && <OQLConsoleScreen onLoadArchive={onPickArchive} />}
         {currentScreen !== "oql" && (
           <div style={{ padding: 32, color: "var(--o-text-3)" }}>
-            Screen "{currentScreen}" — Module 2+.
+            {format(t.app.screenPlaceholder, { id: currentScreen })}
           </div>
         )}
       </main>

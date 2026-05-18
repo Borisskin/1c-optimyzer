@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
+import { t } from "@/i18n/ru";
 import styles from "./DropZone.module.css";
 
 export function DropZone({ onFile }: { onFile: (path: string) => void }) {
@@ -50,8 +51,8 @@ export function DropZone({ onFile }: { onFile: (path: string) => void }) {
     <div className={styles.overlay}>
       <div className={styles.panel}>
         <Icon name="Upload" size={32} color="var(--o-accent)" />
-        <div className={styles.title}>Drop TZ archive here</div>
-        <div className={styles.sub}>.zip с папкой logcfg или структурой rphost_*/...</div>
+        <div className={styles.title}>{t.drop.titleFolder}</div>
+        <div className={styles.sub}>{t.drop.sub}</div>
       </div>
     </div>
   );
