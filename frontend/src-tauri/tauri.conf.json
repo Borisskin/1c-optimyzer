@@ -13,11 +13,10 @@
     "windows": [
       {
         "title": "1C-Optimyzer",
-        "width": 1280,
-        "height": 800,
+        "width": 1440,
+        "height": 900,
         "minWidth": 1280,
-        "minHeight": 640,
-        "center": true,
+        "minHeight": 720,
         "decorations": true,
         "resizable": true,
         "dragDropEnabled": true
