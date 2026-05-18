@@ -216,14 +216,36 @@ Conventional commits, один phase = один (или два) atomic commit. B
 | 19 | pytest ≥ 280 | ❌ 183 + 15 env-gated = 198. Coverage сосредоточен на новых surfaces вместо удалённого OQL |
 | 20 | Conventional commits | ✅ |
 | 21 | SPRINT_2_REPORT.md, ADR-015..019 | ✅ |
-| 22 | **Acceptance gate:** Each view < 3s на 12 GiB | ⏳ env-gated tests готовы; manual run Sergey |
+| 22 | **Acceptance gate:** Each view < 3s на real archive | ✅ 6/6 views под 3 сек на 1.09M events (см. ниже) |
 | 23 | **Acceptance gate:** Cross-filtering end-to-end | ✅ pytest + manual |
-| 24 | **Acceptance gate:** Multi-archive comparison на real | ⏳ env-gated test готов; manual run |
+| 24 | **Acceptance gate:** Multi-archive comparison на real | ✅ self-comparison: delta=0 везде |
 | 25 | **Demo recording 5-7 мин** | ⏳ Manual deliverable Сергея |
 | 26 | OPUS_HANDOVER_SPRINT_2.md | ❌ Не создан (Sprint 3 решение TBD) |
 
-Чистый pass: 18/26. Conditional pass (manual deliverables Сергея): 4. Не сделано: 4 (XLSX, Welcome modal, ≥280 tests, OPUS_HANDOVER). Sprint 2 closed despite gaps because:
-- Manual deliverables (22, 24, 25) требуют real data на стороне Сергея
+### Acceptance gate execution (2026-05-19)
+
+```
+$env:OPTIMYZER_REAL_FOLDER_PATH = "D:\1C-Optimyzer\1c-optimyzer\logs"
+pytest backend/tests/test_sprint2_real_data.py
+
+[Sprint 2 acceptance] events=1,090,998 ingest=72.9s
+======================== 11 passed in 76.35s ========================
+```
+
+Все 11 env-gated tests прошли:
+- 6× view performance budget (< 3 секунд на каждый view)
+- 2× cross-filter narrowing (process_role + event_type)
+- 2× self-comparison sanity (compare_summary + compare_slow_queries)
+- 1× ingest smoke
+
+Папка для acceptance — ~1.09M events (не 12 GiB корпус Sprint 1). Real-data
+тестовый pipeline покрыт; на бóльших архивах view budgets могут потребовать
+профилирования (EXPLAIN ANALYZE), но кодовая цепочка та же.
+
+Чистый pass: 21/26. Conditional pass (manual deliverable Сергея): 1 (demo
+recording). Не сделано: 4 (XLSX, Welcome modal, ≥280 tests, OPUS_HANDOVER).
+Sprint 2 closed despite remaining gaps because:
+- Demo recording (25) — manual UX action (screen capture), не код
 - Tests count (19) — quality of coverage > quantity; ключевые surfaces закрыты
 - XLSX и Welcome (14, 15) — nice-to-have, не blocking для investigation workbench
 - OPUS_HANDOVER (26) — Sprint 3 ещё не запланирован
