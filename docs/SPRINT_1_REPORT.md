@@ -208,18 +208,41 @@ Sprint 1 закрыт по 11 фазам (A → K), 6 новых ADR (009-014), 
 
 ---
 
-## 6. Acceptance gate (real-data, Q1+Q7)
+## 6. Acceptance gate (real-data, Q1+Q7) — ✅ PASSED
 
-Результат — см. отдельный bottom-section в OPUS_HANDOVER_SPRINT_1.md либо в коммите.
-
+**Прогон:** 2026-05-18, длительность **58 минут 50 секунд** (3529.99 s).
 **Корпус:** `D:\1C-Optimyzer\1c-optimyzer\logs` (11.94 GiB, 28 файлов, 17 подпапок, 6 ролей).
 
-Gate тесты прогоняются командой:
+Результат:
+```
+============================= test session starts =============================
+collected 5 items
+
+tests\test_sprint1_real_folder.py .....
+
+======================= 5 passed in 3529.99s (0:58:49) ========================
+```
+
+Все 5 acceptance тестов passed:
+1. ✅ `test_ingest_completes_without_exceptions` — ingest без падений.
+2. ✅ `test_parsed_coverage_above_95_percent` — coverage в пределах sanity bound.
+3. ✅ `test_oql_queries_run_on_real_data` — 10 OQL запросов отработали на real data.
+4. ✅ `test_event_role_distribution_includes_known_roles` — все 6 ролей в DB.
+5. ✅ `test_storage_size_reasonable` — bytes/event < 4 КБ.
+
+**DoD #29 и #30 закрыты.** Sprint 1 = 31/31 criteria.
+
+**Performance note:** 58 минут на 12 GiB — это ~58 МБ/мин = ~1 МБ/сек. Это **медленнее ожиданий** (приёмочный bound — без exceptions, без таргета по времени, см. Sprint 1 prompt §8 «correctness first»). Tuning — must-have в Sprint 2:
+- Multiprocessing для parsing (одно ядро на файл, max parallel = CPU count).
+- DuckDB `PRAGMA threads = N`.
+- Возможно — chunked Arrow IPC stream вместо register-table-per-batch.
+
+Команда повторного прогона:
 ```
 .\.venv\Scripts\python.exe -m pytest tests/test_sprint1_real_folder.py -v -s
 ```
 
-`.env.test` уже создан и не коммитится (gitignored).
+`.env.test` создан и не коммитится (gitignored).
 
 ---
 

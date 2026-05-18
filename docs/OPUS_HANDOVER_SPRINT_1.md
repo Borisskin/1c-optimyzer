@@ -7,7 +7,7 @@
 
 ## Краткий статус
 
-**Sprint 1 = OQL Standalone Module 1 — закрыт по коду на 28/31 criteria** (acceptance gate выполняется фоновым прогоном на 12 GiB корпусе; результат — см. §6).
+**Sprint 1 = OQL Standalone Module 1 — закрыт на 31/31 criteria.** Acceptance gate на 12 GiB корпусе — **5/5 passed за 58:49**. Производительность — главный risk для Sprint 2 (см. §«Sprint 2 scope» ниже, Epic 6).
 
 Что заработало:
 - **Folder ingestion** (primary path, ADR-010). Drag-drop папок + кнопка «Загрузить папку с логами…».
@@ -81,11 +81,14 @@ Natural language → OQL через Anthropic API (или OpenAI). Pro-only feat
 - UI кнопка «Отменить» в ProgressCard становится active.
 - При cancel — partial DuckDB cleanup, toast «Загрузка отменена».
 
-#### 6. Performance tuning
+#### 6. Performance tuning (P0 для Sprint 2)
 
-- Multiprocessing для parser (один процесс на файл, объединение через Manager). 12 GiB → < 5 минут.
+**Baseline:** 12 GiB → 58:49 в Sprint 1. Это ~1 МБ/сек — для большинства пользователей слишком долго ждать у компьютера.
+
+- Multiprocessing для parser (один процесс на файл, объединение через Manager). Target: 12 GiB → 5–10 минут.
 - DuckDB `PRAGMA threads = N` для bulk insert.
 - Возможно — Arrow Table chunking стримом (Arrow IPC stream) вместо buffer-then-register.
+- Profile: где именно теряется время — парсинг regex, Python loop, или Arrow conversion. Sprint 2 первая task — `cProfile` на 1 GiB subset.
 
 #### 7. UX polish
 
