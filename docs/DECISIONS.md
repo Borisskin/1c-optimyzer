@@ -236,3 +236,40 @@ Backend dependency: `pyarrow>=15`.
 2. **Read-only DuckDB connection** (`SQLExecutor`) в `sql/executor.py`: `duckdb.connect(path, read_only=True)`. Даже если validator пропустит что-то — DuckDB сам отклонит write.
 
 **Consequences.** + Two-layer защита: validator должен не пропустить, и connection должен не пропустить. + `INSERT/UPDATE/DELETE` блокируются на двух уровнях (validator → connection). − Read-only connection не позволяет создавать temp tables в SQL Console (acceptable trade-off — CTE достаточно для аналитики).
+
+---
+
+## ADR-020 — Prompt Authoring Standard (`/goal` template)
+
+**Status:** Accepted (post-Sprint 2, applies to Sprint 3+)
+
+**Context.** Sprint 0-2 promt'ы были semi-structured (epics + DoD, без явных STOP RULES и VERIFY секций). Это дало три повторяющиеся проблемы видные из транскриптов Claude Code:
+- **Scope creep**: Sprint 1 расширился с 8 до 11 phases mid-implementation (Phase A0, расширенная C, отдельная J)
+- **Open-ended questions**: Q1-Q5 в Sprint 1 QUESTIONS.md без ranked options, что теряло темп
+- **Отсутствие rollback для destructive operations**: Sprint 2 Phase A (удаление OQL) выполнено без явного rollback-плана в promt'е
+
+**Decision.** Принять `/goal` 8-section template как обязательный формат для всех sprint promt'ов начиная со Sprint 3. Шаблон зафиксирован в [`docs/PROMPT_AUTHORING_STANDARD.md`](./PROMPT_AUTHORING_STANDARD.md):
+
+| Секция | Назначение |
+|---|---|
+| GOAL | Что делаем — одно предложение |
+| CONTEXT | Откуда задача, какие предыдущие решения релевантны |
+| CONSTRAINTS | Технические/политические ограничения |
+| PRIORITY | Что важнее при trade-offs |
+| PLAN | Детальный план phases |
+| DONE WHEN | Acceptance criteria |
+| VERIFY | Как проверить + **rollback план для destructive operations** |
+| OUTPUT | Что попадает в репо (commits, docs, tests) |
+| STOP RULES | Явные запреты — copy-paste из universal список |
+
+Universal STOP RULES (копируются дословно в каждый promt):
+- При неоднозначности → ranked options (2-4 варианта), не open-ended вопросы
+- Не расширять scope (смежные задачи → TODO.md, не в текущий sprint)
+- No time estimates в reports
+- Light theme only, dark theme forbidden
+- Не модифицировать `design/opt/*.jsx`
+- Destructive ops → показывать rollback план (git stash / branch)
+- Conventional commits обязательны
+- Real-data acceptance gate — блокирующее условие
+
+**Consequences.** + Дисциплинированный scope: STOP RULE «не расширять scope после достижения GOAL» прямо запрещает Sprint 1-style scope drift. + Pragmatic decisions: ranked options ускоряют обмен с владельцем. + Rollback safety: VERIFY с rollback планом обязателен для destructive phases. − Minor authoring overhead (8 sections vs free-form). − Sprint 0-2 promt'ы остаются как historical artefacts; ретроактивная переписка не делается.
