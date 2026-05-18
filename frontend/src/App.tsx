@@ -42,14 +42,37 @@ export function App() {
   }, [setArchive, setStorageStats, setIngest, setLastResult, setProgressCardMinimized]);
 
   // Cmd+K / Ctrl+K — открыть Command Palette. Escape — закрыть.
+  // Ctrl+1..8 — switch активный экран (Sprint 2 Phase J).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const meta = e.ctrlKey || e.metaKey;
       if (meta && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
         setCmdOpen(!useAppStore.getState().cmdOpen);
-      } else if (e.key === "Escape") {
+        return;
+      }
+      if (e.key === "Escape") {
         setCmdOpen(false);
+        return;
+      }
+      // Ctrl+1..8 — quick screen switch.
+      if (meta && /^[1-8]$/.test(e.key)) {
+        const screensInOrder: import("@/store/appStore").ScreenId[] = [
+          "sql",
+          "slow-queries",
+          "locks",
+          "process-roles",
+          "duration",
+          "errors",
+          "activity",
+          "comparison",
+        ];
+        const idx = Number(e.key) - 1;
+        const target = screensInOrder[idx];
+        if (target) {
+          e.preventDefault();
+          useAppStore.getState().setScreen(target);
+        }
       }
     };
     window.addEventListener("keydown", handler);
