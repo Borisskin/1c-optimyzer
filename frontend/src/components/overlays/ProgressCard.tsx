@@ -3,6 +3,7 @@ import { Icon } from "@/components/icons/Icon";
 import { useAppStore } from "@/store/appStore";
 import type { ProgressEvent } from "@/api/backend";
 import { t, format } from "@/i18n/ru";
+import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import styles from "./ProgressCard.module.css";
 
 const AUTO_DISMISS_MS = 5000;
@@ -25,6 +26,10 @@ export function ProgressCard() {
 
   if (!ingest || minimized) return null;
 
+  return <ProgressCardBody ingest={ingest} onMinimize={() => setMinimized(true)} />;
+}
+
+function ProgressCardBody({ ingest, onMinimize }: { ingest: ProgressEvent; onMinimize: () => void }) {
   const titleMap: Record<ProgressEvent["phase"], string> = {
     discovering: t.progress.discovering,
     parsing: t.progress.parsing,
@@ -36,8 +41,12 @@ export function ProgressCard() {
   const title = titleMap[ingest.phase];
   const isDone = ingest.phase === "done";
   const isError = ingest.phase === "error";
+  const isActive = !isDone && !isError;
 
-  const percent = ingest.bytes_total > 0 ? Math.min(100, (ingest.bytes_done / ingest.bytes_total) * 100) : 0;
+  const animatedEvents = useAnimatedCounter(ingest.events_inserted, isActive);
+  const animatedBytes = useAnimatedCounter(ingest.bytes_done, isActive);
+  const percent =
+    ingest.bytes_total > 0 ? Math.min(100, (animatedBytes / ingest.bytes_total) * 100) : 0;
 
   const dotClass = isDone ? styles.dot_done : isError ? styles.dot_error : styles.dot;
   const fillClass = isDone
@@ -65,7 +74,7 @@ export function ProgressCard() {
           <button
             type="button"
             className={styles.icon_btn}
-            onClick={() => setMinimized(true)}
+            onClick={onMinimize}
             title={t.progress.minimize}
           >
             <Icon name="ChevronDown" size={12} />
@@ -79,7 +88,7 @@ export function ProgressCard() {
 
       <div className={styles.counters}>
         <span>
-          {formatBytes(ingest.bytes_done)} / {formatBytes(ingest.bytes_total)} · {percent.toFixed(0)}%
+          {formatBytes(animatedBytes)} / {formatBytes(ingest.bytes_total)} · {percent.toFixed(1)}%
         </span>
         <span>
           {ingest.files_done}/{ingest.files_total} {t.progress.files}
@@ -91,7 +100,7 @@ export function ProgressCard() {
       )}
 
       <div className={styles.events_line}>
-        {ingest.events_inserted.toLocaleString("ru-RU")} {t.progress.eventsInserted}
+        {Math.floor(animatedEvents).toLocaleString("ru-RU")} {t.progress.eventsInserted}
       </div>
 
       {isError && ingest.error_message && (

@@ -94,6 +94,16 @@ class SqliteStore:
             ).fetchall()
             return [dict(r) for r in rows]
 
+    def delete_recent_archive(self, archive_id: str) -> bool:
+        with self._conn() as c:
+            cur = c.execute("DELETE FROM recent_archives WHERE archive_id = ?", (archive_id,))
+            return cur.rowcount > 0
+
+    def delete_all_recent_archives(self) -> int:
+        with self._conn() as c:
+            cur = c.execute("DELETE FROM recent_archives")
+            return cur.rowcount
+
     def get_setting(self, key: str, default: str | None = None) -> str | None:
         with self._conn() as c:
             row = c.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()

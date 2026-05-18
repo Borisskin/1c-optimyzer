@@ -4,6 +4,7 @@ import { Badge, KBD, PageHeader, Tabs, Th, Td } from "@/components/primitives/Pr
 import { backend, type OQLExecuteResult, type QueryResult } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
+import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import { Editor } from "./Editor";
 import { TemplatesBar } from "./TemplatesBar";
 import { SavedQueriesMenu } from "./SavedQueriesMenu";
@@ -195,7 +196,22 @@ function EmptyState({
   onLoadArchive: () => void;
   archive: ReturnType<typeof useAppStore.getState>["archive"];
 }) {
-  if (archive && archive.status !== "ready" && archive.status !== "error") {
+  const ingest = useAppStore((s) => s.ingest);
+  const isParsing =
+    archive && archive.status !== "ready" && archive.status !== "error";
+  const ingestActive = Boolean(ingest && ingest.phase !== "done" && ingest.phase !== "error");
+
+  // Хук всегда вызывается; за пределами parsing-режима active=false и просто отдаёт target.
+  const liveEvents = useAnimatedCounter(
+    ingest?.events_inserted ?? archive?.events_parsed ?? 0,
+    Boolean(isParsing) && ingestActive,
+  );
+  const liveBytes = useAnimatedCounter(
+    ingest?.bytes_done ?? 0,
+    Boolean(isParsing) && ingestActive,
+  );
+
+  if (isParsing) {
     const verbMap: Record<string, string> = {
       extracting: t.oql.archiveLoading.extracting,
       discovering: t.oql.archiveLoading.discovering,
@@ -203,16 +219,23 @@ function EmptyState({
       indexing: t.oql.archiveLoading.indexing,
     };
     const verb = verbMap[archive.status] ?? t.oql.archiveLoading.parsing;
+    const bytesTotal = ingest?.bytes_total ?? archive.size_bytes ?? 0;
+    const percent =
+      bytesTotal > 0
+        ? Math.min(100, (liveBytes / bytesTotal) * 100)
+        : archive.progress * 100;
     return (
       <div className={styles.empty}>
         <Icon name="Refresh" size={22} color="var(--o-accent)" className="pulse" />
         <div className={styles.empty_title}>{verb}</div>
+        <div className={styles.empty_events}>
+          {Math.floor(liveEvents).toLocaleString("ru-RU")}
+        </div>
         <div className={styles.empty_sub}>
-          {archive.events_parsed.toLocaleString("ru-RU")} {t.statusbar.events} ·{" "}
-          {Math.round(archive.progress * 100)}%
+          {t.statusbar.events} · {percent.toFixed(1)}%
         </div>
         <div className={styles.progress}>
-          <div className={styles.progress_fill} style={{ width: `${archive.progress * 100}%` }} />
+          <div className={styles.progress_fill} style={{ width: `${percent}%` }} />
         </div>
       </div>
     );

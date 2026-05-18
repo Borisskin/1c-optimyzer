@@ -1,13 +1,28 @@
+import { useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { Badge, KBD } from "@/components/primitives/Primitives";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n/ru";
+import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
+import { ArchivesMenu } from "./ArchivesMenu";
 import styles from "./TopBar.module.css";
 
-export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
+interface TopBarProps {
+  onOpenArchive: () => void;
+  onActiveArchiveDeleted: () => void;
+}
+
+export function TopBar({ onOpenArchive, onActiveArchiveDeleted }: TopBarProps) {
   const archive = useAppStore((s) => s.archive);
   const setCmdOpen = useAppStore((s) => s.setCmdOpen);
   const storageStats = useAppStore((s) => s.storageStats);
+  const ingest = useAppStore((s) => s.ingest);
+  const progressCardMinimized = useAppStore((s) => s.progressCardMinimized);
+  const setProgressCardMinimized = useAppStore((s) => s.setProgressCardMinimized);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const ingestActive = Boolean(ingest && ingest.phase !== "done" && ingest.phase !== "error");
+  const animatedEvents = useAnimatedCounter(ingest?.events_inserted ?? 0, ingestActive);
 
   const archiveLabel = archive ? truncateName(archive.path) : t.topbar.loadFolder;
   const archiveSize = archive ? formatBytes(archive.size_bytes) : null;
@@ -32,10 +47,24 @@ export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
       healthTone = "warn";
     } else {
       const verb = statusToLabel[archive.status] ?? archive.status;
-      healthLabel = `● ${verb}… ${Math.round(archive.progress * 100)}%`;
+      const liveCount = ingestActive
+        ? Math.floor(animatedEvents)
+        : archive.events_parsed;
+      healthLabel = `● ${verb}… ${formatNumber(liveCount)} ${t.topbar.eventsSuffix}`;
       healthTone = "warn";
     }
   }
+
+  const badgeClickable = ingestActive || (ingest !== null && ingest.phase === "done");
+  const onBadgeClick = () => {
+    if (!badgeClickable) return;
+    setProgressCardMinimized(!progressCardMinimized);
+  };
+  const badgeTitle = badgeClickable
+    ? progressCardMinimized
+      ? t.topbar.expandProgressTooltip
+      : t.topbar.minimizeProgressTooltip
+    : undefined;
 
   return (
     <div className={styles.topbar}>
@@ -49,12 +78,21 @@ export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
         </div>
       </div>
 
-      <button className={styles.archive_btn} onClick={onOpenArchive}>
-        <Icon name="Database" size={13} color="var(--o-text-3)" />
-        <span className={styles.archive_label}>{archiveLabel}</span>
-        {archiveSize && <span className={styles.archive_size}>{archiveSize}</span>}
-        <Icon name="ChevronDown" size={12} color="var(--o-text-3)" />
-      </button>
+      <div className={styles.archive_wrap}>
+        <button className={styles.archive_btn} onClick={() => setMenuOpen((v) => !v)}>
+          <Icon name="Database" size={13} color="var(--o-text-3)" />
+          <span className={styles.archive_label}>{archiveLabel}</span>
+          {archiveSize && <span className={styles.archive_size}>{archiveSize}</span>}
+          <Icon name="ChevronDown" size={12} color="var(--o-text-3)" />
+        </button>
+        {menuOpen && (
+          <ArchivesMenu
+            onClose={() => setMenuOpen(false)}
+            onLoadNew={onOpenArchive}
+            onActiveArchiveDeleted={onActiveArchiveDeleted}
+          />
+        )}
+      </div>
 
       <button className={styles.search_btn} onClick={() => setCmdOpen(true)}>
         <Icon name="Search" size={13} color="var(--o-text-3)" />
@@ -65,7 +103,19 @@ export function TopBar({ onOpenArchive }: { onOpenArchive: () => void }) {
       </button>
 
       <div className={styles.right}>
-        <div className={styles.health}>
+        <div
+          className={`${styles.health} ${badgeClickable ? styles.health_clickable : ""}`}
+          onClick={onBadgeClick}
+          title={badgeTitle}
+          role={badgeClickable ? "button" : undefined}
+          tabIndex={badgeClickable ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (badgeClickable && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onBadgeClick();
+            }
+          }}
+        >
           <Badge tone={healthTone}>{healthLabel}</Badge>
         </div>
         <button className={styles.icon_btn} title={t.topbar.alertsTooltip} disabled>

@@ -1,11 +1,16 @@
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n/ru";
+import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import styles from "./StatusBar.module.css";
 
 export function StatusBar() {
   const archive = useAppStore((s) => s.archive);
   const stats = useAppStore((s) => s.storageStats);
   const ingest = useAppStore((s) => s.ingest);
+
+  const isActive = Boolean(ingest && ingest.phase !== "done" && ingest.phase !== "error");
+  const animatedEvents = useAnimatedCounter(ingest?.events_inserted ?? 0, isActive);
+  const animatedBytes = useAnimatedCounter(ingest?.bytes_done ?? 0, isActive);
 
   const statusLabels: Record<string, string> = {
     ready: t.statusbar.ready,
@@ -26,11 +31,9 @@ export function StatusBar() {
     ? `${t.statusbar.parsedIn} ${formatSeconds(archive.parsing_time_sec)}`
     : "—";
 
-  // Inline progress в StatusBar: показываем во время активного ingestion.
-  const isActive = ingest && ingest.phase !== "done" && ingest.phase !== "error";
   const percent =
-    isActive && ingest.bytes_total > 0
-      ? Math.min(100, (ingest.bytes_done / ingest.bytes_total) * 100)
+    isActive && ingest && ingest.bytes_total > 0
+      ? Math.min(100, (animatedBytes / ingest.bytes_total) * 100)
       : 0;
 
   return (
@@ -45,8 +48,8 @@ export function StatusBar() {
         <>
           <span className={styles.divider} />
           <span className={styles.cell}>
-            {ingest.current_file ?? "—"} · {formatBytes(ingest.bytes_done)}/{formatBytes(ingest.bytes_total)} ·{" "}
-            {percent.toFixed(0)}% · {formatNumber(ingest.events_inserted)} {t.statusbar.events}
+            {ingest.current_file ?? "—"} · {formatBytes(animatedBytes)}/{formatBytes(ingest.bytes_total)} ·{" "}
+            {percent.toFixed(1)}% · {formatNumber(Math.floor(animatedEvents))} {t.statusbar.events}
           </span>
         </>
       ) : (

@@ -20,8 +20,17 @@ export function App() {
   const setArchive = useAppStore((s) => s.setArchive);
   const setStorageStats = useAppStore((s) => s.setStorageStats);
   const setIngest = useAppStore((s) => s.setIngest);
+  const setLastResult = useAppStore((s) => s.setLastResult);
   const setProgressCardMinimized = useAppStore((s) => s.setProgressCardMinimized);
   const pushToast = useAppStore((s) => s.pushToast);
+
+  const onActiveArchiveDeleted = useCallback(() => {
+    setArchive(null);
+    setStorageStats(null);
+    setIngest(null);
+    setLastResult(null);
+    setProgressCardMinimized(false);
+  }, [setArchive, setStorageStats, setIngest, setLastResult, setProgressCardMinimized]);
 
   // Cmd+K / Ctrl+K — открыть Command Palette. Escape — закрыть.
   useEffect(() => {
@@ -107,7 +116,7 @@ export function App() {
 
   return (
     <div className="app" data-sidebar={sidebarOpen ? "open" : "closed"}>
-      <TopBar onOpenArchive={onPickFolder} />
+      <TopBar onOpenArchive={onPickFolder} onActiveArchiveDeleted={onActiveArchiveDeleted} />
       <Sidebar />
       <main className="app__main">
         {currentScreen === "oql" && <OQLConsoleScreen onLoadArchive={onPickFolder} />}

@@ -24,7 +24,7 @@ from optimyzer_backend.ingest import (
 )
 from optimyzer_backend.parsers.tj_parser import parse_log_file_streaming
 from optimyzer_backend.rpc.dispatcher import rpc
-from optimyzer_backend.storage.duckdb_store import DuckDBStore
+from optimyzer_backend.storage.duckdb_store import DuckDBStore, default_db_dir
 from optimyzer_backend.storage.sqlite_store import SqliteStore
 
 # ---------- In-memory state ----------
@@ -160,14 +160,31 @@ def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
 
         bytes_done = 0
         events_inserted = 0
+        # In-file emit каждые N событий — чтобы UI-счётчик не замирал на
+        # больших файлах. Throttle в ProgressReporter (250мс) защищает от флуда
+        # при быстром парсинге.
+        EMIT_EVERY_EVENTS = 1000
 
         with store.appender() as appender:
             for idx, lf in enumerate(log_files):
                 encoding = detect_encoding(lf.path)
+                events_in_file = 0
                 try:
                     for event in parse_log_file_streaming(source, lf, encoding=encoding):
                         appender.append_event(event)
                         events_inserted += 1
+                        events_in_file += 1
+                        if events_in_file % EMIT_EVERY_EVENTS == 0:
+                            state["events_parsed"] = events_inserted
+                            progress(
+                                "parsing",
+                                files_done=idx,
+                                files_total=len(log_files),
+                                bytes_done=bytes_done,
+                                bytes_total=bytes_total,
+                                events_inserted=events_inserted,
+                                current_file=lf.relative_path,
+                            )
                 except Exception as exc:
                     state["errors"].append(
                         f"{lf.relative_path}: {type(exc).__name__}: {exc}"
@@ -326,6 +343,86 @@ def wait_for_archive(archive_id: str, timeout_sec: float = 600.0) -> dict[str, A
 @rpc("list_recent_archives")
 def list_recent_archives() -> list[dict[str, Any]]:
     return _sqlite().list_recent_archives(limit=20)
+
+
+@rpc("list_stored_archives")
+def list_stored_archives() -> dict[str, Any]:
+    """Список архивов в SQLite + реальный размер .duckdb на диске.
+
+    Возвращает {archives: [...], total_db_size_bytes: int}. Архивы без файла
+    на диске (например, был удалён вручную) включаются с db_size_bytes=0
+    и is_orphan=True.
+    """
+    records = _sqlite().list_recent_archives(limit=100)
+    db_dir = default_db_dir()
+    total_size = 0
+    archives: list[dict[str, Any]] = []
+    for rec in records:
+        archive_id = rec["archive_id"]
+        db_path = db_dir / f"{archive_id}.duckdb"
+        try:
+            size = db_path.stat().st_size
+            is_orphan = False
+        except FileNotFoundError:
+            size = 0
+            is_orphan = True
+        total_size += size
+        archives.append({
+            **rec,
+            "db_size_bytes": size,
+            "is_loaded": archive_id in _ARCHIVES,
+            "is_orphan": is_orphan,
+        })
+    return {"archives": archives, "total_db_size_bytes": total_size}
+
+
+@rpc("delete_archive")
+def delete_archive(archive_id: str) -> dict[str, Any]:
+    """Полное удаление архива: in-memory state + .duckdb на диске + запись в SQLite."""
+    state = _ARCHIVES.pop(archive_id, None)
+    if state is not None:
+        store: DuckDBStore | None = state.get("store")
+        if store:
+            try:
+                store.close()
+            except Exception:
+                pass
+    DuckDBStore.delete_db_file(archive_id)
+    sqlite_removed = _sqlite().delete_recent_archive(archive_id)
+    return {"ok": True, "sqlite_removed": sqlite_removed, "was_loaded": state is not None}
+
+
+@rpc("delete_all_archives")
+def delete_all_archives() -> dict[str, Any]:
+    """Wipe всего хранилища: закрывает соединения, удаляет .duckdb файлы, чистит SQLite."""
+    closed = 0
+    for archive_id, state in list(_ARCHIVES.items()):
+        store: DuckDBStore | None = state.get("store")
+        if store:
+            try:
+                store.close()
+                closed += 1
+            except Exception:
+                pass
+        _ARCHIVES.pop(archive_id, None)
+
+    db_dir = default_db_dir()
+    files_deleted = 0
+    if db_dir.exists():
+        for f in db_dir.glob("*.duckdb"):
+            try:
+                f.unlink()
+                files_deleted += 1
+            except OSError:
+                pass
+
+    sqlite_removed = _sqlite().delete_all_recent_archives()
+    return {
+        "ok": True,
+        "closed": closed,
+        "files_deleted": files_deleted,
+        "sqlite_removed": sqlite_removed,
+    }
 
 
 @rpc("unload_archive")

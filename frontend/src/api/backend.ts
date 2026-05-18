@@ -68,6 +68,30 @@ export interface RecentArchive {
   parsing_time_sec: number | null;
 }
 
+export interface StoredArchive extends RecentArchive {
+  db_size_bytes: number;
+  is_loaded: boolean;
+  is_orphan: boolean;
+}
+
+export interface StoredArchivesResponse {
+  archives: StoredArchive[];
+  total_db_size_bytes: number;
+}
+
+export interface DeleteArchiveResult {
+  ok: boolean;
+  sqlite_removed: boolean;
+  was_loaded: boolean;
+}
+
+export interface DeleteAllArchivesResult {
+  ok: boolean;
+  closed: number;
+  files_deleted: number;
+  sqlite_removed: number;
+}
+
 export type ProgressPhase = "discovering" | "parsing" | "indexing" | "done" | "error";
 
 export interface ProgressEvent {
@@ -137,6 +161,9 @@ export const backend = {
     rpc<{ ok: boolean; reason?: string }>("cancel_ingestion", { archive_id }),
   getArchiveStatus: (archive_id: string) => rpc<ArchiveState>("get_archive_status", { archive_id }),
   listRecentArchives: () => rpc<RecentArchive[]>("list_recent_archives"),
+  listStoredArchives: () => rpc<StoredArchivesResponse>("list_stored_archives"),
+  deleteArchive: (archive_id: string) => rpc<DeleteArchiveResult>("delete_archive", { archive_id }),
+  deleteAllArchives: () => rpc<DeleteAllArchivesResult>("delete_all_archives"),
   unloadArchive: (archive_id: string) => rpc<{ ok: boolean }>("unload_archive", { archive_id }),
   queryEventsPreset: (archive_id: string, preset: "first_100" | "longest" | "deadlocks", limit = 100) =>
     rpc<QueryResult>("query_events_preset", { archive_id, preset, limit }),

@@ -44,6 +44,10 @@
   margin-top: -2px;
 }
 
+.archive_wrap {
+  position: relative;
+}
+
 .archive_btn {
   display: flex;
   align-items: center;
@@ -85,6 +89,16 @@
 }
 
 .health { display: flex; align-items: center; }
+.health_clickable {
+  cursor: pointer;
+  border-radius: var(--o-radius-sm);
+  transition: filter 120ms ease;
+}
+.health_clickable:hover { filter: brightness(0.95); }
+.health_clickable:focus-visible {
+  outline: 2px solid var(--o-accent);
+  outline-offset: 2px;
+}
 
 .icon_btn {
   height: 28px;

@@ -291,10 +291,25 @@ class DuckDBStore:
         return columns, rows
 
     @classmethod
-    def delete_db_file(cls, archive_id: str, db_path: Path | None = None) -> None:
-        """Удаляет .duckdb файл для archive_id (cleanup после ingest error)."""
+    def delete_db_file(cls, archive_id: str, db_path: Path | None = None) -> bool:
+        """Удаляет .duckdb файл для archive_id (cleanup после ingest error).
+
+        На Windows DuckDB может удерживать lock несколько мс после close() —
+        делаем одну retry-попытку через 200мс. Возвращает True если файл удалён
+        (или не существовал), False если lock не отпустили.
+        """
+        import time
+
         path = db_path or (default_db_dir() / f"{archive_id}.duckdb")
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass
+        for attempt in range(2):
+            try:
+                path.unlink()
+                return True
+            except FileNotFoundError:
+                return True
+            except PermissionError:
+                if attempt == 0:
+                    time.sleep(0.2)
+                    continue
+                return False
+        return False
