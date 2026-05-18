@@ -1,0 +1,84 @@
+// OptimyzerQL grammar (Lark / Earley parser).
+// Sprint 1 — Module 1 запросы поверх events source.
+
+start: query
+
+query: source pipe*
+
+source: NAME
+
+pipe: "|" pipe_op
+
+pipe_op: where_op
+       | project_op
+       | order_op
+       | summarize_op
+       | timerange_op
+       | limit_op
+       | take_op
+       | render_op
+
+where_op: "where" expr
+project_op: "project" col_list
+order_op: "order" "by" order_term ("," order_term)*
+summarize_op: "summarize" agg_list ("by" col_list)?
+timerange_op: "timerange" "last" duration
+limit_op: "limit" INT
+take_op: "take" INT
+render_op: "render" RENDER_TYPE
+
+order_term: NAME ORDER_DIR?
+ORDER_DIR: "asc" | "desc"
+
+col_list: NAME ("," NAME)*
+
+agg_list: agg_expr ("," agg_expr)*
+agg_expr: NAME "=" AGG_FUNC "(" agg_arg ")"
+AGG_FUNC: "sum" | "avg" | "min" | "max" | "countd" | "count"
+agg_arg: NAME | STAR
+STAR: "*"
+
+RENDER_TYPE: "table" | "bar" | "line" | "histogram" | "timeline" | "scatter"
+
+duration: NUMBER DUR_UNIT
+DUR_UNIT: "us" | "ms" | "s" | "m" | "h" | "d"
+
+// Boolean expressions — каноническая precedence: not > and > or.
+expr: or_expr
+
+or_expr: and_expr (OR and_expr)*
+OR: "or"
+
+and_expr: not_expr (AND not_expr)*
+AND: "and"
+
+not_expr: NOT not_expr  -> not_expr
+        | comparison
+
+NOT: "not"
+
+comparison: term CMP_OP term       -> binary_cmp
+          | term IN_KW "(" value_list ")" -> in_cmp
+          | "(" expr ")"           -> paren
+          | term                   -> bare_term
+
+IN_KW: "in"
+
+CMP_OP: "==" | "!=" | "<=" | ">=" | "<" | ">"
+      | "startswith" | "endswith" | "contains" | "matches"
+
+term: STRING               -> string_lit
+    | duration             -> duration_lit
+    | NUMBER               -> number_lit
+    | NAME                 -> ident
+
+value_list: term ("," term)*
+
+NAME: /[A-Za-zА-Яа-яёЁ_][A-Za-z0-9А-Яа-яёЁ_:]*/
+STRING: /"(?:[^"\\]|\\.)*"/
+NUMBER: /-?\d+(?:\.\d+)?/
+INT: /\d+/
+
+COMMENT: /\/\/[^\n]*/
+%ignore COMMENT
+%ignore /[ \t\r\n]+/
