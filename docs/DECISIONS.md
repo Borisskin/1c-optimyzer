@@ -92,3 +92,85 @@
 **Decision.** README, ADR, QUESTIONS, ARCHITECT_NOTES, code comments — на русском. Имена функций/классов/переменных — на английском. Pydantic-поля и DuckDB-колонки — на английском.
 
 **Consequences.** + Внутренняя команда на русском, документация легче пишется и читается. + Code identifiers — стандарт индустрии, не вызывает trouble при поиске в Stack Overflow / документации DuckDB/Tauri.
+
+---
+
+## ADR-009 — UI Language Policy: hardcoded ru-RU
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Дизайн-концепт `design/opt/*.jsx` написан на английском как визуальная спецификация. Целевая аудитория Module 1 — русскоязычные 1С-эксперты и DBA. Подключать i18n framework (react-i18next/lingui) ради одного locale — избыточно для standalone-tool.
+
+**Decision.** Все UI strings — на русском, hardcoded в `frontend/src/i18n/ru.ts` как hierarchical const tree. Дополнительный helper `format()` для подстановки `{placeholders}`. Дизайн-файлы `design/opt/*.jsx` остаются английскими как visual reference (см. `design/README.md`).
+
+**Consequences.** + Минимум boilerplate. + Compile-time проверка ключей через TypeScript. − Если в Module 2+ появится международная аудитория, потребуется миграция на i18n framework. Структура `t.section.key` совместима с типовыми API (i18next ожидает дотированные ключи, миграция тривиальна).
+
+---
+
+## ADR-010 — Folder ingestion = primary (и единственный в UI) источник Module 1
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Discovery 2026-05-18 показал: реальные пользователи держат ТЖ как структуру папок (`rphost_NNNN/YYMMDDHH.log`), а не zip-архивы. Никто не пакует логи специально перед анализом. Поддержка ZIP в UI = лишний UX-шаг (распаковать → распарсить) на 12 GiB.
+
+**Decision.** UI Module 1 показывает одну кнопку «Загрузить папку с логами…» и принимает drag-and-drop **только папок** (файлы отклоняются с toast). Backend RPC `load_archive(zip_path)` остаётся как deprecated entry для:
+- backwards compat с Sprint 0 тестовыми fixtures;
+- возможного импорта от техподдержки 1С (если пользовательский запрос).
+
+В Sprint 1 ZIP не появляется в UI ни в каком виде.
+
+**Consequences.** + Чистый UX: один способ загрузки. + Рабочий код Sprint 0 не выбрасывается. + Backend остаётся гибким для будущего. − Пользователь, получивший логи в ZIP, должен распаковать вручную (30 секунд через 7-Zip).
+
+---
+
+## ADR-011 — DuckDB Appender API: Arrow Table batches
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Sprint 0 использовал `executemany` для bulk insert. На 100K событий это занимало 50+ секунд на Windows — каждая строка идёт отдельной транзакцией. Для 12 GiB корпуса (потенциально 100M+ событий) это нереализуемо.
+
+DuckDB Python 1.5.2 не предоставляет row-by-row Appender API. Native bulk-path — через registered Arrow Table или DataFrame.
+
+**Decision.** `AppenderHandle` оборачивает buffered batches (default 10K rows) → Arrow Table → `conn.register("_appender_batch", table)` + `INSERT INTO events SELECT * FROM _appender_batch`. Indexes создаются ПОСЛЕ полного bulk insert через `create_indexes()`. PRIMARY KEY на `id` снят (uniqueness гарантирована Python-логикой; constraint check замедляет вставку).
+
+Backend dependency: `pyarrow>=15`.
+
+**Consequences.** + 10K events в <1 сек (100× ускорение vs executemany). + Контекстный менеджер с автоматическим flush и cleanup. + Buffer drop при exception (partial state guard — следующий ingest не упирается в PK-конфликт). − Дополнительная dependency `pyarrow` (~80 МБ в bundle). − ID uniqueness теперь только в коде, не в DB; компромисс ради скорости.
+
+---
+
+## ADR-012 — Streaming parser с byte-weighted progress
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Discovery показал highly skewed distribution: 87% всего объёма (12 GiB) в одном rphost-файле (10.23 GiB). File-count progress даст ложное «27/28 готово = 96%», после чего ingest подвиснет на 5–10 минут.
+
+**Decision.** Парсер работает построчно через buffered `Path.open(buffering=1 MiB)` + line iterator (`iter_raw_events_lines`). Прогресс репортится в **байтах** через JSON-RPC notifications (без id) с polynomial throttle (250 ms = ~4 emit/sec). Sidecar Rust routit notifications через Tauri event `rpc-notification:progress`, frontend подписан и обновляет ProgressCard + StatusBar inline.
+
+**Consequences.** + Honest UX: пользователь видит реальный progress по байтам. + Streaming не загружает 10 GiB в память — peak RSS << 500 МБ (sanity-check в acceptance gate). − Cancellation token не реализован в Sprint 1 (кнопка «Отменить» disabled с tooltip «Sprint 2»). − Throttle мешает unit-тестам — обходится `force=True` или `throttle_ms=0`.
+
+---
+
+## ADR-013 — Tauri 2 native drag-drop API
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Sprint 0 DropZone использовал DOM listeners (`window.addEventListener("drop", ...)`). В Tauri 2 webview перехватывает file-drag events и эмитит их через свой канал; DOM drop не получает path к файлу/папке. Это был известный bug Sprint 0 (drag-drop ничего не делал).
+
+**Decision.** `tauri.conf.json` → `windows[].dragDropEnabled: true`. DropZone подписан на `tauri://drag-enter`/`tauri://drag-over`/`tauri://drag-leave`/`tauri://drag-drop` events. На drop вызывается Tauri command `classify_path(path)` → `{kind: "folder" | "file" | "missing"}`; при `folder` — `load_directory(path)`, при `file` — toast «Перетащите папку, не файл», при `missing` — toast «Папка не найдена».
+
+**Consequences.** + Drag-drop работает корректно. + Чёткое разграничение валидных таргетов. − DOM-listeners в коде остаются неактивны (для drop-events), но не мешают. Их сохранение лишает refactor этой части — не критично.
+
+---
+
+## ADR-014 — process_role как first-class column
+
+**Status:** Accepted (Sprint 1)
+
+**Context.** Discovery показал 6 типов процессов 1С (rphost, rmngr, ragent, 1cv8c, 1cv8s, 1cv8). Эти роли определяются по имени родительской папки (case-insensitive regex `^(1cv8c|1cv8s|1cv8|ragent|rmngr|rphost)_(\d+)$`) и являются значимой dimension для OQL-фильтров (`where role == "rphost"`).
+
+**Decision.** В schema DuckDB `events` добавлен столбец `process_role VARCHAR` + индекс `idx_events_role`. `process_pid` теперь хранит pid из имени папки (NNNN часть), не OSThread из event. OSThread попадает в `extra` JSON. ParsedEvent dataclass получает `process_role: str = "unknown"`. OQL compiler разрешает алиас `role` → `process_role` и `pid` → `process_pid`.
+
+Регистр имени папки приводится к lowercase в результате (1CV8C_NNNN → role="1cv8c").
+
+**Consequences.** + Естественный OQL для типичных вопросов: «покажи дедлоки только в rphost», «summarize by role». + Streamlined schema. − Backwards-incompatible: Sprint 0 значения `process_pid` (из OSThread) другие в новой схеме (из folder). Sprint 0 тесты переписаны или адаптированы.
