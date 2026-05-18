@@ -5,6 +5,7 @@ import { HeatmapChart } from "@/components/charts";
 import type { HeatmapCell } from "@/components/charts";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 type Metric = "count" | "total_duration_ms" | "peak_duration_ms" | "error_count";
@@ -14,14 +15,16 @@ interface Props {
 }
 
 export function ActivityHeatmapScreen({ archiveId }: Props) {
+  const filters = useAppStore((s) => s.filters);
+  const setFilters = useAppStore((s) => s.setFilters);
   const [metric, setMetric] = useState<Metric>("count");
 
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewActivityHeatmap(archiveId, undefined, metric)
+        ? backend.viewActivityHeatmap(archiveId, filtersToDto(filters), metric)
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, metric],
+    [archiveId, filters, metric],
   );
 
   const cells: HeatmapCell[] = useMemo(() => {
@@ -66,6 +69,26 @@ export function ActivityHeatmapScreen({ archiveId }: Props) {
                 ? (v / 1000).toFixed(1) + " с"
                 : v.toLocaleString("ru-RU")
             }
+            onCellClick={(cell) => {
+              // Cross-filter: устанавливаем time range на выбранный час.
+              // Без знания даты архива используем "сегодня" как маркер;
+              // для real-data backend проигнорирует out-of-range cells.
+              const today = new Date();
+              const dayOffset = cell.y; // 0 = Mon, 1 = Tue, ...
+              const monday = new Date(today);
+              monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+              monday.setHours(0, 0, 0, 0);
+              const start = new Date(monday);
+              start.setDate(monday.getDate() + dayOffset);
+              start.setHours(cell.x, 0, 0, 0);
+              const end = new Date(start);
+              end.setHours(start.getHours() + 1);
+              setFilters({
+                time_from: start.toISOString(),
+                time_to: end.toISOString(),
+                source_view: "activity",
+              });
+            }}
           />
         )}
       </div>

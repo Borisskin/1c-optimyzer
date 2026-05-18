@@ -3,6 +3,7 @@ import { backend } from "@/api/backend";
 import { DonutChart } from "@/components/charts";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -10,12 +11,14 @@ interface Props {
 }
 
 export function ProcessRolesScreen({ archiveId }: Props) {
+  const filters = useAppStore((s) => s.filters);
+  const setFilters = useAppStore((s) => s.setFilters);
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewProcessRoles(archiveId)
+        ? backend.viewProcessRoles(archiveId, filtersToDto(filters))
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId],
+    [archiveId, filters],
   );
 
   const { donutData, tableRows } = useMemo(() => {
@@ -43,7 +46,14 @@ export function ProcessRolesScreen({ archiveId }: Props) {
           {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
           {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
           {archiveId && !error && (
-            <DonutChart data={donutData} isLoading={loading} height={260} />
+            <DonutChart
+              data={donutData}
+              isLoading={loading}
+              height={260}
+              onSliceClick={(slice) =>
+                setFilters({ process_role: slice.label, source_view: "process-roles" })
+              }
+            />
           )}
         </div>
 

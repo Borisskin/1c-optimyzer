@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { backend } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -10,13 +11,14 @@ interface Props {
 }
 
 export function ErrorsFeedScreen({ archiveId }: Props) {
+  const filters = useAppStore((s) => s.filters);
   const [filter, setFilter] = useState<"all" | "EXCP" | "TDEADLOCK" | "TLOCK">("all");
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewErrorsFeed(archiveId)
+        ? backend.viewErrorsFeed(archiveId, filtersToDto(filters))
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId],
+    [archiveId, filters],
   );
 
   const rows = useMemo(() => {

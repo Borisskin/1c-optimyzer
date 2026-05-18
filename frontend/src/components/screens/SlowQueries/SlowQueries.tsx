@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { backend } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -9,12 +10,13 @@ interface Props {
 }
 
 export function SlowQueriesScreen({ archiveId }: Props) {
+  const filters = useAppStore((s) => s.filters);
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewSlowQueries(archiveId, undefined, "total_duration", 100)
+        ? backend.viewSlowQueries(archiveId, filtersToDto(filters), "total_duration", 100)
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId],
+    [archiveId, filters],
   );
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
