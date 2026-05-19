@@ -56,25 +56,6 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
     };
   }, [archiveId, anatomyKind, targetId, JSON.stringify(features)]);
 
-  const retryAi = () => {
-    if (!archiveId || !targetId) return;
-    setAiLoading(true);
-    setAi(null);
-    backend
-      .explainerAi(
-        archiveId,
-        anatomyKind,
-        targetId,
-        anatomyData,
-        rule?.rule_id ?? null,
-        rule?.body ?? null,
-        true, // force_refresh
-      )
-      .then((res) => setAi(res))
-      .catch(() => setAi({ ok: false, error: "AI call failed" }))
-      .finally(() => setAiLoading(false));
-  };
-
   // Если ни rule ни AI ничего не дали — компактное сообщение
   if (rule && !rule.matched && !aiLoading && (!ai || !ai.ok)) {
     return (
@@ -97,43 +78,12 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
       <div style={titleStyle}>
         <span style={iconStyle}>💡</span>
         {rule?.matched ? rule.title : "Объяснение"}
+        {/* Spinner пока генерируется AI-ответ — единственный visible сигнал.
+            Cache hit отдаётся за ~10ms и spinner едва мелькает; новая генерация
+            занимает 3-15 сек и spinner информативен. Бейджи "AI/кеш/токены"
+            убраны — это технические детали для разработчика, а не для юзера. */}
         {aiLoading && (
-          <span style={aiLoadingStyle}>AI генерирует развёрнутый ответ…</span>
-        )}
-        {ai?.ok && ai.from_cache && (
-          <span
-            style={cacheBadgeStyle}
-            title={formatCacheBadgeTitle(ai)}
-          >
-            ✓ из кеша{ai.created_at ? ` · ${formatRelative(ai.created_at)}` : ""}
-          </span>
-        )}
-        {ai?.ok && !ai.from_cache && (
-          <span
-            style={aiBadgeStyle}
-            title={`Модель: ${ai.model} · ${ai.tokens_in} in / ${ai.tokens_out} out · ${ai.elapsed_ms?.toFixed(0)}мс`}
-          >
-            AI · только что
-          </span>
-        )}
-        {/* Refresh: видим всегда когда AI ответ есть (даже из кеша) —
-            принудительно перегенерировать. Если AI ещё не отвечал и rule
-            matched — кнопка не нужна. */}
-        {ai?.ok && (
-          <button
-            type="button"
-            style={refreshBtnStyle}
-            onClick={retryAi}
-            title="Перегенерировать AI (вызовет API заново)"
-          >
-            ↻
-          </button>
-        )}
-        {/* Retry показываем только если rule НЕ matched и AI fail. */}
-        {ai && !ai.ok && !rule?.matched && (
-          <button type="button" style={retryBtnStyle} onClick={retryAi}>
-            ↻ Повторить AI
-          </button>
+          <span style={aiLoadingStyle}>генерируется развёрнутое объяснение…</span>
         )}
       </div>
 
@@ -160,29 +110,6 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
       )}
     </div>
   );
-}
-
-function formatRelative(iso: string): string {
-  const created = new Date(iso);
-  const now = new Date();
-  const sec = Math.max(0, (now.getTime() - created.getTime()) / 1000);
-  if (sec < 60) return `${Math.round(sec)} сек назад`;
-  if (sec < 3600) return `${Math.round(sec / 60)} мин назад`;
-  if (sec < 86400) return `${Math.round(sec / 3600)} ч назад`;
-  return `${Math.round(sec / 86400)} д назад`;
-}
-
-function formatCacheBadgeTitle(ai: AiExplanationResult): string {
-  const parts = [
-    `Ответ из кеша — Anthropic API не вызывался.`,
-    `Модель: ${ai.model ?? "—"}`,
-    `Токенов: ${ai.tokens_in ?? 0} in / ${ai.tokens_out ?? 0} out`,
-  ];
-  if (ai.created_at) {
-    parts.push(`Сгенерировано: ${ai.created_at.replace("T", " ").slice(0, 19)}`);
-  }
-  parts.push(`Клик ↻ — перегенерировать (вызовет API).`);
-  return parts.join("\n");
 }
 
 function Markdown({ text }: { text: string }) {
@@ -302,60 +229,6 @@ const aiLoadingStyle: CSSProperties = {
   fontStyle: "italic",
 };
 
-const aiBadgeStyle: CSSProperties = {
-  marginLeft: 8,
-  padding: "2px 8px",
-  background: "#F59E0B",
-  color: "#fff",
-  borderRadius: 10,
-  fontSize: 10,
-  fontFamily: "var(--o-font-mono)",
-  fontWeight: 600,
-};
-
-// Cache badge — зелёный, чтобы пользователь сразу видел что API не вызывался.
-const cacheBadgeStyle: CSSProperties = {
-  marginLeft: 8,
-  padding: "2px 8px",
-  background: "#10B981",
-  color: "#fff",
-  borderRadius: 10,
-  fontSize: 10,
-  fontFamily: "var(--o-font-mono)",
-  fontWeight: 600,
-  cursor: "default",
-};
-
-// Маленькая круглая кнопка ↻ — refresh AI принудительно (force_refresh).
-// Видна когда AI ответ уже есть. Дешевле чем большая "Повторить AI",
-// потому что обычно её жмут редко.
-const refreshBtnStyle: CSSProperties = {
-  marginLeft: 4,
-  width: 20,
-  height: 20,
-  padding: 0,
-  border: "1px solid #FDE68A",
-  borderRadius: "50%",
-  background: "transparent",
-  color: "#92400E",
-  fontSize: 11,
-  lineHeight: 1,
-  cursor: "pointer",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const retryBtnStyle: CSSProperties = {
-  marginLeft: "auto",
-  padding: "2px 8px",
-  background: "transparent",
-  border: "1px solid #FDE68A",
-  borderRadius: 3,
-  color: "#92400E",
-  fontSize: 10.5,
-  cursor: "pointer",
-};
 
 const aiBodyStyle: CSSProperties = {
   color: "#451A03",
