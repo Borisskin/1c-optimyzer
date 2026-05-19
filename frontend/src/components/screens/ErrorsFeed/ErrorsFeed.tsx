@@ -101,16 +101,22 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
                         className={`${vshellStyles.clickable}`}
                         onClick={toggle}
                       >
-                        <td className={vshellStyles.mono}>{formatTs(row[idx["ts"]])}</td>
-                        <td>
+                        <td className={vshellStyles.mono} style={nowrapCell}>
+                          {formatTs(row[idx["ts"]])}
+                        </td>
+                        <td style={nowrapCell}>
                           <span style={badgeStyle(tone)}>{String(row[idx["event_type"]] ?? "")}</span>
                         </td>
-                        <td>{String(row[idx["process_role"]] ?? "—")}</td>
-                        <td className={vshellStyles.mono}>{String(row[idx["process_pid"]] ?? "—")}</td>
+                        <td style={nowrapCell}>{String(row[idx["process_role"]] ?? "—")}</td>
+                        <td className={vshellStyles.mono} style={nowrapCell}>
+                          {String(row[idx["process_pid"]] ?? "—")}
+                        </td>
                         <td style={contextCellStyle}>
                           <span style={contextTextStyle(isExpanded)}>{context || "—"}</span>
                         </td>
-                        <td className={vshellStyles.mono}>{fmtMs(row[idx["duration_ms"]])}</td>
+                        <td className={vshellStyles.mono} style={nowrapCell}>
+                          {fmtMs(row[idx["duration_ms"]])}
+                        </td>
                       </tr>
                       {isExpanded && context && (
                         <tr className={vshellStyles.expandRow}>
@@ -176,9 +182,17 @@ function fmtMs(v: unknown): string {
   return v.toFixed(1);
 }
 
+// Колонка контекста — единственная без nowrap; забирает остаток ширины
+// после того, как короткие колонки (ts/type/role/pid/ms) заняли свой
+// natural width.
 const contextCellStyle: CSSProperties = {
   maxWidth: 0,
   width: "100%",
+  overflow: "hidden",
+};
+
+const nowrapCell: CSSProperties = {
+  whiteSpace: "nowrap",
 };
 
 function contextTextStyle(expanded: boolean): CSSProperties {
