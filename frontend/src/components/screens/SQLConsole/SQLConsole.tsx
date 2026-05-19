@@ -349,9 +349,13 @@ function EmptyState({
     };
     const verb = verbMap[archive.status] ?? t.sql.archiveLoading.parsing;
     const bytesTotal = ingest?.bytes_total ?? archive.size_bytes ?? 0;
+    // Percent — из сырого bytes_done, без useAnimatedCounter. Это синхронизирует
+    // отображение с ProgressCard, который тоже использует raw bytes_done.
+    // liveBytes остаётся анимированным для красоты счётчика выше.
+    const rawBytesDone = ingest?.bytes_done ?? 0;
     const percent =
       bytesTotal > 0
-        ? Math.min(100, (liveBytes / bytesTotal) * 100)
+        ? Math.min(100, (rawBytesDone / bytesTotal) * 100)
         : archive.progress * 100;
     return (
       <div className={styles.empty}>

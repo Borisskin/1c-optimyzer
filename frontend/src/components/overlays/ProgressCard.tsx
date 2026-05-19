@@ -72,8 +72,11 @@ function ProgressCardBody({ ingest, onMinimize }: { ingest: ProgressEvent; onMin
 
   const animatedEvents = useAnimatedCounter(ingest.events_inserted, isActive);
   const animatedBytes = useAnimatedCounter(ingest.bytes_done, isActive);
+  // Percent — из СЫРОГО bytes_done, без useAnimatedCounter. Иначе разные
+  // экземпляры hook'а (этот компонент и EmptyState в SQL Console) показывают
+  // расхождение в % из-за рассинхрона их внутренних анимаций.
   const percent =
-    ingest.bytes_total > 0 ? Math.min(100, (animatedBytes / ingest.bytes_total) * 100) : 0;
+    ingest.bytes_total > 0 ? Math.min(100, (ingest.bytes_done / ingest.bytes_total) * 100) : 0;
 
   const dotClass = isDone
     ? styles.dot_done
