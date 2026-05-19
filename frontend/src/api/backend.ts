@@ -208,6 +208,128 @@ export interface ViewResult {
   bucket?: string;
 }
 
+interface SubTable {
+  columns: QueryColumn[];
+  rows: unknown[][];
+  row_count: number;
+}
+
+export interface OperationAnatomyResult {
+  ok: boolean;
+  error?: string;
+  summary: {
+    operation: string;
+    found: boolean;
+    total_events?: number;
+    total_duration_ms?: number;
+    avg_duration_ms?: number;
+    max_duration_ms?: number;
+    min_duration_ms?: number;
+    unique_sessions?: number;
+    unique_processes?: number;
+    process_roles?: string | null;
+    exception_count?: number;
+    lock_count?: number;
+    sql_count?: number;
+    first_seen?: string | null;
+    last_seen?: string | null;
+  };
+  timeline: SubTable;
+  breakdown: Array<{
+    event_type: string;
+    events: number;
+    total_duration_ms: number;
+    avg_duration_ms: number;
+  }>;
+  top_sql: SubTable;
+  related_exceptions: SubTable;
+}
+
+export interface RuleClassifyResult {
+  ok: boolean;
+  matched: boolean;
+  rule_id?: string;
+  title?: string;
+  body?: string;
+  priority?: number;
+  error?: string;
+}
+
+export interface AiExplanationResult {
+  ok: boolean;
+  text?: string;
+  from_cache?: boolean;
+  model?: string;
+  tokens_in?: number;
+  tokens_out?: number;
+  elapsed_ms?: number;
+  created_at?: string;
+  enabled?: boolean;
+  error?: string;
+}
+
+export interface ExplainerStatus {
+  ok: boolean;
+  ai_enabled: boolean;
+  model: string | null;
+  rules_count: number;
+  cache_entries: number;
+}
+
+export interface DeadlockAnatomyResult {
+  ok: boolean;
+  error?: string;
+  found: boolean;
+  event_id?: number;
+  event?: {
+    id: number;
+    ts: string;
+    session_id: number | null;
+    user_name: string | null;
+    process_role: string | null;
+    process_pid: number | null;
+    context: string | null;
+    context_normalized: string | null;
+    duration_ms: number | null;
+  };
+  parsed_extra?: {
+    regions: Array<{ raw: string; object_name: string; mode: string | null }>;
+    wait_connections: string[];
+    edges: Array<{ waiter: string; blocker: string; resource: string }>;
+    raw_extra: Record<string, unknown>;
+    _parse_error?: boolean;
+  };
+  participants?: string[];
+  surrounding?: SubTable & { window_seconds: number };
+}
+
+export interface SessionAnatomyResult {
+  ok: boolean;
+  error?: string;
+  summary: {
+    session_id: number;
+    found: boolean;
+    total_events?: number;
+    users?: string | null;
+    process_roles?: string | null;
+    process_pids?: string | null;
+    distinct_operations?: number;
+    total_duration_ms?: number;
+    exception_count?: number;
+    lock_count?: number;
+    sql_count?: number;
+    first_seen?: string | null;
+    last_seen?: string | null;
+  };
+  timeline: SubTable;
+  breakdown: Array<{
+    event_type: string;
+    events: number;
+    total_duration_ms: number;
+  }>;
+  top_sql: SubTable;
+}
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -264,6 +386,50 @@ export const backend = {
     rpc<ViewResult>("view_errors_feed", { archive_id, filters, limit }),
   viewActivityHeatmap: (archive_id: string, filters?: ViewFiltersDto, metric = "count") =>
     rpc<ViewResult>("view_activity_heatmap", { archive_id, filters, metric }),
+
+  // Top Business Operations (Sprint 3 Phase B)
+  viewTopBusinessOperations: (
+    archive_id: string,
+    filters?: ViewFiltersDto,
+    sort_by = "total_duration_ms",
+    limit = 100,
+  ) =>
+    rpc<ViewResult>("view_top_business_operations", { archive_id, filters, sort_by, limit }),
+
+  // Operation / Session Anatomy (Sprint 3 Phase C)
+  viewOperationAnatomy: (archive_id: string, operation: string) =>
+    rpc<OperationAnatomyResult>("view_operation_anatomy", { archive_id, operation }),
+  viewSessionAnatomy: (archive_id: string, session_id: number) =>
+    rpc<SessionAnatomyResult>("view_session_anatomy", { archive_id, session_id }),
+
+  // Deadlock Anatomy (Sprint 3 Phase D)
+  viewListDeadlocks: (archive_id: string, limit = 200) =>
+    rpc<ViewResult>("view_list_deadlocks", { archive_id, limit }),
+  viewDeadlockAnatomy: (archive_id: string, event_id: number, window_seconds = 30) =>
+    rpc<DeadlockAnatomyResult>("view_deadlock_anatomy", { archive_id, event_id, window_seconds }),
+
+  // Explainer engine (Sprint 3 Phase E/F)
+  explainerClassify: (
+    archive_id: string,
+    anatomy_kind: string,
+    target_id: string,
+    features: Record<string, unknown>,
+  ) =>
+    rpc<RuleClassifyResult>("explainer_classify", { archive_id, anatomy_kind, target_id, features }),
+  explainerAi: (
+    archive_id: string,
+    anatomy_kind: string,
+    target_id: string,
+    anatomy_data: Record<string, unknown>,
+    rule_id: string | null,
+    rule_body: string | null,
+    force_refresh = false,
+  ) =>
+    rpc<AiExplanationResult>("explainer_ai", {
+      archive_id, anatomy_kind, target_id, anatomy_data, rule_id, rule_body, force_refresh,
+    }),
+  explainerStatus: () => rpc<ExplainerStatus>("explainer_status"),
+  explainerReloadRules: () => rpc<{ ok: boolean; rules_count: number }>("explainer_reload_rules"),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),

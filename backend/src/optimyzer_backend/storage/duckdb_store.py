@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS events (
     session_id INTEGER,
     user_name VARCHAR,
     context VARCHAR,
+    context_normalized VARCHAR,
     process VARCHAR,
     process_role VARCHAR,
     process_pid INTEGER,
@@ -44,6 +45,7 @@ INDEX_DDL = [
     "CREATE INDEX IF NOT EXISTS idx_events_duration ON events(archive_id, duration_us);",
     "CREATE INDEX IF NOT EXISTS idx_events_sql_hash ON events(archive_id, sql_text_hash);",
     "CREATE INDEX IF NOT EXISTS idx_events_role ON events(archive_id, process_role);",
+    "CREATE INDEX IF NOT EXISTS idx_events_ctx_norm ON events(archive_id, context_normalized);",
 ]
 
 EVENT_COLUMNS = [
@@ -55,6 +57,7 @@ EVENT_COLUMNS = [
     "session_id",
     "user_name",
     "context",
+    "context_normalized",
     "process",
     "process_role",
     "process_pid",
@@ -102,6 +105,31 @@ def get_active_connection(archive_id: str) -> duckdb.DuckDBPyConnection | None:
 
 
 DEFAULT_BATCH_SIZE = 10_000
+
+
+def _migrate_context_normalized(conn: duckdb.DuckDBPyConnection) -> None:
+    """Sprint 3 — idempotent add column + backfill из raw context.
+
+    Использует regexp_replace в DuckDB чтобы извлечь часть до ':' (если он есть).
+    Один проход, безопасно для уже-мигрированных архивов (WHERE NULL фильтр).
+    """
+    cols = {row[1] for row in conn.execute("PRAGMA table_info('events')").fetchall()}
+    if "context_normalized" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN context_normalized VARCHAR")
+    # Backfill только незаполненных строк (idempotent).
+    # DuckDB regexp_replace: ^([^:]+?)(\\s*:.*)?$ -> \\1 даёт префикс до ':'.
+    conn.execute(
+        """
+        UPDATE events
+        SET context_normalized = trim(regexp_replace(context, '^([^:]+?)(\\s*:.*)?$', '\\1'))
+        WHERE context IS NOT NULL
+          AND context <> ''
+          AND context_normalized IS NULL
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_events_ctx_norm ON events(archive_id, context_normalized)"
+    )
 
 
 class AppenderHandle:
@@ -190,6 +218,7 @@ class DuckDBStore:
         if self._conn is None:
             self._conn = duckdb.connect(str(self.db_path))
             self._conn.execute(SCHEMA_DDL)
+            _migrate_context_normalized(self._conn)
             register_active_connection(self.archive_id, self._conn)
         return self._conn
 

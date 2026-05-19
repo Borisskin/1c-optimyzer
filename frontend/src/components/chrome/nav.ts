@@ -14,7 +14,8 @@ export interface NavItem {
 const futureTooltip = "Доступно в будущих обновлениях";
 
 export const NAV_ITEMS: NavItem[] = [
-  // ----- ANALYZE (Sprint 2 active set) -----
+  // ----- ANALYZE (Sprint 2 + Sprint 3 active set) -----
+  { id: "operations",    label: t.sidebar.items.operations,    icon: "Layers",     group: "analyze", enabled: true },
   { id: "sql",           label: t.sidebar.items.sql,           icon: "Terminal",   group: "analyze", enabled: true },
   { id: "slow-queries",  label: t.sidebar.items.slowQueries,   icon: "Database",   group: "analyze", enabled: true },
   { id: "locks",         label: t.sidebar.items.locksView,     icon: "Lock",       group: "analyze", enabled: true },

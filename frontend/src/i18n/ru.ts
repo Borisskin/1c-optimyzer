@@ -60,6 +60,7 @@ export const t = {
     },
     items: {
       sql: "SQL Console",
+      operations: "Бизнес-операции",
       slowQueries: "Медленные запросы",
       locksView: "Блокировки",
       processRoles: "Роли процессов",

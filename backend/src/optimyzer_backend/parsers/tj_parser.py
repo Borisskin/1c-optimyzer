@@ -54,6 +54,38 @@ KNOWN_EVENT_TYPES: frozenset[str] = frozenset(
 )
 
 
+# Sprint 3 — нормализация поля Context.
+# Сырой context часто выглядит как `Тип.Имя.Сущность : <line> : <statement>`,
+# где `: <line> : <statement>` — позиция внутри модуля. Для group by нужна
+# семантическая часть до первого ':' — она идентифицирует операцию платформы
+# и стабильна между ревизиями кода.
+#
+# Examples:
+#   'Документ.РеализацияТоваровУслуг.МодульОбъекта : 123 : Result = ...'
+#     -> 'Документ.РеализацияТоваровУслуг.МодульОбъекта'
+#   'ВнешняяОбработка.Foo.Форма.MainForm.Форма : 546 : ...'
+#     -> 'ВнешняяОбработка.Foo.Форма.MainForm.Форма'
+_CONTEXT_NORMALIZE_RE = re.compile(r"^([^:]+?)(?:\s*:.*)?$", re.DOTALL)
+
+
+def normalize_context(raw_context: str | None) -> str | None:
+    """Извлекает 'Тип.Имя.Сущность' из сырого `Context` поля ТЖ.
+
+    Возвращает None, если на входе None/пусто. Все ведущие и хвостовые
+    пробелы (включая переносы строк) обрезаются. Если ':' нет вообще —
+    возвращается стрипанный исходник.
+    """
+    if not raw_context:
+        return None
+    stripped = raw_context.strip()
+    if not stripped:
+        return None
+    match = _CONTEXT_NORMALIZE_RE.match(stripped)
+    if not match:
+        return stripped
+    return match.group(1).strip() or None
+
+
 @dataclass
 class RawEvent:
     """Сырое событие — после lexer'а, до интерпретации."""
@@ -80,6 +112,7 @@ class ParsedEvent:
     session_id: int | None = None
     user_name: str | None = None
     context: str | None = None
+    context_normalized: str | None = None
     process: str | None = None
     process_role: str = "unknown"
     process_pid: int | None = None
@@ -105,6 +138,7 @@ class ParsedEvent:
             self.session_id,
             self.user_name,
             self.context,
+            self.context_normalized,
             self.process,
             self.process_role,
             self.process_pid,
@@ -294,6 +328,7 @@ def interpret(
     session_id = _to_int(f.get("t:clientID") or f.get("SessionID") or f.get("Sid"))
     user_name = f.get("Usr") or f.get("UserName")
     context = f.get("Context")
+    context_norm = normalize_context(context)
 
     sql_text: str | None = None
     sql_norm: str | None = None
@@ -333,6 +368,7 @@ def interpret(
         session_id=session_id,
         user_name=user_name,
         context=context,
+        context_normalized=context_norm,
         process=process,
         process_role=process_role,
         process_pid=file_pid,

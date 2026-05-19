@@ -7,6 +7,8 @@ from typing import Any
 from optimyzer_backend.rpc.dispatcher import rpc
 from optimyzer_backend.rpc.handlers import _ARCHIVES
 from optimyzer_backend.sql.executor import SQLExecutionError
+from optimyzer_backend.sql.anatomy import get_operation_anatomy, get_session_anatomy
+from optimyzer_backend.sql.deadlock_anatomy import get_deadlock_anatomy, list_deadlocks
 from optimyzer_backend.sql.views import (
     ViewFilters,
     activity_heatmap,
@@ -15,6 +17,7 @@ from optimyzer_backend.sql.views import (
     locks_timeline,
     process_roles,
     slow_queries,
+    top_business_operations,
 )
 
 
@@ -121,4 +124,76 @@ def view_activity_heatmap(
     return _wrap(
         archive_id,
         lambda: activity_heatmap(archive_id, _filters_from_params(filters), metric=metric),
+    )
+
+
+@rpc("view_top_business_operations")
+def view_top_business_operations(
+    archive_id: str,
+    filters: dict[str, Any] | None = None,
+    sort_by: str = "total_duration_ms",
+    limit: int = 100,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: top_business_operations(
+            archive_id, _filters_from_params(filters), sort_by=sort_by, limit=limit
+        ),
+    )
+
+
+@rpc("view_operation_anatomy")
+def view_operation_anatomy(
+    archive_id: str,
+    operation: str,
+    timeline_limit: int = 50,
+    top_sql_limit: int = 20,
+    exception_limit: int = 30,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: get_operation_anatomy(
+            archive_id,
+            operation,
+            timeline_limit=timeline_limit,
+            top_sql_limit=top_sql_limit,
+            exception_limit=exception_limit,
+        ),
+    )
+
+
+@rpc("view_session_anatomy")
+def view_session_anatomy(
+    archive_id: str,
+    session_id: int,
+    timeline_limit: int = 200,
+    top_sql_limit: int = 20,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: get_session_anatomy(
+            archive_id,
+            session_id,
+            timeline_limit=timeline_limit,
+            top_sql_limit=top_sql_limit,
+        ),
+    )
+
+
+@rpc("view_list_deadlocks")
+def view_list_deadlocks(archive_id: str, limit: int = 200) -> dict[str, Any]:
+    return _wrap(archive_id, lambda: list_deadlocks(archive_id, limit=limit))
+
+
+@rpc("view_deadlock_anatomy")
+def view_deadlock_anatomy(
+    archive_id: str,
+    event_id: int,
+    window_seconds: int = 30,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: get_deadlock_anatomy(
+            archive_id, event_id, window_seconds=window_seconds
+        ),
     )
