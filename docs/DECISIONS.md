@@ -273,3 +273,60 @@ Universal STOP RULES (копируются дословно в каждый prom
 - Real-data acceptance gate — блокирующее условие
 
 **Consequences.** + Дисциплинированный scope: STOP RULE «не расширять scope после достижения GOAL» прямо запрещает Sprint 1-style scope drift. + Pragmatic decisions: ranked options ускоряют обмен с владельцем. + Rollback safety: VERIFY с rollback планом обязателен для destructive phases. − Minor authoring overhead (8 sections vs free-form). − Sprint 0-2 promt'ы остаются как historical artefacts; ретроактивная переписка не делается.
+
+
+---
+
+## ADR-022 — Курс 1С:Эксперт как canonical roadmap reference
+
+**Status:** Accepted (Sprint 3)
+
+**Context.** До Sprint 3 product scope определялся ситуативно — что просит Сергей, что выглядит логичным расширением. Это работало в Sprint 0-2 (минимальный продукт + 6 views), но к Sprint 3 появилась нужда в чётком критерии "что включаем / что не включаем" — иначе scope бесконечно растёт.
+
+**Decision.** Программа курса 1С:Эксперт по технологическим вопросам (УЦ № 1, фирма 1С) принимается как **canonical roadmap reference**. Mapping каждой фичи на пункты программы зафиксирован в [`docs/FEATURES_TO_EXPERT_CURRICULUM_MAPPING.md`](./FEATURES_TO_EXPERT_CURRICULUM_MAPPING.md) и обновляется при каждом sprint closure.
+
+**Правила:**
+1. Каждая новая фича должна явно mapping'оваться на пункт(ы) программы курса.
+2. Целевое покрытие Module 1 — ~40-45% программы (analytical/diagnostic part).
+3. Stop-list (явный отказ): continuous monitoring, DBA tools, test generation, hardware monitoring, organizational consulting — не делаем в Module 1.
+
+**Consequences.** + Чёткий scope: нет scope creep. + Позиционирование: «1С:Эксперт-в-коробке для middle-программиста 1С». + Self-validation: каждая фича — проверяемая по carнал курса. − Не закрываем 55-60% курса (organizational + Module 2+ + DBA-only). Это осознанный отказ.
+
+---
+
+## ADR-023 — Explainer hybrid architecture (rule + AI)
+
+**Status:** Accepted (Sprint 3 Phase E+F)
+
+**Context.** Sprint 3 ставит цель «1С:Эксперт-в-коробке для middle-программиста». UI должен **объяснять** что произошло, не просто показывать данные. Два подхода:
+
+- **Pure rule-based**: каталог правил с готовыми текстами. Детерминизм, no cost, но ограниченное покрытие edge cases.
+- **Pure AI**: запрос к LLM на каждое объяснение. Гибкость, но latency 3-15 сек, 1915, риск галлюцинаций.
+
+**Decision.** Hybrid:
+
+- **Rule engine** (Phase E) — markdown файлы в `backend/explainers/*.md` с YAML frontmatter. Pattern matcher (==/>=/contains/matches regex). Identifies pattern → возвращает готовый текст. Запускается **мгновенно** на любом anatomy view.
+- **AI explainer** (Phase F) — Claude API call в background. Использует rule body как контекст (передаётся в system prompt). Возвращает conversational explanation на русском за 3-15 сек. Кеш в SQLite (per archive_id+kind+target_id).
+- **UX**: rule показывается сразу при открытии, AI приходит fire-and-forget через несколько секунд и заменяет rule body.
+
+**Consequences.** + Best UX: пользователь видит explanation **сразу**, AI улучшает качество асинхронно. + Контроль расходов: AI кеш = повторный просмотр без cost. + Расширяемость: новые rules — markdown PR, без релиза backend. + Graceful degradation: без API ключа работает только rule-based. − Усложнение: 2 explainer'а вместо 1; UI должен handle оба состояния.
+
+---
+
+## ADR-024 — Backend-only AI calls
+
+**Status:** Accepted (Sprint 3 Phase F)
+
+**Context.** AI explainer требует Claude API key. Два варианта:
+- Ключ в frontend (.env Vite-side) — простая интеграция, fetch напрямую с api.anthropic.com.
+- Ключ в backend (Python sidecar) — все API calls через RPC, frontend никогда не видит ключ.
+
+**Decision.** Ключ **только** в backend. Frontend вызывает `explainer_ai` RPC, backend читает `ANTHROPIC_API_KEY` из env и делает HTTP call.
+
+**Rationale.**
+- Security: ключ не embedding'уется в Tauri bundle, не виден в DevTools, не уходит к пользователю.
+- Hosting flexibility: если потом захостим backend в NL/EU с пользователями в РФ — ключ остаётся на нашей стороне, не у пользователя.
+- Audit: все AI calls идут через одну точку (`explainer/claude_client.py`) → проще логирование, rate limiting, switch на другую LLM.
+
+**Consequences.** + Безопасность ключа. + Возможность future hosted-edition без architectural rework. − Лишний RPC roundtrip (но он на background flow — UX не страдает).
+
