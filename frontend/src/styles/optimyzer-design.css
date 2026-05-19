@@ -109,8 +109,8 @@ input {
 
 .app {
   display: grid;
-  grid-template-columns: var(--o-sidebar-collapsed) 1fr;
-  grid-template-rows: var(--o-topbar-h) 1fr var(--o-statusbar-h);
+  grid-template-columns: var(--o-sidebar-collapsed) minmax(0, 1fr);
+  grid-template-rows: var(--o-topbar-h) minmax(0, 1fr) var(--o-statusbar-h);
   height: 100vh;
   min-width: 1280px;
   background: var(--o-bg);

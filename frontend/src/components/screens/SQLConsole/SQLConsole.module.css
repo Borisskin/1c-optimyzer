@@ -42,6 +42,7 @@
 
 .workarea {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   overflow: hidden;
@@ -51,6 +52,8 @@
 .results_pane {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  min-width: 0;
   background: var(--o-panel);
   overflow: hidden;
 }
