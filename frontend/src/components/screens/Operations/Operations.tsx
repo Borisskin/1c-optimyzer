@@ -1,9 +1,11 @@
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -11,36 +13,36 @@ interface Props {
   archiveId: string | null;
 }
 
-type SortBy =
-  | "total_duration_ms"
-  | "avg_duration_ms"
-  | "max_duration_ms"
-  | "calls"
-  | "sql_duration_ms"
-  | "lock_events"
-  | "exception_events";
-
 export function OperationsScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
   const setScreen = useAppStore((s) => s.setScreen);
   const setSelectedOperation = useAppStore((s) => s.setSelectedOperation);
-  const [sortBy, setSortBy] = useState<SortBy>("total_duration_ms");
+  // Backend всегда возвращает топ-500 по total_duration_ms. Клиентская
+  // sort/filter работает внутри этих 500. Это даёт хороший repr данных
+  // для производственных архивов с сотнями операций. Server-side sort
+  // selector убран — sort везде через клик по заголовку колонки.
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewTopBusinessOperations(archiveId, filtersToDto(filters), sortBy, 100)
+        ? backend.viewTopBusinessOperations(archiveId, filtersToDto(filters), "total_duration_ms", 500)
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, filters, sortBy],
+    [archiveId, filters],
   );
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
-  const rows = data?.rows ?? [];
+
+  const table = useTableState({
+    rows: data?.rows ?? [],
+    columns: data?.columns ?? [],
+    defaultSortKey: "total_duration_ms",
+    defaultSortDir: "desc",
+  });
 
   const totalDuration = useMemo(() => {
-    if (!rows.length) return 0;
+    if (!table.rows.length) return 0;
     const i = idx["total_duration_ms"];
-    return rows.reduce((s, r) => s + (Number(r[i]) || 0), 0);
-  }, [rows, idx]);
+    return table.rows.reduce((s, r) => s + (Number(r[i]) || 0), 0);
+  }, [table.rows, idx]);
 
   const openAnatomy = (operation: string) => {
     setSelectedOperation(operation);
@@ -51,64 +53,57 @@ export function OperationsScreen({ archiveId }: Props) {
     <ViewShell
       breadcrumbs={["Анализ", "Бизнес-операции"]}
       title={<>Бизнес-операции</>}
-      sub="Топ операций по `Context` — что фактически выполнялось в платформе"
+      sub="Топ операций по `Context` — клик по заголовку колонки = сортировка"
       right={
-        <>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            style={selectStyle}
-          >
-            <option value="total_duration_ms">Σ время</option>
-            <option value="avg_duration_ms">avg время</option>
-            <option value="max_duration_ms">max время</option>
-            <option value="calls">кол-во вызовов</option>
-            <option value="sql_duration_ms">SQL-время</option>
-            <option value="lock_events">блокировок</option>
-            <option value="exception_events">исключений</option>
-          </select>
-          <ExportMenu
-            defaultName="top_business_operations"
-            columns={data?.columns ?? []}
-            rows={rows}
-          />
-        </>
+        <ExportMenu
+          defaultName="top_business_operations"
+          columns={data?.columns ?? []}
+          rows={table.rows}
+        />
       }
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>
           <div className={vshellStyles.panel_title}>
-            {loading ? "Загрузка…" : `${rows.length} операций`}
+            {loading ? "Загрузка…" : `${data?.row_count ?? 0} операций`}
           </div>
           {data && (
             <div className={vshellStyles.panel_sub}>
               выполнено за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
+          {data && data.rows && data.rows.length > 0 && (
+            <TableFilter
+              value={table.filter}
+              onChange={table.setFilter}
+              total={table.totalRows}
+              visible={table.visibleRows}
+            />
+          )}
         </div>
 
         {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
         {archiveId && loading && <div className={vshellStyles.loading}>Загрузка…</div>}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
-        {archiveId && !loading && !error && rows.length > 0 && (
+        {archiveId && !loading && !error && table.rows.length > 0 && (
           <div className={vshellStyles.table_wrap}>
             <table className={vshellStyles.table}>
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Операция</th>
-                  <th>Вызовов</th>
-                  <th>Σ ms</th>
-                  <th>avg ms</th>
-                  <th>max ms</th>
-                  <th>SQL ms</th>
-                  <th>Locks</th>
-                  <th>EXCP</th>
-                  <th>Сессий</th>
+                  <th {...table.headerProps("operation")}>Операция</th>
+                  <th {...table.headerProps("calls")}>Вызовов</th>
+                  <th {...table.headerProps("total_duration_ms")}>Σ ms</th>
+                  <th {...table.headerProps("avg_duration_ms")}>avg ms</th>
+                  <th {...table.headerProps("max_duration_ms")}>max ms</th>
+                  <th {...table.headerProps("sql_duration_ms")}>SQL ms</th>
+                  <th {...table.headerProps("lock_events")}>Locks</th>
+                  <th {...table.headerProps("exception_events")}>EXCP</th>
+                  <th {...table.headerProps("unique_sessions")}>Сессий</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, ri) => {
+                {table.rows.map((row, ri) => {
                   const op = String(row[idx["operation"]] ?? "");
                   const dur = Number(row[idx["total_duration_ms"]]) || 0;
                   const tone = pickTone(dur, totalDuration);
@@ -145,10 +140,18 @@ export function OperationsScreen({ archiveId }: Props) {
             </table>
           </div>
         )}
-        {archiveId && !loading && !error && rows.length === 0 && (
+        {archiveId && !loading && !error && data && (data.row_count ?? 0) === 0 && (
           <div className={vshellStyles.empty}>
             В архиве нет событий с заполненным `Context` —
             либо logcfg.xml не пишет Context, либо filters его исключают
+          </div>
+        )}
+        {archiveId && !loading && !error && (data?.row_count ?? 0) > 0 && table.rows.length === 0 && (
+          <div className={vshellStyles.empty}>
+            Фильтр «{table.filter}» не дал совпадений ·{" "}
+            <button type="button" onClick={() => table.setFilter("")} style={resetBtn}>
+              сбросить
+            </button>
           </div>
         )}
       </div>
@@ -200,7 +203,17 @@ const opStyle: CSSProperties = {
   fontSize: 11.5,
 };
 
-const selectStyle: CSSProperties = {
+const resetBtn: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "var(--o-accent)",
+  cursor: "pointer",
+  textDecoration: "underline",
+  padding: 0,
+  fontSize: "inherit",
+};
+
+const _unusedSelectStyle: CSSProperties = {
   height: 28,
   padding: "0 8px",
   fontSize: 11.5,

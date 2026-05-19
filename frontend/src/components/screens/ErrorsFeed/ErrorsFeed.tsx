@@ -4,6 +4,8 @@ import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -13,7 +15,7 @@ interface Props {
 
 export function ErrorsFeedScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
-  const [filter, setFilter] = useState<"all" | "EXCP" | "TDEADLOCK" | "TLOCK">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "EXCP" | "TDEADLOCK" | "TLOCK">("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const { data, loading, error } = useView(
     () =>
@@ -23,14 +25,23 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
     [archiveId, filters],
   );
 
-  const rows = useMemo(() => {
+  // 1. type filter (dropdown) — сужает до конкретного event_type
+  const typeFilteredRows = useMemo(() => {
     if (!data?.rows) return [] as unknown[][];
-    if (filter === "all") return data.rows;
+    if (typeFilter === "all") return data.rows;
     const idx = colIndex(data.columns);
-    return data.rows.filter((r) => String(r[idx["event_type"]]) === filter);
-  }, [data, filter]);
+    return data.rows.filter((r) => String(r[idx["event_type"]]) === typeFilter);
+  }, [data, typeFilter]);
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
+
+  // 2. useTableState — substring filter + sort внутри type-отфильтрованных rows
+  const table = useTableState({
+    rows: typeFilteredRows,
+    columns: data?.columns ?? [],
+    defaultSortKey: "ts",
+    defaultSortDir: "desc",
+  });
 
   return (
     <ViewShell
@@ -40,8 +51,8 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
       right={
         <>
           <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
             style={selectStyle}
           >
             <option value="all">Все типы</option>
@@ -52,38 +63,46 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
           <ExportMenu
             defaultName="errors_feed"
             columns={data?.columns ?? []}
-            rows={rows}
+            rows={table.rows}
           />
         </>
       }
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>
-          <div className={vshellStyles.panel_title}>{rows.length} событий</div>
+          <div className={vshellStyles.panel_title}>{typeFilteredRows.length} событий</div>
           {data && (
             <div className={vshellStyles.panel_sub}>
               выполнено за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
+          {typeFilteredRows.length > 0 && (
+            <TableFilter
+              value={table.filter}
+              onChange={table.setFilter}
+              total={table.totalRows}
+              visible={table.visibleRows}
+            />
+          )}
         </div>
         {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
         {archiveId && loading && <div className={vshellStyles.loading}>Загрузка…</div>}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
-        {archiveId && !loading && !error && rows.length > 0 && (
+        {archiveId && !loading && !error && table.rows.length > 0 && (
           <div className={vshellStyles.table_wrap}>
             <table className={vshellStyles.table}>
               <thead>
                 <tr>
-                  <th>Время</th>
-                  <th>Тип</th>
-                  <th>Роль</th>
-                  <th>PID</th>
-                  <th>Контекст</th>
-                  <th>ms</th>
+                  <th {...table.headerProps("ts")}>Время</th>
+                  <th {...table.headerProps("event_type")}>Тип</th>
+                  <th {...table.headerProps("process_role")}>Роль</th>
+                  <th {...table.headerProps("process_pid")}>PID</th>
+                  <th {...table.headerProps("context")}>Контекст</th>
+                  <th {...table.headerProps("duration_ms")}>ms</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, ri) => {
+                {table.rows.map((row, ri) => {
                   const tone = badgeTone(String(row[idx["event_type"]] ?? ""));
                   const context = String(row[idx["context"]] ?? "");
                   const isExpanded = expanded.has(ri);
@@ -132,8 +151,13 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
             </table>
           </div>
         )}
-        {archiveId && !loading && !error && rows.length === 0 && (
+        {archiveId && !loading && !error && typeFilteredRows.length === 0 && (
           <div className={vshellStyles.empty}>Нет ошибок и исключений</div>
+        )}
+        {archiveId && !loading && !error && typeFilteredRows.length > 0 && table.rows.length === 0 && (
+          <div className={vshellStyles.empty}>
+            Фильтр «{table.filter}» не дал совпадений
+          </div>
         )}
       </div>
     </ViewShell>

@@ -3,7 +3,7 @@
 // Phase G минимум — summary + slow queries diff. Errors/Duration/Roles diff
 // можно добавить позднее тем же паттерном.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { Badge, Tabs } from "@/components/primitives/Primitives";
 import {
@@ -14,6 +14,8 @@ import {
 } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { ViewShell } from "@/components/views/ViewShell";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 type Slot = "a" | "b";
@@ -199,36 +201,73 @@ function ArchivePicker({
 }
 
 function SummaryTab({ summary }: { summary: CompareSummaryResult | null }) {
+  const columns = useMemo(
+    () => [
+      { name: "label" },
+      { name: "a" },
+      { name: "b" },
+      { name: "delta" },
+      { name: "delta_percent" },
+      { name: "key" },
+    ],
+    [],
+  );
+  const tableRows = useMemo(() => {
+    if (!summary?.metrics) return [];
+    return summary.metrics.map((m) => [m.label, m.a, m.b, m.delta, m.delta_percent, m.key]);
+  }, [summary]);
+  const table = useTableState({ rows: tableRows, columns });
+
   if (!summary || !summary.metrics) return null;
   return (
-    <div className={vshellStyles.table_wrap}>
-      <table className={vshellStyles.table}>
-        <thead>
-          <tr>
-            <th>Метрика</th>
-            <th>Baseline</th>
-            <th>Compared</th>
-            <th>Δ</th>
-            <th>Δ%</th>
-          </tr>
-        </thead>
-        <tbody>
-          {summary.metrics.map((m) => {
-            const tone = deltaTone(m.delta_percent, m.key);
-            return (
-              <tr key={m.key}>
-                <td>{m.label}</td>
-                <td className={vshellStyles.mono}>{fmtNumber(m.a)}</td>
-                <td className={vshellStyles.mono}>{fmtNumber(m.b)}</td>
-                <td className={vshellStyles.mono}>{fmtNumber(m.delta)}</td>
-                <td className={vshellStyles.mono} style={{ color: tone }}>
-                  {m.delta_percent === null ? "—" : `${m.delta_percent > 0 ? "+" : ""}${m.delta_percent.toFixed(1)}%`}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div>
+      {tableRows.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 0 8px" }}>
+          <TableFilter
+            value={table.filter}
+            onChange={table.setFilter}
+            total={table.totalRows}
+            visible={table.visibleRows}
+          />
+        </div>
+      )}
+      <div className={vshellStyles.table_wrap}>
+        <table className={vshellStyles.table}>
+          <thead>
+            <tr>
+              <th {...table.headerProps("label")}>Метрика</th>
+              <th {...table.headerProps("a")}>Baseline</th>
+              <th {...table.headerProps("b")}>Compared</th>
+              <th {...table.headerProps("delta")}>Δ</th>
+              <th {...table.headerProps("delta_percent")}>Δ%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row, ri) => {
+              const [label, a, b, delta, deltaPercent, key] = row as [
+                string,
+                number,
+                number,
+                number,
+                number | null,
+                string,
+              ];
+              const tone = deltaTone(deltaPercent, key);
+              return (
+                <tr key={ri}>
+                  <td>{label}</td>
+                  <td className={vshellStyles.mono}>{fmtNumber(a)}</td>
+                  <td className={vshellStyles.mono}>{fmtNumber(b)}</td>
+                  <td className={vshellStyles.mono}>{fmtNumber(delta)}</td>
+                  <td className={vshellStyles.mono} style={{ color: tone }}>
+                    {deltaPercent === null ? "—" : `${deltaPercent > 0 ? "+" : ""}${deltaPercent.toFixed(1)}%`}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -282,37 +321,73 @@ function Section({
   title: React.ReactNode;
   rows: NonNullable<CompareSlowQueriesResult["regressed"]>;
 }) {
+  const columns = useMemo(
+    () => [
+      { name: "query" },
+      { name: "a_avg_ms" },
+      { name: "b_avg_ms" },
+      { name: "delta_percent" },
+      { name: "a_calls" },
+      { name: "b_calls" },
+      { name: "sql_text_hash" },
+    ],
+    [],
+  );
+  const tableRows = useMemo(
+    () => rows.map((r) => [r.query ?? "—", r.a_avg_ms, r.b_avg_ms, r.delta_percent, r.a_calls, r.b_calls, r.sql_text_hash]),
+    [rows],
+  );
+  const table = useTableState({ rows: tableRows, columns, defaultSortKey: "delta_percent", defaultSortDir: "desc" });
   return (
     <div>
-      <div className={vshellStyles.panel_title} style={{ marginBottom: 8 }}>
-        {title}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+        <div className={vshellStyles.panel_title}>{title}</div>
+        {tableRows.length > 0 && (
+          <TableFilter
+            value={table.filter}
+            onChange={table.setFilter}
+            total={table.totalRows}
+            visible={table.visibleRows}
+          />
+        )}
       </div>
       <div className={vshellStyles.table_wrap}>
         <table className={vshellStyles.table}>
           <thead>
             <tr>
-              <th>Запрос</th>
-              <th>A avg, ms</th>
-              <th>B avg, ms</th>
-              <th>Δ%</th>
-              <th>Calls A→B</th>
+              <th {...table.headerProps("query")}>Запрос</th>
+              <th {...table.headerProps("a_avg_ms")}>A avg, ms</th>
+              <th {...table.headerProps("b_avg_ms")}>B avg, ms</th>
+              <th {...table.headerProps("delta_percent")}>Δ%</th>
+              <th {...table.headerProps("a_calls")}>Calls A→B</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.sql_text_hash}>
-                <td title={r.query ?? ""}>{truncate(r.query ?? "—", 60)}</td>
-                <td className={vshellStyles.mono}>{r.a_avg_ms.toFixed(1)}</td>
-                <td className={vshellStyles.mono}>{r.b_avg_ms.toFixed(1)}</td>
-                <td className={vshellStyles.mono} style={{ color: deltaTone(r.delta_percent) }}>
-                  {r.delta_percent > 0 ? "+" : ""}
-                  {r.delta_percent.toFixed(1)}%
-                </td>
-                <td className={vshellStyles.mono}>
-                  {r.a_calls} → {r.b_calls}
-                </td>
-              </tr>
-            ))}
+            {table.rows.map((row, ri) => {
+              const [query, aAvg, bAvg, dPct, aCalls, bCalls, hash] = row as [
+                string,
+                number,
+                number,
+                number,
+                number,
+                number,
+                string,
+              ];
+              return (
+                <tr key={`${hash}-${ri}`}>
+                  <td title={query}>{truncate(query, 60)}</td>
+                  <td className={vshellStyles.mono}>{aAvg.toFixed(1)}</td>
+                  <td className={vshellStyles.mono}>{bAvg.toFixed(1)}</td>
+                  <td className={vshellStyles.mono} style={{ color: deltaTone(dPct) }}>
+                    {dPct > 0 ? "+" : ""}
+                    {dPct.toFixed(1)}%
+                  </td>
+                  <td className={vshellStyles.mono}>
+                    {aCalls} → {bCalls}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -327,30 +402,62 @@ function OnlySection({
   title: string;
   rows: NonNullable<CompareSlowQueriesResult["only_b"]>;
 }) {
+  const columns = useMemo(
+    () => [
+      { name: "query" },
+      { name: "calls" },
+      { name: "total_ms" },
+      { name: "avg_ms" },
+      { name: "sql_text_hash" },
+    ],
+    [],
+  );
+  const tableRows = useMemo(
+    () => rows.map((r) => [r.query ?? "—", r.calls, r.total_ms, r.avg_ms, r.sql_text_hash]),
+    [rows],
+  );
+  const table = useTableState({ rows: tableRows, columns, defaultSortKey: "total_ms", defaultSortDir: "desc" });
   return (
     <div>
-      <div className={vshellStyles.panel_title} style={{ marginBottom: 8 }}>
-        {title}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+        <div className={vshellStyles.panel_title}>{title}</div>
+        {tableRows.length > 0 && (
+          <TableFilter
+            value={table.filter}
+            onChange={table.setFilter}
+            total={table.totalRows}
+            visible={table.visibleRows}
+          />
+        )}
       </div>
       <div className={vshellStyles.table_wrap}>
         <table className={vshellStyles.table}>
           <thead>
             <tr>
-              <th>Запрос</th>
-              <th>Calls</th>
-              <th>Σ ms</th>
-              <th>avg ms</th>
+              <th {...table.headerProps("query")}>Запрос</th>
+              <th {...table.headerProps("calls")}>Calls</th>
+              <th {...table.headerProps("total_ms")}>Σ ms</th>
+              <th {...table.headerProps("avg_ms")}>avg ms</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.sql_text_hash}>
-                <td title={r.query ?? ""}>{truncate(r.query ?? "—", 60)}</td>
-                <td className={vshellStyles.mono}>{r.calls}</td>
-                <td className={vshellStyles.mono}>{r.total_ms.toFixed(0)}</td>
-                <td className={vshellStyles.mono}>{r.avg_ms.toFixed(1)}</td>
-              </tr>
-            ))}
+            {table.rows.map((row, ri) => {
+              const [query, calls, totalMs, avgMs, hash] = row as [
+                string,
+                number,
+                number,
+                number,
+                string,
+              ];
+              return (
+                <tr key={`${hash}-${ri}`}>
+                  <td title={query}>{truncate(query, 60)}</td>
+                  <td className={vshellStyles.mono}>{calls}</td>
+                  <td className={vshellStyles.mono}>{totalMs.toFixed(0)}</td>
+                  <td className={vshellStyles.mono}>{avgMs.toFixed(1)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

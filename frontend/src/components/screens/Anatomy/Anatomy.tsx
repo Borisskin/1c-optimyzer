@@ -1,8 +1,10 @@
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { backend, type OperationAnatomyResult } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
 import { ExplainerCard } from "@/components/explainer/ExplainerCard";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import { useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -180,65 +182,39 @@ export function AnatomyScreen({ archiveId }: Props) {
             </div>
           </div>
 
-          <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-            <div className={vshellStyles.panel_head}>
-              <div className={vshellStyles.panel_title}>Распределение по типам событий</div>
-            </div>
-            <table className={vshellStyles.table}>
-              <thead>
-                <tr>
-                  <th>Тип</th>
-                  <th>Событий</th>
-                  <th>Σ ms</th>
-                  <th>avg ms</th>
-                  <th>% от Σ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.breakdown.map((b) => {
-                  const pct = (s.total_duration_ms ?? 0) > 0
-                    ? (b.total_duration_ms / (s.total_duration_ms ?? 1)) * 100
-                    : 0;
-                  return (
-                    <tr key={b.event_type}>
-                      <td className={vshellStyles.mono}>{b.event_type}</td>
-                      <td className={vshellStyles.mono}>{fmt(b.events)}</td>
-                      <td className={vshellStyles.mono}>{fmtMs(b.total_duration_ms)}</td>
-                      <td className={vshellStyles.mono}>{fmtMs(b.avg_duration_ms)}</td>
-                      <td className={vshellStyles.mono}>{pct.toFixed(1)}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <BreakdownTable
+            breakdown={data.breakdown}
+            totalDurationMs={s.total_duration_ms ?? 0}
+          />
 
           {data.top_sql.row_count > 0 && (
             <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <div className={vshellStyles.panel_head}>
-                <div className={vshellStyles.panel_title}>Top SQL внутри операции</div>
-              </div>
-              <SubTableRender st={data.top_sql} truncateCol="query" />
+              <SubTableRender
+                st={data.top_sql}
+                truncateCol="query"
+                title="Top SQL внутри операции"
+                defaultSortKey="total_duration_ms"
+              />
             </div>
           )}
 
           {data.related_exceptions.row_count > 0 && (
             <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <div className={vshellStyles.panel_head}>
-                <div className={vshellStyles.panel_title}>Связанные исключения</div>
-              </div>
-              <SubTableRender st={data.related_exceptions} />
+              <SubTableRender
+                st={data.related_exceptions}
+                title="Связанные исключения"
+                defaultSortKey="ts"
+              />
             </div>
           )}
 
           {data.timeline.row_count > 0 && (
             <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <div className={vshellStyles.panel_head}>
-                <div className={vshellStyles.panel_title}>
-                  Timeline ({data.timeline.row_count} последних событий)
-                </div>
-              </div>
-              <SubTableRender st={data.timeline} />
+              <SubTableRender
+                st={data.timeline}
+                title={`Timeline (${data.timeline.row_count} последних событий)`}
+                defaultSortKey="ts"
+              />
             </div>
           )}
         </>
@@ -264,30 +240,126 @@ function Metric({
   );
 }
 
-function SubTableRender({ st, truncateCol }: { st: { columns: { name: string }[]; rows: unknown[][] }; truncateCol?: string }) {
+function SubTableRender({
+  st,
+  truncateCol,
+  title,
+  defaultSortKey,
+}: {
+  st: { columns: { name: string }[]; rows: unknown[][] };
+  truncateCol?: string;
+  title?: string;
+  defaultSortKey?: string;
+}) {
+  const table = useTableState({
+    rows: st.rows,
+    columns: st.columns,
+    defaultSortKey,
+    defaultSortDir: "desc",
+  });
   const truncIdx = truncateCol ? st.columns.findIndex((c) => c.name === truncateCol) : -1;
   return (
-    <div className={vshellStyles.table_wrap}>
+    <>
+      <div className={vshellStyles.panel_head}>
+        {title && <div className={vshellStyles.panel_title}>{title}</div>}
+        {st.rows.length > 0 && (
+          <TableFilter
+            value={table.filter}
+            onChange={table.setFilter}
+            total={table.totalRows}
+            visible={table.visibleRows}
+          />
+        )}
+      </div>
+      <div className={vshellStyles.table_wrap}>
+        <table className={vshellStyles.table}>
+          <thead>
+            <tr>
+              {st.columns.map((c) => (
+                <th key={c.name} {...table.headerProps(c.name)}>{c.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((cell, ci) => {
+                  const raw = formatCell(cell);
+                  const display = ci === truncIdx && raw.length > 100 ? raw.slice(0, 100) + "…" : raw;
+                  return (
+                    <td key={ci} className={vshellStyles.mono} title={ci === truncIdx ? raw : undefined}>
+                      {display}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function BreakdownTable({
+  breakdown,
+  totalDurationMs,
+}: {
+  breakdown: { event_type: string; events: number; total_duration_ms: number; avg_duration_ms: number }[];
+  totalDurationMs: number;
+}) {
+  // Преобразуем breakdown[] в "табличный" формат с явной колонкой % для сортировки.
+  const columns = useMemo(
+    () => [
+      { name: "event_type" },
+      { name: "events" },
+      { name: "total_duration_ms" },
+      { name: "avg_duration_ms" },
+      { name: "pct" },
+    ],
+    [],
+  );
+  const rows = useMemo(
+    () =>
+      breakdown.map((b) => {
+        const pct = totalDurationMs > 0 ? (b.total_duration_ms / totalDurationMs) * 100 : 0;
+        return [b.event_type, b.events, b.total_duration_ms, b.avg_duration_ms, pct];
+      }),
+    [breakdown, totalDurationMs],
+  );
+  const table = useTableState({ rows, columns, defaultSortKey: "total_duration_ms", defaultSortDir: "desc" });
+
+  return (
+    <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
+      <div className={vshellStyles.panel_head}>
+        <div className={vshellStyles.panel_title}>Распределение по типам событий</div>
+        {breakdown.length > 0 && (
+          <TableFilter
+            value={table.filter}
+            onChange={table.setFilter}
+            total={table.totalRows}
+            visible={table.visibleRows}
+          />
+        )}
+      </div>
       <table className={vshellStyles.table}>
         <thead>
           <tr>
-            {st.columns.map((c) => (
-              <th key={c.name}>{c.name}</th>
-            ))}
+            <th {...table.headerProps("event_type")}>Тип</th>
+            <th {...table.headerProps("events")}>Событий</th>
+            <th {...table.headerProps("total_duration_ms")}>Σ ms</th>
+            <th {...table.headerProps("avg_duration_ms")}>avg ms</th>
+            <th {...table.headerProps("pct")}>% от Σ</th>
           </tr>
         </thead>
         <tbody>
-          {st.rows.map((row, ri) => (
+          {table.rows.map((row, ri) => (
             <tr key={ri}>
-              {row.map((cell, ci) => {
-                const raw = formatCell(cell);
-                const display = ci === truncIdx && raw.length > 100 ? raw.slice(0, 100) + "…" : raw;
-                return (
-                  <td key={ci} className={vshellStyles.mono} title={ci === truncIdx ? raw : undefined}>
-                    {display}
-                  </td>
-                );
-              })}
+              <td className={vshellStyles.mono}>{String(row[0])}</td>
+              <td className={vshellStyles.mono}>{fmt(Number(row[1]))}</td>
+              <td className={vshellStyles.mono}>{fmtMs(Number(row[2]))}</td>
+              <td className={vshellStyles.mono}>{fmtMs(Number(row[3]))}</td>
+              <td className={vshellStyles.mono}>{Number(row[4]).toFixed(1)}%</td>
             </tr>
           ))}
         </tbody>

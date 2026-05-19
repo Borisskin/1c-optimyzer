@@ -3,6 +3,8 @@ import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -22,6 +24,13 @@ export function SlowQueriesScreen({ archiveId }: Props) {
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
 
+  const table = useTableState({
+    rows: data?.rows ?? [],
+    columns: data?.columns ?? [],
+    defaultSortKey: "total_duration_ms",
+    defaultSortDir: "desc",
+  });
+
   return (
     <ViewShell
       breadcrumbs={["Анализ", "Медленные запросы"]}
@@ -31,7 +40,7 @@ export function SlowQueriesScreen({ archiveId }: Props) {
         <ExportMenu
           defaultName="slow_queries"
           columns={data?.columns ?? []}
-          rows={data?.rows ?? []}
+          rows={table.rows}
         />
       }
     >
@@ -45,6 +54,14 @@ export function SlowQueriesScreen({ archiveId }: Props) {
               выполнено за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
+          {data && data.rows && data.rows.length > 0 && (
+            <TableFilter
+              value={table.filter}
+              onChange={table.setFilter}
+              total={table.totalRows}
+              visible={table.visibleRows}
+            />
+          )}
         </div>
 
         {!archiveId && <div className={vshellStyles.empty}>Загрузите архив, чтобы увидеть медленные запросы</div>}
@@ -56,16 +73,16 @@ export function SlowQueriesScreen({ archiveId }: Props) {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Запрос (нормализованный)</th>
-                  <th>Calls</th>
-                  <th>Σ ms</th>
-                  <th>avg ms</th>
-                  <th>max ms</th>
-                  <th>Σ rows</th>
+                  <th {...table.headerProps("query")}>Запрос (нормализованный)</th>
+                  <th {...table.headerProps("calls")}>Calls</th>
+                  <th {...table.headerProps("total_duration_ms")}>Σ ms</th>
+                  <th {...table.headerProps("avg_duration_ms")}>avg ms</th>
+                  <th {...table.headerProps("max_duration_ms")}>max ms</th>
+                  <th {...table.headerProps("total_rows_read")}>Σ rows</th>
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((row, ri) => (
+                {table.rows.map((row, ri) => (
                   <tr key={ri}>
                     <td className={vshellStyles.mono}>{ri + 1}</td>
                     <td title={String(row[idx["query"]] ?? "")}>

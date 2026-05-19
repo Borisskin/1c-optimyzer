@@ -17,6 +17,8 @@ import { Editor, type EditorHandle } from "./Editor";
 import { SavedQueriesMenu } from "./SavedQueriesMenu";
 import { SchemaPanel } from "./SchemaPanel";
 import { TemplatesBar } from "./TemplatesBar";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import styles from "./SQLConsole.module.css";
 
 const SPLITTER_STORAGE_KEY = "optimyzer:sql:editor_pct";
@@ -276,18 +278,27 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
 function ResultsTable({ result }: { result: SQLExecuteResult }) {
   const columns = result.columns ?? [];
   const rows = result.rows ?? [];
+  const table = useTableState({ rows, columns });
   return (
     <div className={styles.table_wrap}>
+      <div style={{ padding: "6px 12px", display: "flex", justifyContent: "flex-end" }}>
+        <TableFilter
+          value={table.filter}
+          onChange={table.setFilter}
+          total={table.totalRows}
+          visible={table.visibleRows}
+        />
+      </div>
       <table className={styles.table}>
         <thead>
           <tr>
             {columns.map((c) => (
-              <Th key={c.name}>{c.name}</Th>
+              <Th key={c.name} {...table.headerProps(c.name)}>{c.name}</Th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, ri) => (
+          {table.rows.map((row, ri) => (
             <tr key={ri}>
               {row.map((cell, ci) => (
                 <Td key={ci} mono>

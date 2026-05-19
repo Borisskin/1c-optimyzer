@@ -4,6 +4,8 @@ import { DonutChart } from "@/components/charts";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -32,6 +34,13 @@ export function ProcessRolesScreen({ archiveId }: Props) {
     }));
     return { donutData: donut, tableRows: data.rows };
   }, [data]);
+
+  const table = useTableState({
+    rows: tableRows,
+    columns: data?.columns ?? [],
+    defaultSortKey: "events_count",
+    defaultSortDir: "desc",
+  });
 
   return (
     <ViewShell
@@ -66,23 +75,31 @@ export function ProcessRolesScreen({ archiveId }: Props) {
         </div>
 
         <div className={vshellStyles.panel}>
-          <div className={vshellStyles.panel_title} style={{ marginBottom: 8 }}>
-            Детали
+          <div className={vshellStyles.panel_head}>
+            <div className={vshellStyles.panel_title}>Детали</div>
+            {tableRows.length > 0 && (
+              <TableFilter
+                value={table.filter}
+                onChange={table.setFilter}
+                total={table.totalRows}
+                visible={table.visibleRows}
+              />
+            )}
           </div>
-          {archiveId && !error && tableRows.length > 0 && (
+          {archiveId && !error && table.rows.length > 0 && (
             <div className={vshellStyles.table_wrap}>
               <table className={vshellStyles.table}>
                 <thead>
                   <tr>
-                    <th>Роль</th>
-                    <th>События</th>
-                    <th>Σ ms</th>
-                    <th>avg ms</th>
-                    <th>Процессы</th>
+                    <th {...table.headerProps("process_role")}>Роль</th>
+                    <th {...table.headerProps("events_count")}>События</th>
+                    <th {...table.headerProps("total_duration_ms")}>Σ ms</th>
+                    <th {...table.headerProps("avg_duration_ms")}>avg ms</th>
+                    <th {...table.headerProps("unique_processes")}>Процессы</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tableRows.map((row, ri) => {
+                  {table.rows.map((row, ri) => {
                     const idx = colIndex(data?.columns);
                     return (
                       <tr key={ri}>

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { backend, type DeadlockAnatomyResult, type ViewResult } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
 import { ExplainerCard } from "@/components/explainer/ExplainerCard";
+import { useTableState } from "@/components/tables/useTableState";
+import { TableFilter } from "@/components/tables/TableFilter";
 import { useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -103,57 +105,11 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
 
       {/* Список — если ничего не выбрано или нет deadlock'ов */}
       {!eventId && (
-        <div className={vshellStyles.panel}>
-          <div className={vshellStyles.panel_head}>
-            <div className={vshellStyles.panel_title}>
-              TDEADLOCK events ({list?.row_count ?? 0})
-            </div>
-          </div>
-          {noDeadlocks && (
-            <div className={vshellStyles.empty}>
-              В архиве нет TDEADLOCK событий.
-              <div style={{ marginTop: 8, fontSize: 11, color: "var(--o-text-3)" }}>
-                Проверь logcfg.xml — нужен filter для TDEADLOCK events.
-                Подробнее в docs/EXTRA_JSON_FIELD_STUDY.md.
-              </div>
-            </div>
-          )}
-          {!noDeadlocks && list?.rows && list.rows.length > 0 && (
-            <div className={vshellStyles.table_wrap}>
-              <table className={vshellStyles.table}>
-                <thead>
-                  <tr>
-                    <th>id</th>
-                    <th>Время</th>
-                    <th>Сессия</th>
-                    <th>Роль</th>
-                    <th>PID</th>
-                    <th>Контекст</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.rows.map((row, ri) => (
-                    <tr
-                      key={ri}
-                      className={vshellStyles.clickable}
-                      onClick={() => setEventId(Number(row[0]))}
-                      title="Клик — открыть анатомию"
-                    >
-                      <td className={vshellStyles.mono}>{String(row[0])}</td>
-                      <td className={vshellStyles.mono}>{fmtTs(row[1])}</td>
-                      <td className={vshellStyles.mono}>{String(row[2] ?? "—")}</td>
-                      <td>{String(row[3] ?? "—")}</td>
-                      <td className={vshellStyles.mono}>{String(row[4] ?? "—")}</td>
-                      <td className={vshellStyles.mono} style={ctxCell}>
-                        {String(row[5] ?? "—")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <DeadlockListPanel
+          list={list}
+          noDeadlocks={noDeadlocks}
+          onSelect={(id) => setEventId(id)}
+        />
       )}
 
       {/* Anatomy view */}
@@ -270,35 +226,11 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
 
           {/* Surrounding events */}
           {anatomy.surrounding && anatomy.surrounding.row_count > 0 && (
-            <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <div className={vshellStyles.panel_head}>
-                <div className={vshellStyles.panel_title}>
-                  События ±{anatomy.surrounding.window_seconds}с ({anatomy.surrounding.row_count})
-                </div>
-              </div>
-              <div className={vshellStyles.table_wrap}>
-                <table className={vshellStyles.table}>
-                  <thead>
-                    <tr>
-                      {anatomy.surrounding.columns.map((c) => (
-                        <th key={c.name}>{c.name}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {anatomy.surrounding.rows.map((row, ri) => (
-                      <tr key={ri}>
-                        {row.map((cell, ci) => (
-                          <td key={ci} className={vshellStyles.mono}>
-                            {formatCell(cell)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <SurroundingPanel
+              columns={anatomy.surrounding.columns}
+              rows={anatomy.surrounding.rows}
+              windowSeconds={anatomy.surrounding.window_seconds}
+            />
           )}
 
           {/* Raw extra (collapsed by default would be nice; for now always visible) */}
@@ -313,6 +245,142 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
         </>
       )}
     </ViewShell>
+  );
+}
+
+function DeadlockListPanel({
+  list,
+  noDeadlocks,
+  onSelect,
+}: {
+  list: ViewResult | null;
+  noDeadlocks: boolean | null;
+  onSelect: (id: number) => void;
+}) {
+  const columns = list?.columns ?? [];
+  const rawRows = list?.rows ?? [];
+  const table = useTableState({
+    rows: rawRows,
+    columns,
+    defaultSortKey: "ts",
+    defaultSortDir: "desc",
+  });
+  return (
+    <div className={vshellStyles.panel}>
+      <div className={vshellStyles.panel_head}>
+        <div className={vshellStyles.panel_title}>
+          TDEADLOCK events ({list?.row_count ?? 0})
+        </div>
+        {rawRows.length > 0 && (
+          <TableFilter
+            value={table.filter}
+            onChange={table.setFilter}
+            total={table.totalRows}
+            visible={table.visibleRows}
+          />
+        )}
+      </div>
+      {noDeadlocks && (
+        <div className={vshellStyles.empty}>
+          В архиве нет TDEADLOCK событий.
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--o-text-3)" }}>
+            Проверь logcfg.xml — нужен filter для TDEADLOCK events.
+            Подробнее в docs/EXTRA_JSON_FIELD_STUDY.md.
+          </div>
+        </div>
+      )}
+      {!noDeadlocks && rawRows.length > 0 && (
+        <div className={vshellStyles.table_wrap}>
+          <table className={vshellStyles.table}>
+            <thead>
+              <tr>
+                <th {...table.headerProps("id")}>id</th>
+                <th {...table.headerProps("ts")}>Время</th>
+                <th {...table.headerProps("session_id")}>Сессия</th>
+                <th {...table.headerProps("process_role")}>Роль</th>
+                <th {...table.headerProps("process_pid")}>PID</th>
+                <th {...table.headerProps("context_normalized")}>Контекст</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((row, ri) => (
+                <tr
+                  key={ri}
+                  className={vshellStyles.clickable}
+                  onClick={() => onSelect(Number(row[0]))}
+                  title="Клик — открыть анатомию"
+                >
+                  <td className={vshellStyles.mono}>{String(row[0])}</td>
+                  <td className={vshellStyles.mono}>{fmtTs(row[1])}</td>
+                  <td className={vshellStyles.mono}>{String(row[2] ?? "—")}</td>
+                  <td>{String(row[3] ?? "—")}</td>
+                  <td className={vshellStyles.mono}>{String(row[4] ?? "—")}</td>
+                  <td className={vshellStyles.mono} style={ctxCell}>
+                    {String(row[5] ?? "—")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SurroundingPanel({
+  columns,
+  rows,
+  windowSeconds,
+}: {
+  columns: { name: string }[];
+  rows: unknown[][];
+  windowSeconds: number;
+}) {
+  const table = useTableState({
+    rows,
+    columns,
+    defaultSortKey: "ts",
+    defaultSortDir: "asc",
+  });
+  return (
+    <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
+      <div className={vshellStyles.panel_head}>
+        <div className={vshellStyles.panel_title}>
+          События ±{windowSeconds}с ({rows.length})
+        </div>
+        {rows.length > 0 && (
+          <TableFilter
+            value={table.filter}
+            onChange={table.setFilter}
+            total={table.totalRows}
+            visible={table.visibleRows}
+          />
+        )}
+      </div>
+      <div className={vshellStyles.table_wrap}>
+        <table className={vshellStyles.table}>
+          <thead>
+            <tr>
+              {columns.map((c) => (
+                <th key={c.name} {...table.headerProps(c.name)}>{c.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className={vshellStyles.mono}>
+                    {formatCell(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

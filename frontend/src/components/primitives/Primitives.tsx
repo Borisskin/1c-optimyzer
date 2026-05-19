@@ -257,15 +257,16 @@ export function Th({
   w,
   align = "left",
   className,
+  ...rest
 }: {
   children: ReactNode;
   w?: string;
   align?: "left" | "right" | "center";
   className?: string;
-}) {
+} & React.ThHTMLAttributes<HTMLTableCellElement>) {
   const style: CSSProperties = { width: w, textAlign: align };
   return (
-    <th className={`${styles.th} ${className || ""}`} style={style}>
+    <th className={`${styles.th} ${className || ""}`} style={style} {...rest}>
       {children}
     </th>
   );
