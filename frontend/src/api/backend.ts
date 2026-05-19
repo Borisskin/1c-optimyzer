@@ -245,6 +245,33 @@ export interface OperationAnatomyResult {
   related_exceptions: SubTable;
 }
 
+export interface DeadlockAnatomyResult {
+  ok: boolean;
+  error?: string;
+  found: boolean;
+  event_id?: number;
+  event?: {
+    id: number;
+    ts: string;
+    session_id: number | null;
+    user_name: string | null;
+    process_role: string | null;
+    process_pid: number | null;
+    context: string | null;
+    context_normalized: string | null;
+    duration_ms: number | null;
+  };
+  parsed_extra?: {
+    regions: Array<{ raw: string; object_name: string; mode: string | null }>;
+    wait_connections: string[];
+    edges: Array<{ waiter: string; blocker: string; resource: string }>;
+    raw_extra: Record<string, unknown>;
+    _parse_error?: boolean;
+  };
+  participants?: string[];
+  surrounding?: SubTable & { window_seconds: number };
+}
+
 export interface SessionAnatomyResult {
   ok: boolean;
   error?: string;
@@ -343,6 +370,12 @@ export const backend = {
     rpc<OperationAnatomyResult>("view_operation_anatomy", { archive_id, operation }),
   viewSessionAnatomy: (archive_id: string, session_id: number) =>
     rpc<SessionAnatomyResult>("view_session_anatomy", { archive_id, session_id }),
+
+  // Deadlock Anatomy (Sprint 3 Phase D)
+  viewListDeadlocks: (archive_id: string, limit = 200) =>
+    rpc<ViewResult>("view_list_deadlocks", { archive_id, limit }),
+  viewDeadlockAnatomy: (archive_id: string, event_id: number, window_seconds = 30) =>
+    rpc<DeadlockAnatomyResult>("view_deadlock_anatomy", { archive_id, event_id, window_seconds }),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),

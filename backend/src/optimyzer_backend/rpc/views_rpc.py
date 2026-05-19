@@ -8,6 +8,7 @@ from optimyzer_backend.rpc.dispatcher import rpc
 from optimyzer_backend.rpc.handlers import _ARCHIVES
 from optimyzer_backend.sql.executor import SQLExecutionError
 from optimyzer_backend.sql.anatomy import get_operation_anatomy, get_session_anatomy
+from optimyzer_backend.sql.deadlock_anatomy import get_deadlock_anatomy, list_deadlocks
 from optimyzer_backend.sql.views import (
     ViewFilters,
     activity_heatmap,
@@ -175,5 +176,24 @@ def view_session_anatomy(
             session_id,
             timeline_limit=timeline_limit,
             top_sql_limit=top_sql_limit,
+        ),
+    )
+
+
+@rpc("view_list_deadlocks")
+def view_list_deadlocks(archive_id: str, limit: int = 200) -> dict[str, Any]:
+    return _wrap(archive_id, lambda: list_deadlocks(archive_id, limit=limit))
+
+
+@rpc("view_deadlock_anatomy")
+def view_deadlock_anatomy(
+    archive_id: str,
+    event_id: int,
+    window_seconds: int = 30,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: get_deadlock_anatomy(
+            archive_id, event_id, window_seconds=window_seconds
         ),
     )
