@@ -425,6 +425,59 @@ def delete_all_archives() -> dict[str, Any]:
     }
 
 
+@rpc("open_stored_archive")
+def open_stored_archive(archive_id: str) -> dict[str, Any]:
+    """Reattach уже-распарсенный архив из SQLite-истории к текущей session.
+
+    Без этого после перезапуска приложения пользователю пришлось бы заново
+    парсить ту же папку с логами. Здесь же мы только открываем существующий
+    .duckdb файл (моментально) и регистрируем archive в in-memory state,
+    чтобы SQL Console и view-экраны могли с ним работать.
+
+    Idempotent: если архив уже загружен — возвращает текущий public state.
+    """
+    existing = _ARCHIVES.get(archive_id)
+    if existing is not None:
+        return _public_state(existing)
+
+    records = _sqlite().list_recent_archives(limit=200)
+    record = next((r for r in records if r["archive_id"] == archive_id), None)
+    if record is None:
+        raise ValueError(f"Архив не найден в истории: {archive_id}")
+
+    db_path = default_db_dir() / f"{archive_id}.duckdb"
+    if not db_path.exists():
+        raise FileNotFoundError(
+            f"База архива не найдена на диске: {db_path.name}. "
+            "Возможно, файл был удалён вручную — используйте 'Загрузить новую папку'."
+        )
+
+    store = DuckDBStore(archive_id)
+    store.open()
+
+    path_str = record["path"]
+    source_type = "folder" if Path(path_str).is_dir() else "archive"
+
+    state: dict[str, Any] = {
+        "archive_id": archive_id,
+        "path": path_str,
+        "source_type": source_type,
+        "size_bytes": record["size_bytes"] or 0,
+        "status": "ready",
+        "progress": 1.0,
+        "events_parsed": record["events_count"] or 0,
+        "errors": [],
+        "started_at": time.time(),
+        "store": store,
+        "file_count": 0,
+        "thread": None,
+        "parsing_time_sec": record["parsing_time_sec"],
+        "loaded_at": record["loaded_at"],
+    }
+    _ARCHIVES[archive_id] = state
+    return _public_state(state)
+
+
 @rpc("unload_archive")
 def unload_archive(archive_id: str) -> dict[str, Any]:
     state = _ARCHIVES.pop(archive_id, None)

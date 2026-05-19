@@ -18,8 +18,10 @@ export function ArchivesMenu({ onClose, onLoadNew, onActiveArchiveDeleted }: Pro
   const [busyId, setBusyId] = useState<string | null>(null);
   const [busyAll, setBusyAll] = useState(false);
   const currentArchive = useAppStore((s) => s.archive);
+  const setArchive = useAppStore((s) => s.setArchive);
   const pushToast = useAppStore((s) => s.pushToast);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [busyOpen, setBusyOpen] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -79,6 +81,31 @@ export function ArchivesMenu({ onClose, onLoadNew, onActiveArchiveDeleted }: Pro
     }
   };
 
+  const handleOpen = async (archive: StoredArchive) => {
+    if (archive.is_orphan) return;
+    if (currentArchive?.archive_id === archive.archive_id) {
+      onClose();
+      return;
+    }
+    setBusyOpen(archive.archive_id);
+    try {
+      const state = await backend.openStoredArchive(archive.archive_id);
+      setArchive(state);
+      pushToast(
+        format(t.archives.openedToast, {
+          name: folderBasename(state.path),
+          events: formatNumber(state.events_parsed),
+        }),
+        "ok",
+      );
+      onClose();
+    } catch (e) {
+      pushToast(`${t.archives.openFailedToast}: ${String(e)}`, "err");
+    } finally {
+      setBusyOpen(null);
+    }
+  };
+
   const handleDeleteAll = async () => {
     if (archives.length === 0) return;
     const msg = format(t.archives.confirmDeleteAll, {
@@ -130,12 +157,24 @@ export function ArchivesMenu({ onClose, onLoadNew, onActiveArchiveDeleted }: Pro
           {archives.map((a) => {
             const isCurrent = currentArchive?.archive_id === a.archive_id;
             const isBusy = busyId === a.archive_id;
+            const isOpening = busyOpen === a.archive_id;
+            const openTitle = a.is_orphan
+              ? t.archives.orphanTooltip
+              : isCurrent
+                ? undefined
+                : t.archives.openTooltip;
             return (
               <div
                 key={a.archive_id}
                 className={`${styles.item} ${isCurrent ? styles.item_current : ""} ${a.is_orphan ? styles.item_orphan : ""}`}
               >
-                <div className={styles.item_main}>
+                <button
+                  type="button"
+                  className={styles.item_main_btn}
+                  onClick={() => handleOpen(a)}
+                  disabled={a.is_orphan || isOpening || isBusy || busyAll}
+                  title={openTitle}
+                >
                   <div className={styles.item_title}>
                     <span className={styles.item_name} title={a.path}>
                       {folderBasename(a.path)}
@@ -156,12 +195,12 @@ export function ArchivesMenu({ onClose, onLoadNew, onActiveArchiveDeleted }: Pro
                     <span className={styles.meta_sep}>·</span>
                     <span>{formatDate(a.loaded_at)}</span>
                   </div>
-                </div>
+                </button>
                 <button
                   type="button"
                   className={styles.delete_btn}
                   title={t.archives.deleteTooltip}
-                  disabled={isBusy || busyAll}
+                  disabled={isBusy || busyAll || isOpening}
                   onClick={() => handleDelete(a)}
                 >
                   <Icon name="X" size={13} />

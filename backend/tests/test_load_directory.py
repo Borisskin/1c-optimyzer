@@ -122,4 +122,54 @@ def test_cancel_ingestion_stub_returns_not_implemented(tmp_path: Path) -> None:
 def test_cancel_ingestion_unknown_archive() -> None:
     result = handlers.cancel_ingestion("nonexistent")
     assert result["ok"] is False
+
+
+def test_open_stored_archive_reattach_after_unload(tmp_path: Path) -> None:
+    """Симулирует перезапуск приложения: load → unload → open_stored_archive.
+
+    После unload архив остаётся в SQLite и .duckdb на диске, но не в
+    _ARCHIVES. open_stored_archive должен вернуть его обратно в state со
+    status='ready', с восстановленным DuckDBStore, чтобы SQL запросы
+    работали без повторного парсинга.
+    """
+    _make_log(tmp_path / "rphost_28220" / "26051813.log", copies=10)
+
+    initial = handlers.load_directory(str(tmp_path))
+    archive_id = initial["archive_id"]
+    state = _wait_ready(archive_id)
+    assert state["status"] == "ready"
+    assert state["events_parsed"] == 10
+
+    # Закрываем (симулируем перезапуск приложения)
+    handlers.unload_archive(archive_id)
+    assert archive_id not in handlers._ARCHIVES
+
+    # Reattach
+    reopened = handlers.open_stored_archive(archive_id)
+    assert reopened["archive_id"] == archive_id
+    assert reopened["status"] == "ready"
+    assert reopened["events_parsed"] == 10
+    assert reopened["source_type"] == "folder"
+    assert archive_id in handlers._ARCHIVES
+
+    # Idempotent — повторный open возвращает тот же state
+    reopened_again = handlers.open_stored_archive(archive_id)
+    assert reopened_again["archive_id"] == archive_id
+
+    # И теперь SQL Engine должен видеть данные через cursor от живого store
+    from optimyzer_backend.sql.executor import SQLExecutor
+    with SQLExecutor(archive_id) as ex:
+        result = ex.execute("SELECT COUNT(*) AS n FROM events")
+    assert result["rows"][0][0] == 10
+
+    handlers.unload_archive(archive_id)
+
+
+def test_open_stored_archive_unknown_id_raises() -> None:
+    try:
+        handlers.open_stored_archive("definitely_not_an_archive_id")
+    except ValueError as exc:
+        assert "не найден" in str(exc)
+        return
+    raise AssertionError("ValueError expected")
     assert result["reason"] == "unknown_archive"

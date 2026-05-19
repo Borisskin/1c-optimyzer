@@ -46,6 +46,10 @@ export const t = {
     eventsLabel: "событий",
     loadedAt: "загружен",
     close: "Закрыть",
+    openTooltip: "Открыть архив",
+    orphanTooltip: "Файл базы отсутствует — нельзя открыть",
+    openedToast: "Открыт архив «{name}» · {events} событий",
+    openFailedToast: "Не удалось открыть архив",
   },
   sidebar: {
     groups: {

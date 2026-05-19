@@ -87,6 +87,24 @@
   gap: 2px;
 }
 
+.item_main_btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.item_main_btn:disabled {
+  cursor: not-allowed;
+}
+
 .item_title {
   display: flex;
   align-items: center;

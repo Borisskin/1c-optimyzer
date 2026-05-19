@@ -225,6 +225,8 @@ export const backend = {
   deleteArchive: (archive_id: string) => rpc<DeleteArchiveResult>("delete_archive", { archive_id }),
   deleteAllArchives: () => rpc<DeleteAllArchivesResult>("delete_all_archives"),
   unloadArchive: (archive_id: string) => rpc<{ ok: boolean }>("unload_archive", { archive_id }),
+  openStoredArchive: (archive_id: string) =>
+    rpc<ArchiveState>("open_stored_archive", { archive_id }),
   queryEventsPreset: (archive_id: string, preset: "first_100" | "longest" | "deadlocks", limit = 100) =>
     rpc<QueryResult>("query_events_preset", { archive_id, preset, limit }),
   getStorageStats: (archive_id: string) => rpc<StorageStats>("get_storage_stats", { archive_id }),
