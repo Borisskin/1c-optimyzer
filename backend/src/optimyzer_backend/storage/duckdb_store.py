@@ -76,6 +76,31 @@ def default_db_dir() -> Path:
     return p
 
 
+# DuckDB не разрешает в одном процессе открыть один и тот же файл с разной
+# конфигурацией (read_write vs read_only). После ingestion store держит
+# read_write connection живым, поэтому SQLExecutor / schema_introspection
+# не могут открыть read_only — получают "Connection Error: Can't open a
+# connection to same database file with a different configuration".
+#
+# Решение: registry активных connections. DuckDBStore при open() себя
+# регистрирует; SQLExecutor / schema_introspection при наличии активного
+# connection используют conn.cursor() (child connection того же parent —
+# никаких config mismatch).
+_ACTIVE_CONNECTIONS: dict[str, duckdb.DuckDBPyConnection] = {}
+
+
+def register_active_connection(archive_id: str, conn: duckdb.DuckDBPyConnection) -> None:
+    _ACTIVE_CONNECTIONS[archive_id] = conn
+
+
+def unregister_active_connection(archive_id: str) -> None:
+    _ACTIVE_CONNECTIONS.pop(archive_id, None)
+
+
+def get_active_connection(archive_id: str) -> duckdb.DuckDBPyConnection | None:
+    return _ACTIVE_CONNECTIONS.get(archive_id)
+
+
 DEFAULT_BATCH_SIZE = 10_000
 
 
@@ -165,10 +190,12 @@ class DuckDBStore:
         if self._conn is None:
             self._conn = duckdb.connect(str(self.db_path))
             self._conn.execute(SCHEMA_DDL)
+            register_active_connection(self.archive_id, self._conn)
         return self._conn
 
     def close(self) -> None:
         if self._conn is not None:
+            unregister_active_connection(self.archive_id)
             self._conn.close()
             self._conn = None
 

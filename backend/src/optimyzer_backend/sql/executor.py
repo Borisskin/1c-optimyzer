@@ -3,6 +3,11 @@
 Открывает read-only DuckDB connection per query, выполняет SELECT, возвращает
 результат с column metadata. Внутри — timeout + row limit; truncation честно
 сообщается клиенту через ``truncated=True``.
+
+Если архив уже загружен (DuckDBStore держит живой read_write connection),
+executor использует ``conn.cursor()`` от него — child connection без
+конфликта конфигураций. Иначе fallback: открывает свой read_only connection
+(этот путь используется в тестах и при доступе к холодным архивам).
 """
 
 from __future__ import annotations
@@ -13,7 +18,10 @@ from typing import Any
 
 import duckdb
 
-from optimyzer_backend.storage.duckdb_store import default_db_dir
+from optimyzer_backend.storage.duckdb_store import (
+    default_db_dir,
+    get_active_connection,
+)
 
 
 class SQLExecutionError(RuntimeError):
@@ -21,7 +29,7 @@ class SQLExecutionError(RuntimeError):
 
 
 class SQLExecutor:
-    """One-shot executor: открывает read-only connection, выполняет, закрывает.
+    """One-shot executor: открывает connection, выполняет, закрывает.
 
     Stateless относительно archive — повторное использование с разным
     ``archive_id`` создаст новый connection.
@@ -40,23 +48,31 @@ class SQLExecutor:
         self.db_path = db_path or (default_db_dir() / f"{archive_id}.duckdb")
         self.read_only = read_only
         self._conn: duckdb.DuckDBPyConnection | None = None
+        self._owns_conn = False
 
     def _connect(self) -> duckdb.DuckDBPyConnection:
         if self._conn is None:
+            active = get_active_connection(self.archive_id)
+            if active is not None:
+                self._conn = active.cursor()
+                self._owns_conn = True  # cursor нужно закрыть, но parent остаётся
+                return self._conn
             if not self.db_path.exists():
                 raise SQLExecutionError(
                     f"База архива не найдена: {self.db_path.name}. Архив был удалён?"
                 )
             try:
                 self._conn = duckdb.connect(str(self.db_path), read_only=self.read_only)
+                self._owns_conn = True
             except duckdb.Error as exc:
                 raise SQLExecutionError(f"Не удалось открыть БД: {exc}") from exc
         return self._conn
 
     def close(self) -> None:
-        if self._conn is not None:
+        if self._conn is not None and self._owns_conn:
             self._conn.close()
-            self._conn = None
+        self._conn = None
+        self._owns_conn = False
 
     def __enter__(self) -> "SQLExecutor":
         self._connect()

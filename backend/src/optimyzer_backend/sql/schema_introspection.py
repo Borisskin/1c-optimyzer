@@ -1,26 +1,40 @@
-"""Schema introspection — список таблиц/колонок для autocomplete и docs panel."""
+"""Schema introspection — список таблиц/колонок для autocomplete и docs panel.
+
+Если архив уже загружен (DuckDBStore держит read_write connection),
+используем ``conn.cursor()`` от него вместо открытия нового read_only
+connection — иначе DuckDB ругается на config mismatch.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import duckdb
 
-from optimyzer_backend.storage.duckdb_store import default_db_dir
+from optimyzer_backend.storage.duckdb_store import (
+    default_db_dir,
+    get_active_connection,
+)
 
 
 def get_schema(archive_id: str, db_path: Path | None = None) -> dict[str, list[dict[str, str]]]:
     """Returns {table_name: [{name, type}, ...], ...} для main schema.
 
-    Использует read-only connection. Если БД не существует — возвращает пустой
+    Использует cursor от живого connection, если архив загружен. Иначе
+    открывает свой read-only. Если БД не существует — возвращает пустой
     словарь (UI должен показать "загрузите архив").
     """
-    path = db_path or (default_db_dir() / f"{archive_id}.duckdb")
-    if not path.exists():
-        return {}
+    active = get_active_connection(archive_id)
+    if active is not None:
+        conn = active.cursor()
+        owns_conn = True  # cursor нужно закрыть, parent живёт
+    else:
+        path = db_path or (default_db_dir() / f"{archive_id}.duckdb")
+        if not path.exists():
+            return {}
+        conn = duckdb.connect(str(path), read_only=True)
+        owns_conn = True
 
-    conn = duckdb.connect(str(path), read_only=True)
     try:
         tables = conn.execute(
             """
@@ -47,4 +61,5 @@ def get_schema(archive_id: str, db_path: Path | None = None) -> dict[str, list[d
             ]
         return result
     finally:
-        conn.close()
+        if owns_conn:
+            conn.close()
