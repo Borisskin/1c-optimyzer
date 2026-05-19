@@ -74,11 +74,17 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
     );
   }
 
+  // Когда eventId выбран — добавляем промежуточную крошку "Список" которая
+  // возвращает к перечню deadlock-событий (сброс eventId).
+  const breadcrumbs = eventId
+    ? ["Анализ", { label: "Список дедлоков", onClick: () => setEventId(null) }, `Дедлок #${eventId}`]
+    : ["Анализ", "Анатомия дедлока"];
+
   const noDeadlocks = list && list.ok && (list.row_count ?? 0) === 0;
 
   return (
     <ViewShell
-      breadcrumbs={["Анализ", "Анатомия дедлока"]}
+      breadcrumbs={breadcrumbs}
       title={<>Анатомия дедлока</>}
       sub="TDEADLOCK events — кто кого заблокировал, на каких ресурсах"
       right={

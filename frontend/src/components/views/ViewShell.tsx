@@ -2,12 +2,12 @@
 // Не путать с charts/ChartShell (тот — wrapper для single chart).
 
 import type { ReactNode } from "react";
-import { PageHeader } from "@/components/primitives/Primitives";
+import { PageHeader, type Breadcrumb } from "@/components/primitives/Primitives";
 import { FilterBar } from "@/components/filters/FilterBar";
 import styles from "./ViewShell.module.css";
 
 export interface ViewShellProps {
-  breadcrumbs: string[];
+  breadcrumbs: Breadcrumb[];
   title: ReactNode;
   sub?: string;
   right?: ReactNode;

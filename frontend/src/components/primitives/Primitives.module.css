@@ -84,6 +84,20 @@
 
 .crumb { display: inline-flex; align-items: center; gap: 4px; }
 
+/* Кликабельная крошка — кнопка без бордера, accent-цвет при hover.
+   font-family inherit от .breadcrumbs (mono). */
+.crumb_link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--o-text-2);
+  cursor: pointer;
+}
+.crumb_link:hover { color: var(--o-accent); text-decoration: underline; }
+.crumb_link:focus-visible { outline: 2px solid var(--o-accent); outline-offset: 2px; border-radius: 2px; }
+
 .title_row {
   display: flex;
   align-items: flex-end;

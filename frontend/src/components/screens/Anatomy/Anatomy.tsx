@@ -50,7 +50,11 @@ export function AnatomyScreen({ archiveId }: Props) {
   if (!archiveId) {
     return (
       <ViewShell
-        breadcrumbs={["Анализ", "Анатомия операции"]}
+        breadcrumbs={[
+          "Анализ",
+          { label: "Бизнес-операции", onClick: () => setScreen("operations") },
+          "Анатомия операции",
+        ]}
         title={<>Анатомия операции</>}
       >
         <div className={vshellStyles.panel}>
@@ -63,7 +67,11 @@ export function AnatomyScreen({ archiveId }: Props) {
   if (!operation) {
     return (
       <ViewShell
-        breadcrumbs={["Анализ", "Анатомия операции"]}
+        breadcrumbs={[
+          "Анализ",
+          { label: "Бизнес-операции", onClick: () => setScreen("operations") },
+          "Анатомия операции",
+        ]}
         title={<>Анатомия операции</>}
       >
         <div className={vshellStyles.panel}>
@@ -89,7 +97,11 @@ export function AnatomyScreen({ archiveId }: Props) {
 
   return (
     <ViewShell
-      breadcrumbs={["Анализ", "Анатомия операции"]}
+      breadcrumbs={[
+        "Анализ",
+        { label: "Бизнес-операции", onClick: () => setScreen("operations") },
+        "Анатомия операции",
+      ]}
       title={
         <span style={titleOp}>
           {operation}

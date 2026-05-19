@@ -102,6 +102,8 @@ export function Panel({
 
 // ---------- PageHeader ----------
 
+export type Breadcrumb = string | { label: string; onClick: () => void };
+
 export function PageHeader({
   title,
   sub,
@@ -112,19 +114,33 @@ export function PageHeader({
   title: ReactNode;
   sub?: ReactNode;
   right?: ReactNode;
-  breadcrumbs?: string[];
+  breadcrumbs?: Breadcrumb[];
   kpis?: ReactNode;
 }) {
   return (
     <div className={styles.page_header}>
       {breadcrumbs && (
         <div className={styles.breadcrumbs}>
-          {breadcrumbs.map((b, i) => (
-            <span key={i} className={styles.crumb}>
-              {i > 0 && <Icon name="ChevronRight" size={11} />}
-              <span>{b}</span>
-            </span>
-          ))}
+          {breadcrumbs.map((b, i) => {
+            const label = typeof b === "string" ? b : b.label;
+            const onClick = typeof b === "object" ? b.onClick : undefined;
+            return (
+              <span key={i} className={styles.crumb}>
+                {i > 0 && <Icon name="ChevronRight" size={11} />}
+                {onClick ? (
+                  <button
+                    type="button"
+                    onClick={onClick}
+                    className={styles.crumb_link}
+                  >
+                    {label}
+                  </button>
+                ) : (
+                  <span>{label}</span>
+                )}
+              </span>
+            );
+          })}
         </div>
       )}
       <div className={styles.title_row}>
