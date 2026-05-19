@@ -1,19 +1,21 @@
-# Sprint 4 Report — UI polish + ТЖ-моделирование (разблокировка Sprint 3 follow-up)
+# Sprint 3.5 Report — UI polish + ТЖ-моделирование (разблокировка Sprint 3 follow-up)
 
 > **Статус:** Closed
 > **Дата:** 2026-05-20
 > **Branch:** `main`
-> **Commit:** [`fa60327`](https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36)
 > **Repo:** https://github.com/anymasoft/1c-optimyzer
+> **Основной commit:** [`fa60327`](https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36) (UI + backend + переименование) + последующий — перенос артефактов ТЖ-симулятора в `tools/tj-simulator/` и rename отчёта в Sprint 3.5.
 > **Цель:** (1) Довести UX страницы «События ТЖ» до production-уровня. (2) Решить unblocked-задачу из Sprint 3 — собрать в реальный архив ТЖ **все 7 типов событий** (включая TLOCK / TDEADLOCK), чтобы запустить real-data validation deadlock-схем и rule classifier.
+
+> **Почему 3.5, не 4:** содержательно это closure Sprint 3 (unblock deadlock acceptance + UI polish для тех же экранов), а не самостоятельный новый спринт. Sprint 4 будет про обработку накопленных TLOCK/TDEADLOCK в Deadlock Anatomy + rule classifier на real-data.
 
 ---
 
 ## Где смотреть напрямую
 
 - **Репозиторий:** https://github.com/anymasoft/1c-optimyzer
-- **Этот отчёт на GitHub:** https://github.com/anymasoft/1c-optimyzer/blob/main/docs/SPRINT_4_REPORT.md
-- **Sprint 4 commit (diff):** https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36
+- **Этот отчёт на GitHub:** https://github.com/anymasoft/1c-optimyzer/blob/main/docs/SPRINT_3_5_REPORT.md
+- **Основной commit (diff):** https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36
 - **Sprint 3 closure (для контекста):** [docs/SPRINT_3_REPORT.md](SPRINT_3_REPORT.md) · [OPUS_HANDOVER_SPRINT_3.md](OPUS_HANDOVER_SPRINT_3.md)
 
 **Ключевые файлы спринта (clickable из GitHub):**
@@ -25,17 +27,14 @@
 | [`frontend/src/components/tables/EventTypeFilter.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/tables/EventTypeFilter.tsx) | Новый dropdown-компонент |
 | [`frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx) | Server-side rewrite |
 | [`frontend/src/components/chrome/Sidebar.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.tsx) · [`.module.css`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.module.css) | Sidebar polish + анимация |
-
-**Артефакты ТЖ-моделирования** (вне репозитория, на машине Сергея):
-- `D:\1C-Optimyzer\МоделированиеТЖ\` — обработка `МоделированиеТЖ.epf` (17.4 KB) + XML-исходники + build/install скрипты
-- `D:\1C-Optimyzer\ТЖМоделированиеРасш\` — расширение `ТЖМоделированиеРасш.cfe` + общий модуль `ВоркерыТЖ`
-- Если артефакты понадобятся в репо — можно перенести в `tools/tj-simulator/` отдельным коммитом
+| [`tools/tj-simulator/`](https://github.com/anymasoft/1c-optimyzer/tree/main/tools/tj-simulator) | ТЖ-симулятор: обработка + расширение **теперь в репо** |
+| [`tools/tj-simulator/README.md`](https://github.com/anymasoft/1c-optimyzer/blob/main/tools/tj-simulator/README.md) | Quick start + как пересобрать |
 
 ---
 
 ## TL;DR
 
-Sprint 4 закрыт. Две независимые линии работы:
+Sprint 3.5 закрыт. Две независимые линии работы:
 
 1. **UI/UX:** на странице «События ТЖ» переделан фильтр типов — был client-side на 500 строках (терял редкие типы), стал server-side multi-select c counts по всему архиву. Добавлены sticky headers, плавная анимация сайдбара (220ms), мини-хамбургер сверху, выравнивание контролов. Удалён misleading «fallback» в UI обработки моделирования.
 2. **ТЖ-моделирование:** построен полный набор инструментов — внешняя обработка `МоделированиеТЖ.epf` (6 сценариев: TLOCK, 3 типа дедлоков ЦУП 2.12.3, DBMSSQL, all-at-once) + расширение конфигурации `ТЖМоделированиеРасш` с общим модулем `ВоркерыТЖ`. Решена проблема параллельности транзакций — отказались от `ФоновыеЗадания.Выполнить` (могли идти sequentially в одном rphost → 0 конфликтов) в пользу `1cv8c.exe /Execute` (отдельный клиент-сеанс на каждый воркер).
@@ -149,15 +148,16 @@ DuckDB IN-фильтр работает по индексу — редкая 1 T
 
 Цель — собрать в реальный архив ТЖ все типы событий, чтобы запустить Sprint 3 acceptance gates (deadlock anatomy real-data, rule classifier).
 
-**Артефакты:**
-- `D:\1C-Optimyzer\МоделированиеТЖ\МоделированиеТЖ.epf` — внешняя обработка (17.4 KB)
+**Артефакты в репозитории:** [`tools/tj-simulator/`](https://github.com/anymasoft/1c-optimyzer/tree/main/tools/tj-simulator)
+
+- [`tools/tj-simulator/МоделированиеТЖ/`](https://github.com/anymasoft/1c-optimyzer/tree/main/tools/tj-simulator/%D0%9C%D0%BE%D0%B4%D0%B5%D0%BB%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%D0%A2%D0%96) — внешняя обработка (.epf, 17.4 KB) + XML-исходники
   - 6 сценариев: TLOCK, Дедлок-эскалация (ЦУП 2.12.3.2), Дедлок-разный-порядок (ЦУП 2.12.3.3), Дедлок-один-ресурс, DBMSSQL, Все-подряд
   - Параметризуется: подключение к БД, имя пользователя, регистры для блокировок, количество событий
   - Все транзакции откатываются (ничего не пишется в БД)
-- `D:\1C-Optimyzer\ТЖМоделированиеРасш\ТЖМоделированиеРасш.cfe` — расширение конфигурации
-  - Общий модуль `ВоркерыТЖ` с экспортными методами (на случай если для каких-то сценариев в будущем понадобятся фоновые задания)
+- [`tools/tj-simulator/ТЖМоделированиеРасш/`](https://github.com/anymasoft/1c-optimyzer/tree/main/tools/tj-simulator/%D0%A2%D0%96%D0%9C%D0%BE%D0%B4%D0%B5%D0%BB%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%D0%A0%D0%B0%D1%81%D1%88/) — расширение конфигурации (.cfe)
+  - Общий модуль `ВоркерыТЖ` с экспортными методами (опционально — на случай будущих сценариев через `ФоновыеЗадания.Выполнить`)
   - `ConfigurationExtensionCompatibilityMode = Version8_3_27` (важно — несовпадение версий ломает сериализацию форм БСП)
-- `D:\1C-Optimyzer\МоделированиеТЖ\МоделированиеТЖ_install.ps1`, `_uninstall.ps1` — установка/удаление расширения через `DESIGNER /LoadCfg`
+- `install.ps1` / `uninstall.ps1` — установка/удаление расширения через `DESIGNER /LoadConfigFromFiles` (пути относительные через `$PSScriptRoot`)
 
 ### E. Решённые архитектурные проблемы при создании обработки
 
@@ -231,10 +231,17 @@ frontend/src/i18n/ru.ts                              (переименовани
 frontend/src/styles/optimyzer-design.css             (transition grid-template-columns 220ms)
 ```
 
-Вне репозитория (отдельные артефакты):
+Артефакты ТЖ-симулятора (перенесены в репо отдельным коммитом):
 ```
-D:\1C-Optimyzer\МоделированиеТЖ\         — внешняя обработка (XML-исходник + сборка)
-D:\1C-Optimyzer\ТЖМоделированиеРасш\     — расширение конфигурации (XML-исходник + сборка + install/uninstall)
+tools/tj-simulator/
+  README.md                              — quick start, структура, как пересобрать
+  МоделированиеТЖ/                       — внешняя обработка
+    src/                                 — XML-исходник
+    build/МоделированиеТЖ.epf            — собранная обработка (17.4 KB)
+    form-definition.json                 — JSON DSL формы
+  ТЖМоделированиеРасш/                   — расширение конфигурации
+    src/                                 — XML-исходник
+    install.ps1, uninstall.ps1           — установка/удаление расширения
 ```
 
 ---

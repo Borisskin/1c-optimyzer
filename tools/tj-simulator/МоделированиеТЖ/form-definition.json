@@ -1,0 +1,69 @@
+{
+  "title": "Моделирование событий технологического журнала",
+  "properties": { "autoTitle": false, "width": 100, "height": 30 },
+  "events": { "OnCreateAtServer": "ПриСозданииНаСервере", "OnOpen": "ПриОткрытии" },
+  "elements": [
+    { "group": "vertical", "name": "ГруппаПредупреждение", "representation": "weak", "children": [
+      { "label": "Предупреждение", "title": "ВНИМАНИЕ: обработка предназначена для тестовой базы. Все транзакции откатываются, в базе ничего не сохраняется. Запуск на продуктовой базе запрещён." }
+    ]},
+    { "group": "vertical", "name": "ГруппаПодключение", "title": "Параметры подключения к этой базе", "showTitle": true, "representation": "normal", "children": [
+      { "input": "ПараметрыПодключения", "path": "ПараметрыПодключения", "title": "Строка подключения", "horizontalStretch": true, "titleLocation": "top", "inputHint": "Srvr=\"localhost:2541\";Ref=\"Test1CProf\"" },
+      { "group": "horizontal", "name": "ГруппаУчётка", "children": [
+        { "input": "ПользовательИБ", "path": "ПользовательИБ", "title": "Пользователь", "width": 25, "titleLocation": "top" },
+        { "input": "ПарольИБ", "path": "ПарольИБ", "title": "Пароль", "passwordMode": true, "width": 25, "titleLocation": "top" },
+        { "input": "ПутьКПлатформе", "path": "ПутьКПлатформе", "title": "Путь к 1cv8c.exe", "horizontalStretch": true, "titleLocation": "top" }
+      ]}
+    ]},
+    { "group": "vertical", "name": "ГруппаРегистры", "title": "Регистры для блокировок (Managed-режим)", "showTitle": true, "representation": "normal", "children": [
+      { "input": "Регистр1", "path": "Регистр1", "title": "Регистр 1", "horizontalStretch": true, "titleLocation": "top" },
+      { "input": "Регистр2", "path": "Регистр2", "title": "Регистр 2", "horizontalStretch": true, "titleLocation": "top" },
+      { "input": "Регистр3", "path": "Регистр3", "title": "Регистр 3", "horizontalStretch": true, "titleLocation": "top" }
+    ]},
+    { "group": "horizontal", "name": "ГруппаПараметрыСценариев", "title": "Количество событий", "showTitle": true, "children": [
+      { "input": "КоличествоTLOCK", "path": "КоличествоTLOCK", "title": "TLOCK событий (сценарий 1)", "spinButton": true, "width": 15, "titleLocation": "top" },
+      { "input": "КоличествоЗапросов", "path": "КоличествоЗапросов", "title": "DBMSSQL запросов (сценарий 5)", "spinButton": true, "width": 15, "titleLocation": "top" },
+      { "input": "ПорогДлительностиЗапросаМс", "path": "ПорогДлительностиЗапросаМс", "title": "Цель длит. запроса (мс)", "spinButton": true, "width": 15, "titleLocation": "top" }
+    ]},
+    { "group": "horizontal", "name": "ГруппаКнопкиСценариев", "title": "Сценарии моделирования", "showTitle": true, "representation": "strong", "children": [
+      { "button": "КнопкаTLOCK", "command": "СценарийTLOCK", "title": "1. TLOCK" },
+      { "button": "КнопкаDeadlockЭскалация", "command": "СценарийDeadlockЭскалация", "title": "2. Дедлок: эскалация" },
+      { "button": "КнопкаDeadlockРазныйПорядок", "command": "СценарийDeadlockРазныйПорядок", "title": "3. Дедлок: разный порядок" },
+      { "button": "КнопкаDeadlockОдинРесурс", "command": "СценарийDeadlockОдинРесурс", "title": "4. Дедлок: один ресурс" },
+      { "button": "КнопкаDBMSSQL", "command": "СценарийDBMSSQL", "title": "5. DBMSSQL" },
+      { "button": "КнопкаВсе", "command": "СценарийВсе", "title": "6. Все подряд" }
+    ]},
+    { "table": "ИсторияЗапусковТаблица", "path": "ИсторияЗапусков", "title": "История запусков", "height": 12, "header": true, "footer": false, "columns": [
+      { "input": "ИсторияВремя", "path": "ИсторияЗапусков.Время", "title": "Время" },
+      { "input": "ИсторияСценарий", "path": "ИсторияЗапусков.Сценарий", "title": "Сценарий" },
+      { "input": "ИсторияСтатус", "path": "ИсторияЗапусков.Статус", "title": "Статус" },
+      { "input": "ИсторияРезультат", "path": "ИсторияЗапусков.Результат", "title": "Результат" }
+    ]}
+  ],
+  "attributes": [
+    { "name": "Объект", "type": "ExternalDataProcessorObject.МоделированиеТЖ", "main": true },
+    { "name": "ПараметрыПодключения", "type": "string(500)" },
+    { "name": "ПользовательИБ", "type": "string(100)" },
+    { "name": "ПарольИБ", "type": "string(100)" },
+    { "name": "ПутьКПлатформе", "type": "string(500)" },
+    { "name": "Регистр1", "type": "string(150)" },
+    { "name": "Регистр2", "type": "string(150)" },
+    { "name": "Регистр3", "type": "string(150)" },
+    { "name": "КоличествоTLOCK", "type": "decimal(5,0,nonneg)" },
+    { "name": "КоличествоЗапросов", "type": "decimal(5,0,nonneg)" },
+    { "name": "ПорогДлительностиЗапросаМс", "type": "decimal(7,0,nonneg)" },
+    { "name": "ИсторияЗапусков", "type": "ValueTable", "columns": [
+      { "name": "Время", "type": "dateTime" },
+      { "name": "Сценарий", "type": "string(100)" },
+      { "name": "Статус", "type": "string(20)" },
+      { "name": "Результат", "type": "string(500)" }
+    ]}
+  ],
+  "commands": [
+    { "name": "СценарийTLOCK", "action": "СценарийTLOCKКоманда", "title": "1. TLOCK" },
+    { "name": "СценарийDeadlockЭскалация", "action": "СценарийDeadlockЭскалацияКоманда", "title": "2. Дедлок: эскалация" },
+    { "name": "СценарийDeadlockРазныйПорядок", "action": "СценарийDeadlockРазныйПорядокКоманда", "title": "3. Дедлок: разный порядок" },
+    { "name": "СценарийDeadlockОдинРесурс", "action": "СценарийDeadlockОдинРесурсКоманда", "title": "4. Дедлок: один ресурс" },
+    { "name": "СценарийDBMSSQL", "action": "СценарийDBMSSQLКоманда", "title": "5. DBMSSQL" },
+    { "name": "СценарийВсе", "action": "СценарийВсеКоманда", "title": "6. Все подряд" }
+  ]
+}

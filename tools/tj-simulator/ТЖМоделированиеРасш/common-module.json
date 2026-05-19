@@ -1,0 +1,7 @@
+{
+  "type": "CommonModule",
+  "name": "ВоркерыТЖ",
+  "synonym": "Воркеры моделирования ТЖ",
+  "context": "server",
+  "privileged": true
+}

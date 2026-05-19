@@ -1,0 +1,556 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Form xmlns="http://v8.1c.ru/8.3/xcf/logform" xmlns:app="http://v8.1c.ru/8.2/managed-application/core" xmlns:cfg="http://v8.1c.ru/8.1/data/enterprise/current-config" xmlns:dcscor="http://v8.1c.ru/8.1/data-composition-system/core" xmlns:dcssch="http://v8.1c.ru/8.1/data-composition-system/schema" xmlns:dcsset="http://v8.1c.ru/8.1/data-composition-system/settings" xmlns:ent="http://v8.1c.ru/8.1/data/enterprise" xmlns:lf="http://v8.1c.ru/8.2/managed-application/logform" xmlns:style="http://v8.1c.ru/8.1/data/ui/style" xmlns:sys="http://v8.1c.ru/8.1/data/ui/fonts/system" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:v8ui="http://v8.1c.ru/8.1/data/ui" xmlns:web="http://v8.1c.ru/8.1/data/ui/colors/web" xmlns:win="http://v8.1c.ru/8.1/data/ui/colors/windows" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.17">
+	<Title>
+		<v8:item>
+			<v8:lang>ru</v8:lang>
+			<v8:content>Моделирование событий технологического журнала</v8:content>
+		</v8:item>
+	</Title>
+	<AutoTitle>false</AutoTitle>
+	<Width>100</Width>
+	<Height>30</Height>
+	<AutoCommandBar name="ФормаКоманднаяПанель" id="-1">
+		<HorizontalAlign>Right</HorizontalAlign>
+		<Autofill>false</Autofill>
+	</AutoCommandBar>
+	<Events>
+		<Event name="OnCreateAtServer">ПриСозданииНаСервере</Event>
+		<Event name="OnOpen">ПриОткрытии</Event>
+	</Events>
+	<ChildItems>
+		<UsualGroup name="ГруппаПредупреждение" id="1">
+			<Group>Vertical</Group>
+			<Representation>WeakSeparation</Representation>
+			<ExtendedTooltip name="ГруппаПредупреждениеРасширеннаяПодсказка" id="2"/>
+			<ChildItems>
+				<LabelDecoration name="Предупреждение" id="3">
+					<Title formatted="false">
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>ВНИМАНИЕ: обработка предназначена для тестовой базы. Все транзакции откатываются, в базе ничего не сохраняется. Запуск на продуктовой базе запрещён.</v8:content>
+						</v8:item>
+					</Title>
+					<ContextMenu name="ПредупреждениеКонтекстноеМеню" id="4"/>
+					<ExtendedTooltip name="ПредупреждениеРасширеннаяПодсказка" id="5"/>
+				</LabelDecoration>
+			</ChildItems>
+		</UsualGroup>
+		<UsualGroup name="ГруппаПодключение" id="6">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Параметры подключения к этой базе</v8:content>
+				</v8:item>
+			</Title>
+			<Group>Vertical</Group>
+			<Representation>NormalSeparation</Representation>
+			<ExtendedTooltip name="ГруппаПодключениеРасширеннаяПодсказка" id="7"/>
+			<ChildItems>
+				<InputField name="ПараметрыПодключения" id="8">
+					<DataPath>ПараметрыПодключения</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Строка подключения</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<HorizontalStretch>true</HorizontalStretch>
+					<InputHint>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Srvr=&quot;localhost:2541&quot;;Ref=&quot;Test1CProf&quot;</v8:content>
+						</v8:item>
+					</InputHint>
+					<ContextMenu name="ПараметрыПодключенияКонтекстноеМеню" id="9"/>
+					<ExtendedTooltip name="ПараметрыПодключенияРасширеннаяПодсказка" id="10"/>
+				</InputField>
+				<UsualGroup name="ГруппаУчётка" id="11">
+					<Group>Horizontal</Group>
+					<ExtendedTooltip name="ГруппаУчёткаРасширеннаяПодсказка" id="12"/>
+					<ChildItems>
+						<InputField name="ПользовательИБ" id="13">
+							<DataPath>ПользовательИБ</DataPath>
+							<Title>
+								<v8:item>
+									<v8:lang>ru</v8:lang>
+									<v8:content>Пользователь</v8:content>
+								</v8:item>
+							</Title>
+							<TitleLocation>Top</TitleLocation>
+							<Width>25</Width>
+							<ContextMenu name="ПользовательИБКонтекстноеМеню" id="14"/>
+							<ExtendedTooltip name="ПользовательИБРасширеннаяПодсказка" id="15"/>
+						</InputField>
+						<InputField name="ПарольИБ" id="16">
+							<DataPath>ПарольИБ</DataPath>
+							<Title>
+								<v8:item>
+									<v8:lang>ru</v8:lang>
+									<v8:content>Пароль</v8:content>
+								</v8:item>
+							</Title>
+							<TitleLocation>Top</TitleLocation>
+							<PasswordMode>true</PasswordMode>
+							<Width>25</Width>
+							<ContextMenu name="ПарольИБКонтекстноеМеню" id="17"/>
+							<ExtendedTooltip name="ПарольИБРасширеннаяПодсказка" id="18"/>
+						</InputField>
+						<InputField name="ПутьКПлатформе" id="19">
+							<DataPath>ПутьКПлатформе</DataPath>
+							<Title>
+								<v8:item>
+									<v8:lang>ru</v8:lang>
+									<v8:content>Путь к 1cv8c.exe</v8:content>
+								</v8:item>
+							</Title>
+							<TitleLocation>Top</TitleLocation>
+							<HorizontalStretch>true</HorizontalStretch>
+							<ContextMenu name="ПутьКПлатформеКонтекстноеМеню" id="20"/>
+							<ExtendedTooltip name="ПутьКПлатформеРасширеннаяПодсказка" id="21"/>
+						</InputField>
+					</ChildItems>
+				</UsualGroup>
+			</ChildItems>
+		</UsualGroup>
+		<UsualGroup name="ГруппаРегистры" id="22">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Регистры для блокировок (Managed-режим)</v8:content>
+				</v8:item>
+			</Title>
+			<Group>Vertical</Group>
+			<Representation>NormalSeparation</Representation>
+			<ExtendedTooltip name="ГруппаРегистрыРасширеннаяПодсказка" id="23"/>
+			<ChildItems>
+				<InputField name="Регистр1" id="24">
+					<DataPath>Регистр1</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Регистр 1</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<HorizontalStretch>true</HorizontalStretch>
+					<ContextMenu name="Регистр1КонтекстноеМеню" id="25"/>
+					<ExtendedTooltip name="Регистр1РасширеннаяПодсказка" id="26"/>
+				</InputField>
+				<InputField name="Регистр2" id="27">
+					<DataPath>Регистр2</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Регистр 2</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<HorizontalStretch>true</HorizontalStretch>
+					<ContextMenu name="Регистр2КонтекстноеМеню" id="28"/>
+					<ExtendedTooltip name="Регистр2РасширеннаяПодсказка" id="29"/>
+				</InputField>
+				<InputField name="Регистр3" id="30">
+					<DataPath>Регистр3</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Регистр 3</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<HorizontalStretch>true</HorizontalStretch>
+					<ContextMenu name="Регистр3КонтекстноеМеню" id="31"/>
+					<ExtendedTooltip name="Регистр3РасширеннаяПодсказка" id="32"/>
+				</InputField>
+			</ChildItems>
+		</UsualGroup>
+		<UsualGroup name="ГруппаПараметрыСценариев" id="33">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Количество событий</v8:content>
+				</v8:item>
+			</Title>
+			<Group>Horizontal</Group>
+			<ExtendedTooltip name="ГруппаПараметрыСценариевРасширеннаяПодсказка" id="34"/>
+			<ChildItems>
+				<InputField name="КоличествоTLOCK" id="35">
+					<DataPath>КоличествоTLOCK</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>TLOCK событий (сценарий 1)</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<SpinButton>true</SpinButton>
+					<Width>15</Width>
+					<ContextMenu name="КоличествоTLOCKКонтекстноеМеню" id="36"/>
+					<ExtendedTooltip name="КоличествоTLOCKРасширеннаяПодсказка" id="37"/>
+				</InputField>
+				<InputField name="КоличествоЗапросов" id="38">
+					<DataPath>КоличествоЗапросов</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>DBMSSQL запросов (сценарий 5)</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<SpinButton>true</SpinButton>
+					<Width>15</Width>
+					<ContextMenu name="КоличествоЗапросовКонтекстноеМеню" id="39"/>
+					<ExtendedTooltip name="КоличествоЗапросовРасширеннаяПодсказка" id="40"/>
+				</InputField>
+				<InputField name="ПорогДлительностиЗапросаМс" id="41">
+					<DataPath>ПорогДлительностиЗапросаМс</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Цель длит. запроса (мс)</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<SpinButton>true</SpinButton>
+					<Width>15</Width>
+					<ContextMenu name="ПорогДлительностиЗапросаМсКонтекстноеМеню" id="42"/>
+					<ExtendedTooltip name="ПорогДлительностиЗапросаМсРасширеннаяПодсказка" id="43"/>
+				</InputField>
+			</ChildItems>
+		</UsualGroup>
+		<UsualGroup name="ГруппаКнопкиСценариев" id="44">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>Сценарии моделирования</v8:content>
+				</v8:item>
+			</Title>
+			<Group>Horizontal</Group>
+			<Representation>StrongSeparation</Representation>
+			<ExtendedTooltip name="ГруппаКнопкиСценариевРасширеннаяПодсказка" id="45"/>
+			<ChildItems>
+				<Button name="КнопкаTLOCK" id="46">
+					<CommandName>Form.Command.СценарийTLOCK</CommandName>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>1. TLOCK</v8:content>
+						</v8:item>
+					</Title>
+					<ExtendedTooltip name="КнопкаTLOCKРасширеннаяПодсказка" id="47"/>
+				</Button>
+				<Button name="КнопкаDeadlockЭскалация" id="48">
+					<CommandName>Form.Command.СценарийDeadlockЭскалация</CommandName>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>2. Дедлок: эскалация</v8:content>
+						</v8:item>
+					</Title>
+					<ExtendedTooltip name="КнопкаDeadlockЭскалацияРасширеннаяПодсказка" id="49"/>
+				</Button>
+				<Button name="КнопкаDeadlockРазныйПорядок" id="50">
+					<CommandName>Form.Command.СценарийDeadlockРазныйПорядок</CommandName>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>3. Дедлок: разный порядок</v8:content>
+						</v8:item>
+					</Title>
+					<ExtendedTooltip name="КнопкаDeadlockРазныйПорядокРасширеннаяПодсказка" id="51"/>
+				</Button>
+				<Button name="КнопкаDeadlockОдинРесурс" id="52">
+					<CommandName>Form.Command.СценарийDeadlockОдинРесурс</CommandName>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>4. Дедлок: один ресурс</v8:content>
+						</v8:item>
+					</Title>
+					<ExtendedTooltip name="КнопкаDeadlockОдинРесурсРасширеннаяПодсказка" id="53"/>
+				</Button>
+				<Button name="КнопкаDBMSSQL" id="54">
+					<CommandName>Form.Command.СценарийDBMSSQL</CommandName>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>5. DBMSSQL</v8:content>
+						</v8:item>
+					</Title>
+					<ExtendedTooltip name="КнопкаDBMSSQLРасширеннаяПодсказка" id="55"/>
+				</Button>
+				<Button name="КнопкаВсе" id="56">
+					<CommandName>Form.Command.СценарийВсе</CommandName>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>6. Все подряд</v8:content>
+						</v8:item>
+					</Title>
+					<ExtendedTooltip name="КнопкаВсеРасширеннаяПодсказка" id="57"/>
+				</Button>
+			</ChildItems>
+		</UsualGroup>
+		<Table name="ИсторияЗапусковТаблица" id="58">
+			<DataPath>ИсторияЗапусков</DataPath>
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>История запусков</v8:content>
+				</v8:item>
+			</Title>
+			<HeightInTableRows>12</HeightInTableRows>
+			<ContextMenu name="ИсторияЗапусковТаблицаКонтекстноеМеню" id="59"/>
+			<AutoCommandBar name="ИсторияЗапусковТаблицаКоманднаяПанель" id="60"/>
+			<SearchStringAddition name="ИсторияЗапусковТаблицаСтрокаПоиска" id="61"/>
+			<ViewStatusAddition name="ИсторияЗапусковТаблицаСостояниеПросмотра" id="62"/>
+			<SearchControlAddition name="ИсторияЗапусковТаблицаУправлениеПоиском" id="63"/>
+			<ChildItems>
+				<InputField name="ИсторияВремя" id="64">
+					<DataPath>ИсторияЗапусков.Время</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Время</v8:content>
+						</v8:item>
+					</Title>
+					<ContextMenu name="ИсторияВремяКонтекстноеМеню" id="65"/>
+					<ExtendedTooltip name="ИсторияВремяРасширеннаяПодсказка" id="66"/>
+				</InputField>
+				<InputField name="ИсторияСценарий" id="67">
+					<DataPath>ИсторияЗапусков.Сценарий</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Сценарий</v8:content>
+						</v8:item>
+					</Title>
+					<ContextMenu name="ИсторияСценарийКонтекстноеМеню" id="68"/>
+					<ExtendedTooltip name="ИсторияСценарийРасширеннаяПодсказка" id="69"/>
+				</InputField>
+				<InputField name="ИсторияСтатус" id="70">
+					<DataPath>ИсторияЗапусков.Статус</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Статус</v8:content>
+						</v8:item>
+					</Title>
+					<ContextMenu name="ИсторияСтатусКонтекстноеМеню" id="71"/>
+					<ExtendedTooltip name="ИсторияСтатусРасширеннаяПодсказка" id="72"/>
+				</InputField>
+				<InputField name="ИсторияРезультат" id="73">
+					<DataPath>ИсторияЗапусков.Результат</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Результат</v8:content>
+						</v8:item>
+					</Title>
+					<ContextMenu name="ИсторияРезультатКонтекстноеМеню" id="74"/>
+					<ExtendedTooltip name="ИсторияРезультатРасширеннаяПодсказка" id="75"/>
+				</InputField>
+			</ChildItems>
+		</Table>
+	</ChildItems>
+	<Attributes>
+		<Attribute name="Объект" id="76">
+			<Type>
+				<v8:Type>cfg:ExternalDataProcessorObject.МоделированиеТЖ</v8:Type>
+			</Type>
+			<MainAttribute>true</MainAttribute>
+		</Attribute>
+		<Attribute name="ПараметрыПодключения" id="77">
+			<Type>
+				<v8:Type>xs:string</v8:Type>
+				<v8:StringQualifiers>
+					<v8:Length>500</v8:Length>
+					<v8:AllowedLength>Variable</v8:AllowedLength>
+				</v8:StringQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="ПользовательИБ" id="78">
+			<Type>
+				<v8:Type>xs:string</v8:Type>
+				<v8:StringQualifiers>
+					<v8:Length>100</v8:Length>
+					<v8:AllowedLength>Variable</v8:AllowedLength>
+				</v8:StringQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="ПарольИБ" id="79">
+			<Type>
+				<v8:Type>xs:string</v8:Type>
+				<v8:StringQualifiers>
+					<v8:Length>100</v8:Length>
+					<v8:AllowedLength>Variable</v8:AllowedLength>
+				</v8:StringQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="ПутьКПлатформе" id="80">
+			<Type>
+				<v8:Type>xs:string</v8:Type>
+				<v8:StringQualifiers>
+					<v8:Length>500</v8:Length>
+					<v8:AllowedLength>Variable</v8:AllowedLength>
+				</v8:StringQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="Регистр1" id="81">
+			<Type>
+				<v8:Type>xs:string</v8:Type>
+				<v8:StringQualifiers>
+					<v8:Length>150</v8:Length>
+					<v8:AllowedLength>Variable</v8:AllowedLength>
+				</v8:StringQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="Регистр2" id="82">
+			<Type>
+				<v8:Type>xs:string</v8:Type>
+				<v8:StringQualifiers>
+					<v8:Length>150</v8:Length>
+					<v8:AllowedLength>Variable</v8:AllowedLength>
+				</v8:StringQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="Регистр3" id="83">
+			<Type>
+				<v8:Type>xs:string</v8:Type>
+				<v8:StringQualifiers>
+					<v8:Length>150</v8:Length>
+					<v8:AllowedLength>Variable</v8:AllowedLength>
+				</v8:StringQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="КоличествоTLOCK" id="84">
+			<Type>
+				<v8:Type>xs:decimal</v8:Type>
+				<v8:NumberQualifiers>
+					<v8:Digits>5</v8:Digits>
+					<v8:FractionDigits>0</v8:FractionDigits>
+					<v8:AllowedSign>Nonnegative</v8:AllowedSign>
+				</v8:NumberQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="КоличествоЗапросов" id="85">
+			<Type>
+				<v8:Type>xs:decimal</v8:Type>
+				<v8:NumberQualifiers>
+					<v8:Digits>5</v8:Digits>
+					<v8:FractionDigits>0</v8:FractionDigits>
+					<v8:AllowedSign>Nonnegative</v8:AllowedSign>
+				</v8:NumberQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="ПорогДлительностиЗапросаМс" id="86">
+			<Type>
+				<v8:Type>xs:decimal</v8:Type>
+				<v8:NumberQualifiers>
+					<v8:Digits>7</v8:Digits>
+					<v8:FractionDigits>0</v8:FractionDigits>
+					<v8:AllowedSign>Nonnegative</v8:AllowedSign>
+				</v8:NumberQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="ИсторияЗапусков" id="87">
+			<Type>
+				<v8:Type>v8:ValueTable</v8:Type>
+			</Type>
+			<Columns>
+				<Column name="Время" id="88">
+					<Type>
+						<v8:Type>xs:dateTime</v8:Type>
+						<v8:DateQualifiers>
+							<v8:DateFractions>DateTime</v8:DateFractions>
+						</v8:DateQualifiers>
+					</Type>
+				</Column>
+				<Column name="Сценарий" id="89">
+					<Type>
+						<v8:Type>xs:string</v8:Type>
+						<v8:StringQualifiers>
+							<v8:Length>100</v8:Length>
+							<v8:AllowedLength>Variable</v8:AllowedLength>
+						</v8:StringQualifiers>
+					</Type>
+				</Column>
+				<Column name="Статус" id="90">
+					<Type>
+						<v8:Type>xs:string</v8:Type>
+						<v8:StringQualifiers>
+							<v8:Length>20</v8:Length>
+							<v8:AllowedLength>Variable</v8:AllowedLength>
+						</v8:StringQualifiers>
+					</Type>
+				</Column>
+				<Column name="Результат" id="91">
+					<Type>
+						<v8:Type>xs:string</v8:Type>
+						<v8:StringQualifiers>
+							<v8:Length>500</v8:Length>
+							<v8:AllowedLength>Variable</v8:AllowedLength>
+						</v8:StringQualifiers>
+					</Type>
+				</Column>
+			</Columns>
+		</Attribute>
+	</Attributes>
+	<Commands>
+		<Command name="СценарийTLOCK" id="92">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>1. TLOCK</v8:content>
+				</v8:item>
+			</Title>
+			<Action>СценарийTLOCKКоманда</Action>
+		</Command>
+		<Command name="СценарийDeadlockЭскалация" id="93">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>2. Дедлок: эскалация</v8:content>
+				</v8:item>
+			</Title>
+			<Action>СценарийDeadlockЭскалацияКоманда</Action>
+		</Command>
+		<Command name="СценарийDeadlockРазныйПорядок" id="94">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>3. Дедлок: разный порядок</v8:content>
+				</v8:item>
+			</Title>
+			<Action>СценарийDeadlockРазныйПорядокКоманда</Action>
+		</Command>
+		<Command name="СценарийDeadlockОдинРесурс" id="95">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>4. Дедлок: один ресурс</v8:content>
+				</v8:item>
+			</Title>
+			<Action>СценарийDeadlockОдинРесурсКоманда</Action>
+		</Command>
+		<Command name="СценарийDBMSSQL" id="96">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>5. DBMSSQL</v8:content>
+				</v8:item>
+			</Title>
+			<Action>СценарийDBMSSQLКоманда</Action>
+		</Command>
+		<Command name="СценарийВсе" id="97">
+			<Title>
+				<v8:item>
+					<v8:lang>ru</v8:lang>
+					<v8:content>6. Все подряд</v8:content>
+				</v8:item>
+			</Title>
+			<Action>СценарийВсеКоманда</Action>
+		</Command>
+	</Commands>
+</Form>
