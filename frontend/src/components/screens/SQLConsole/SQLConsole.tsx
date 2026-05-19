@@ -139,6 +139,20 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
     }
   }, [archiveId, query, pushToast]);
 
+  // F5 — выполнить запрос (как в DBeaver / SSMS). preventDefault блокирует
+  // браузерный reload даже если архив не загружен или запрос уже идёт —
+  // иначе случайное нажатие сбрасывает редактор и результаты.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "F5") return;
+      e.preventDefault();
+      if (running) return;
+      runQuery();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [runQuery, running]);
+
   const tabsModel = useMemo(
     () => [
       {
@@ -173,7 +187,7 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
               className={styles.btn_primary}
               onClick={runQuery}
               disabled={!ready || running}
-              title={t.sql.actions.run}
+              title={`${t.sql.actions.run} (Ctrl+Enter · F5)`}
             >
               <Icon name="Play" size={11} />
               {running ? t.sql.runningPlaceholder : t.sql.actions.run} <KBD>Ctrl+↵</KBD>

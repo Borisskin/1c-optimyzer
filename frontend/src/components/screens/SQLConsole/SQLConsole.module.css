@@ -200,6 +200,14 @@
   background: var(--o-panel);
 }
 
+/* nowrap для всех ячеек тела таблицы: значения вроде
+   2026-05-18T15:03:00.554000 в колонке ts иначе переносятся на 2 строки.
+   Длинные строки уже обрезаются в formatCell() до 200 символов; всё, что
+   шире контейнера, скроллится горизонтально через .table_wrap (overflow: auto). */
+.table tbody td {
+  white-space: nowrap;
+}
+
 .raw_json {
   flex: 1;
   padding: 16px;
