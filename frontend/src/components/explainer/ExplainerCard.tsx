@@ -100,13 +100,36 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
         {aiLoading && (
           <span style={aiLoadingStyle}>AI генерирует развёрнутый ответ…</span>
         )}
-        {ai?.ok && (
-          <span style={aiBadgeStyle} title={`Модель: ${ai.model}, токенов: ${ai.tokens_out}`}>
-            AI{ai.from_cache ? " · кеш" : ""}
+        {ai?.ok && ai.from_cache && (
+          <span
+            style={cacheBadgeStyle}
+            title={formatCacheBadgeTitle(ai)}
+          >
+            ✓ из кеша{ai.created_at ? ` · ${formatRelative(ai.created_at)}` : ""}
           </span>
         )}
-        {/* Retry показываем только если rule НЕ matched (иначе AI избыточен —
-            у пользователя уже есть полное rule-based объяснение). */}
+        {ai?.ok && !ai.from_cache && (
+          <span
+            style={aiBadgeStyle}
+            title={`Модель: ${ai.model} · ${ai.tokens_in} in / ${ai.tokens_out} out · ${ai.elapsed_ms?.toFixed(0)}мс`}
+          >
+            AI · только что
+          </span>
+        )}
+        {/* Refresh: видим всегда когда AI ответ есть (даже из кеша) —
+            принудительно перегенерировать. Если AI ещё не отвечал и rule
+            matched — кнопка не нужна. */}
+        {ai?.ok && (
+          <button
+            type="button"
+            style={refreshBtnStyle}
+            onClick={retryAi}
+            title="Перегенерировать AI (вызовет API заново)"
+          >
+            ↻
+          </button>
+        )}
+        {/* Retry показываем только если rule НЕ matched и AI fail. */}
         {ai && !ai.ok && !rule?.matched && (
           <button type="button" style={retryBtnStyle} onClick={retryAi}>
             ↻ Повторить AI
@@ -137,6 +160,29 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
       )}
     </div>
   );
+}
+
+function formatRelative(iso: string): string {
+  const created = new Date(iso);
+  const now = new Date();
+  const sec = Math.max(0, (now.getTime() - created.getTime()) / 1000);
+  if (sec < 60) return `${Math.round(sec)} сек назад`;
+  if (sec < 3600) return `${Math.round(sec / 60)} мин назад`;
+  if (sec < 86400) return `${Math.round(sec / 3600)} ч назад`;
+  return `${Math.round(sec / 86400)} д назад`;
+}
+
+function formatCacheBadgeTitle(ai: AiExplanationResult): string {
+  const parts = [
+    `Ответ из кеша — Anthropic API не вызывался.`,
+    `Модель: ${ai.model ?? "—"}`,
+    `Токенов: ${ai.tokens_in ?? 0} in / ${ai.tokens_out ?? 0} out`,
+  ];
+  if (ai.created_at) {
+    parts.push(`Сгенерировано: ${ai.created_at.replace("T", " ").slice(0, 19)}`);
+  }
+  parts.push(`Клик ↻ — перегенерировать (вызовет API).`);
+  return parts.join("\n");
 }
 
 function Markdown({ text }: { text: string }) {
@@ -265,6 +311,39 @@ const aiBadgeStyle: CSSProperties = {
   fontSize: 10,
   fontFamily: "var(--o-font-mono)",
   fontWeight: 600,
+};
+
+// Cache badge — зелёный, чтобы пользователь сразу видел что API не вызывался.
+const cacheBadgeStyle: CSSProperties = {
+  marginLeft: 8,
+  padding: "2px 8px",
+  background: "#10B981",
+  color: "#fff",
+  borderRadius: 10,
+  fontSize: 10,
+  fontFamily: "var(--o-font-mono)",
+  fontWeight: 600,
+  cursor: "default",
+};
+
+// Маленькая круглая кнопка ↻ — refresh AI принудительно (force_refresh).
+// Видна когда AI ответ уже есть. Дешевле чем большая "Повторить AI",
+// потому что обычно её жмут редко.
+const refreshBtnStyle: CSSProperties = {
+  marginLeft: 4,
+  width: 20,
+  height: 20,
+  padding: 0,
+  border: "1px solid #FDE68A",
+  borderRadius: "50%",
+  background: "transparent",
+  color: "#92400E",
+  fontSize: 11,
+  lineHeight: 1,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const retryBtnStyle: CSSProperties = {
