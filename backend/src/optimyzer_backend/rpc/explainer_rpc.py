@@ -1,0 +1,176 @@
+"""Sprint 3 Phase E/F — explainer RPC methods.
+
+Public RPC:
+    explainer_classify(archive_id, anatomy_kind, target_id, features)
+        → instant rule-based RuleMatch | None
+
+    explainer_ai(archive_id, anatomy_kind, target_id, anatomy_data,
+                 rule_id?, rule_body?, force_refresh=False)
+        → AI explanation, кеш-aware. Может занимать 3-15 сек.
+
+    explainer_status()
+        → {"enabled": bool, "model": str, "cache_entries": int, "rules_count": int}
+
+    explainer_reload_rules()
+        → {"ok": True, "rules_count": int}
+
+Frontend паттерн (Phase F UX):
+    1. Сразу вызывает explainer_classify (instant) → показывает rule-based.
+    2. Параллельно вызывает explainer_ai → через 3-15 сек дополняет / замещает.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from optimyzer_backend.explainer import ExplainerEngine
+from optimyzer_backend.explainer.cache import ExplainerCache, make_cache_key
+from optimyzer_backend.explainer.claude_client import ClaudeExplainerClient
+from optimyzer_backend.rpc.dispatcher import rpc
+
+
+# ---------- Singletons (lazy-init) ----------
+
+_engine: ExplainerEngine | None = None
+_client: ClaudeExplainerClient | None = None
+_cache: ExplainerCache | None = None
+
+
+def _rules_dir() -> Path:
+    # backend/explainers — рядом с pyproject.toml
+    return Path(__file__).resolve().parents[3] / "explainers"
+
+
+def _cache_path() -> Path:
+    # data/explainer_cache.db — отдельная БД, не смешиваем с app metadata
+    return Path(__file__).resolve().parents[3] / "data" / "explainer_cache.db"
+
+
+def get_engine() -> ExplainerEngine:
+    global _engine
+    if _engine is None:
+        _engine = ExplainerEngine(_rules_dir())
+    return _engine
+
+
+def get_client() -> ClaudeExplainerClient:
+    global _client
+    if _client is None:
+        _client = ClaudeExplainerClient()
+    return _client
+
+
+def get_cache() -> ExplainerCache:
+    global _cache
+    if _cache is None:
+        _cache = ExplainerCache(_cache_path())
+    return _cache
+
+
+# ---------- RPC handlers ----------
+
+
+@rpc("explainer_classify")
+def explainer_classify(
+    archive_id: str,  # noqa: ARG001 — пока не используется но останется в API
+    anatomy_kind: str,
+    target_id: str,  # noqa: ARG001 — пока не используется
+    features: dict[str, Any],
+) -> dict[str, Any]:
+    engine = get_engine()
+    match = engine.classify(features, applies_to=anatomy_kind)
+    if match is None:
+        return {"ok": True, "matched": False}
+    return {
+        "ok": True,
+        "matched": True,
+        "rule_id": match.rule_id,
+        "title": match.title,
+        "body": match.body,
+        "priority": match.priority,
+    }
+
+
+@rpc("explainer_ai")
+def explainer_ai(
+    archive_id: str,
+    anatomy_kind: str,
+    target_id: str,
+    anatomy_data: dict[str, Any],
+    rule_id: str | None = None,
+    rule_body: str | None = None,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    cache = get_cache()
+    cache_key = make_cache_key(archive_id, anatomy_kind, target_id)
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return {
+                "ok": True,
+                "text": cached.ai_text,
+                "from_cache": True,
+                "model": cached.model,
+                "tokens_in": cached.tokens_in,
+                "tokens_out": cached.tokens_out,
+                "created_at": cached.created_at,
+            }
+
+    client = get_client()
+    result = client.generate(
+        anatomy_kind=anatomy_kind,
+        anatomy_data=anatomy_data,
+        rule_context=rule_body,
+    )
+
+    if not result.ok:
+        return {
+            "ok": False,
+            "error": result.error,
+            "enabled": client.enabled,
+        }
+
+    cache.put(
+        cache_key=cache_key,
+        archive_id=archive_id,
+        anatomy_kind=anatomy_kind,
+        target_id=str(target_id),
+        rule_id=rule_id,
+        ai_text=result.text,
+        model=result.model,
+        tokens_in=result.tokens_in,
+        tokens_out=result.tokens_out,
+    )
+
+    return {
+        "ok": True,
+        "text": result.text,
+        "from_cache": False,
+        "model": result.model,
+        "tokens_in": result.tokens_in,
+        "tokens_out": result.tokens_out,
+        "elapsed_ms": result.elapsed_ms,
+    }
+
+
+@rpc("explainer_status")
+def explainer_status() -> dict[str, Any]:
+    client = get_client()
+    engine = get_engine()
+    cache = get_cache()
+    return {
+        "ok": True,
+        "ai_enabled": client.enabled,
+        "model": client.model if client.enabled else None,
+        "rules_count": len(engine.rules),
+        "cache_entries": cache.stats()["entries"],
+    }
+
+
+@rpc("explainer_reload_rules")
+def explainer_reload_rules() -> dict[str, Any]:
+    engine = get_engine()
+    engine.reload_rules()
+    return {"ok": True, "rules_count": len(engine.rules)}

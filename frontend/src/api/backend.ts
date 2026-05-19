@@ -245,6 +245,37 @@ export interface OperationAnatomyResult {
   related_exceptions: SubTable;
 }
 
+export interface RuleClassifyResult {
+  ok: boolean;
+  matched: boolean;
+  rule_id?: string;
+  title?: string;
+  body?: string;
+  priority?: number;
+  error?: string;
+}
+
+export interface AiExplanationResult {
+  ok: boolean;
+  text?: string;
+  from_cache?: boolean;
+  model?: string;
+  tokens_in?: number;
+  tokens_out?: number;
+  elapsed_ms?: number;
+  created_at?: string;
+  enabled?: boolean;
+  error?: string;
+}
+
+export interface ExplainerStatus {
+  ok: boolean;
+  ai_enabled: boolean;
+  model: string | null;
+  rules_count: number;
+  cache_entries: number;
+}
+
 export interface DeadlockAnatomyResult {
   ok: boolean;
   error?: string;
@@ -376,6 +407,29 @@ export const backend = {
     rpc<ViewResult>("view_list_deadlocks", { archive_id, limit }),
   viewDeadlockAnatomy: (archive_id: string, event_id: number, window_seconds = 30) =>
     rpc<DeadlockAnatomyResult>("view_deadlock_anatomy", { archive_id, event_id, window_seconds }),
+
+  // Explainer engine (Sprint 3 Phase E/F)
+  explainerClassify: (
+    archive_id: string,
+    anatomy_kind: string,
+    target_id: string,
+    features: Record<string, unknown>,
+  ) =>
+    rpc<RuleClassifyResult>("explainer_classify", { archive_id, anatomy_kind, target_id, features }),
+  explainerAi: (
+    archive_id: string,
+    anatomy_kind: string,
+    target_id: string,
+    anatomy_data: Record<string, unknown>,
+    rule_id: string | null,
+    rule_body: string | null,
+    force_refresh = false,
+  ) =>
+    rpc<AiExplanationResult>("explainer_ai", {
+      archive_id, anatomy_kind, target_id, anatomy_data, rule_id, rule_body, force_refresh,
+    }),
+  explainerStatus: () => rpc<ExplainerStatus>("explainer_status"),
+  explainerReloadRules: () => rpc<{ ok: boolean; rules_count: number }>("explainer_reload_rules"),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),

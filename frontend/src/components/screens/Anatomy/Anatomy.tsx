@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { backend, type OperationAnatomyResult } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
+import { ExplainerCard } from "@/components/explainer/ExplainerCard";
 import { useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -118,6 +119,35 @@ export function AnatomyScreen({ archiveId }: Props) {
 
       {!loading && !error && data && found && s && (
         <>
+          <ExplainerCard
+            archiveId={archiveId}
+            anatomyKind="slow_op"
+            targetId={operation}
+            features={{
+              operation,
+              calls: s.total_events ?? 0,
+              avg_duration_ms: s.avg_duration_ms ?? 0,
+              total_duration_ms: s.total_duration_ms ?? 0,
+              total_duration_s: ((s.total_duration_ms ?? 0) / 1000).toFixed(1),
+              sql_duration_ms: data.breakdown.find((b) => b.event_type === "DBMSSQL")?.total_duration_ms ?? 0,
+              sql_share: (s.total_duration_ms ?? 0) > 0
+                ? ((data.breakdown.find((b) => b.event_type === "DBMSSQL")?.total_duration_ms ?? 0) / (s.total_duration_ms ?? 1))
+                : 0,
+              sql_share_pct: Math.round(
+                (s.total_duration_ms ?? 0) > 0
+                  ? ((data.breakdown.find((b) => b.event_type === "DBMSSQL")?.total_duration_ms ?? 0) / (s.total_duration_ms ?? 1)) * 100
+                  : 0,
+              ),
+              lock_events: s.lock_count ?? 0,
+              lock_share: (s.total_events ?? 0) > 0 ? (s.lock_count ?? 0) / (s.total_events ?? 1) : 0,
+            }}
+            anatomyData={{
+              operation,
+              summary: s,
+              breakdown: data.breakdown,
+              top_sql_count: data.top_sql.row_count,
+            }}
+          />
           <div className={vshellStyles.panel} style={summaryPanel}>
             <div className={vshellStyles.panel_head}>
               <div className={vshellStyles.panel_title}>Сводка</div>

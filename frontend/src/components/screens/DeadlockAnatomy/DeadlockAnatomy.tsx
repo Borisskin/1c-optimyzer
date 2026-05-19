@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { backend, type DeadlockAnatomyResult, type ViewResult } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
+import { ExplainerCard } from "@/components/explainer/ExplainerCard";
 import { useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -160,6 +161,25 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
       )}
       {eventId && !loading && anatomy && anatomy.found && anatomy.event && anatomy.parsed_extra && (
         <>
+          <ExplainerCard
+            archiveId={archiveId}
+            anatomyKind="deadlock"
+            targetId={String(eventId)}
+            features={{
+              event_type: "TDEADLOCK",
+              regions_count: anatomy.parsed_extra.regions.length,
+              first_region: anatomy.parsed_extra.regions[0]?.object_name ?? "",
+              participants_count: anatomy.participants?.length ?? 0,
+            }}
+            anatomyData={{
+              event: anatomy.event,
+              regions: anatomy.parsed_extra.regions,
+              wait_connections: anatomy.parsed_extra.wait_connections,
+              edges: anatomy.parsed_extra.edges,
+              participants: anatomy.participants,
+            }}
+          />
+
           {/* Header */}
           <div className={vshellStyles.panel}>
             <div className={vshellStyles.panel_head}>
