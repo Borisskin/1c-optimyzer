@@ -10,9 +10,48 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _load_dotenv_once() -> None:
+    """Простой .env loader без зависимостей.
+
+    Python не читает .env автоматически. Чтобы пользователю не приходилось
+    выставлять переменную окружения вручную, загружаем .env-файл из:
+      - текущей рабочей директории (откуда запущен backend)
+      - корня репозитория (4 уровня вверх от этого файла)
+    Существующие переменные окружения НЕ перезаписываем.
+    """
+    if os.environ.get("_OPTIMYZER_DOTENV_LOADED") == "1":
+        return
+    candidates = [
+        Path.cwd() / ".env",
+        Path(__file__).resolve().parents[4] / ".env",  # backend/src/optimyzer_backend/explainer → repo root
+    ]
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            for raw_line in path.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                # Снять кавычки если есть
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                    value = value[1:-1]
+                if key and key not in os.environ:
+                    os.environ[key] = value
+            logger.info(f"Loaded .env from {path}")
+            break
+        except OSError:
+            continue
+    os.environ["_OPTIMYZER_DOTENV_LOADED"] = "1"
 
 
 @dataclass
@@ -54,7 +93,12 @@ class ClaudeExplainerClient:
         api_key: str | None = None,
         model: str | None = None,
     ) -> None:
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        # api_key=None → читаем .env + env var. api_key="..." (включая пустую
+        # строку) → используем как явный override (нужно для тестов).
+        if api_key is None:
+            _load_dotenv_once()
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        self.api_key = api_key.strip()
         self.model = model or os.environ.get("ANTHROPIC_MODEL", self.DEFAULT_MODEL)
         self._client: Any = None
         if not self.api_key:

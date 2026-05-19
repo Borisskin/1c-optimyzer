@@ -140,10 +140,14 @@ export function AnatomyScreen({ archiveId }: Props) {
             features={{
               operation,
               calls: s.total_events ?? 0,
-              avg_duration_ms: s.avg_duration_ms ?? 0,
-              total_duration_ms: s.total_duration_ms ?? 0,
+              // Округление чтобы в template substitution не вылазило
+              // "1.909757467634394 мс" — пользователю достаточно 1 знака.
+              avg_duration_ms: round1(s.avg_duration_ms ?? 0),
+              total_duration_ms: round1(s.total_duration_ms ?? 0),
               total_duration_s: ((s.total_duration_ms ?? 0) / 1000).toFixed(1),
-              sql_duration_ms: data.breakdown.find((b) => b.event_type === "DBMSSQL")?.total_duration_ms ?? 0,
+              sql_duration_ms: round1(
+                data.breakdown.find((b) => b.event_type === "DBMSSQL")?.total_duration_ms ?? 0,
+              ),
               sql_share: (s.total_duration_ms ?? 0) > 0
                 ? ((data.breakdown.find((b) => b.event_type === "DBMSSQL")?.total_duration_ms ?? 0) / (s.total_duration_ms ?? 1))
                 : 0,
@@ -373,6 +377,10 @@ function formatCell(v: unknown): string {
   if (typeof v === "string") return v;
   if (typeof v === "number") return Number.isInteger(v) ? v.toLocaleString("ru-RU") : v.toFixed(2);
   return String(v);
+}
+
+function round1(v: number): number {
+  return Math.round(v * 10) / 10;
 }
 
 function fmt(v: number | undefined | null): string {

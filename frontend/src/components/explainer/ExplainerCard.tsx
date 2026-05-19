@@ -105,7 +105,9 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
             AI{ai.from_cache ? " · кеш" : ""}
           </span>
         )}
-        {ai && !ai.ok && (
+        {/* Retry показываем только если rule НЕ matched (иначе AI избыточен —
+            у пользователя уже есть полное rule-based объяснение). */}
+        {ai && !ai.ok && !rule?.matched && (
           <button type="button" style={retryBtnStyle} onClick={retryAi}>
             ↻ Повторить AI
           </button>
@@ -123,7 +125,11 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
         </div>
       ) : null}
 
-      {ai && !ai.ok && ai.error && (
+      {/* AI error показываем ТОЛЬКО когда rule НЕ matched. Если rule сработал —
+          у пользователя уже есть полное объяснение, AI failure нерелевантен
+          и только запутывает (visible на скрине: одновременно rule body +
+          "AI not configured" → confused user). */}
+      {ai && !ai.ok && ai.error && !rule?.matched && (
         <div style={errLineStyle}>
           AI: {ai.error}
           {ai.enabled === false && " (ANTHROPIC_API_KEY не задан в .env)"}
