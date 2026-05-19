@@ -15,6 +15,9 @@ import { DurationHistogramScreen } from "@/components/screens/DurationHistogram/
 import { ErrorsFeedScreen } from "@/components/screens/ErrorsFeed/ErrorsFeed";
 import { ActivityHeatmapScreen } from "@/components/screens/ActivityHeatmap/ActivityHeatmap";
 import { ArchiveComparisonScreen } from "@/components/screens/ArchiveComparison/ArchiveComparison";
+import { OperationsScreen } from "@/components/screens/Operations/Operations";
+import { AnatomyScreen } from "@/components/screens/Anatomy/Anatomy";
+import { DeadlockAnatomyScreen } from "@/components/screens/DeadlockAnatomy/DeadlockAnatomy";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
@@ -55,9 +58,10 @@ export function App() {
         setCmdOpen(false);
         return;
       }
-      // Ctrl+1..8 — quick screen switch.
-      if (meta && /^[1-8]$/.test(e.key)) {
+      // Ctrl+1..9 — quick screen switch.
+      if (meta && /^[1-9]$/.test(e.key)) {
         const screensInOrder: import("@/store/appStore").ScreenId[] = [
+          "operations",
           "sql",
           "slow-queries",
           "locks",
@@ -203,6 +207,12 @@ function renderScreen({
       return <ActivityHeatmapScreen archiveId={archiveId} />;
     case "comparison":
       return <ArchiveComparisonScreen />;
+    case "operations":
+      return <OperationsScreen archiveId={archiveId} />;
+    case "anatomy":
+      return <AnatomyScreen archiveId={archiveId} />;
+    case "deadlock-anatomy":
+      return <DeadlockAnatomyScreen archiveId={archiveId} />;
     default:
       return (
         <div style={{ padding: 32, color: "var(--o-text-3)" }}>

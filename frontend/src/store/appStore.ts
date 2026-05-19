@@ -10,6 +10,9 @@ export type ScreenId =
   | "errors"
   | "activity"
   | "comparison"
+  | "operations"
+  | "anatomy"
+  | "deadlock-anatomy"
   | "dashboard"
   | "apdex"
   | "workbench"
@@ -90,6 +93,12 @@ interface AppStore {
   setFilters: (patch: Partial<CrossFilters>) => void;
   clearFilters: () => void;
 
+  // Sprint 3 — anatomy drill-down state
+  selectedOperation: string | null;
+  setSelectedOperation: (op: string | null) => void;
+  selectedDeadlockEventId: number | null;
+  setSelectedDeadlockEventId: (id: number | null) => void;
+
   toasts: ToastMessage[];
   pushToast: (text: string, tone?: ToastMessage["tone"]) => void;
   dismissToast: (id: number) => void;
@@ -124,6 +133,11 @@ export const useAppStore = create<AppStore>((set) => ({
   filters: EMPTY_FILTERS,
   setFilters: (patch) => set((st) => ({ filters: { ...st.filters, ...patch } })),
   clearFilters: () => set({ filters: EMPTY_FILTERS }),
+
+  selectedOperation: null,
+  setSelectedOperation: (op) => set({ selectedOperation: op }),
+  selectedDeadlockEventId: null,
+  setSelectedDeadlockEventId: (id) => set({ selectedDeadlockEventId: id }),
 
   toasts: [],
   pushToast: (text, tone = "info") =>

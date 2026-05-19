@@ -265,6 +265,64 @@ def errors_feed(
     return _execute(archive_id, sql, params + [limit])
 
 
+# ---------- Sprint 3 / Phase B — Top Business Operations ----------
+
+
+def top_business_operations(
+    archive_id: str,
+    filters: ViewFilters,
+    *,
+    sort_by: str = "total_duration_ms",
+    limit: int = 100,
+) -> dict[str, Any]:
+    """Аггрегация событий по `context_normalized` (Phase A normalization).
+
+    Возвращает топ бизнес-операций (то, что пишет 1С в Context: документ,
+    отчёт, обработка) с breakdown:
+        - calls — сколько раз операция вызвана
+        - total_duration_ms / avg / max — distribution time
+        - sql_duration_ms — сколько времени операция провела в DBMSSQL events
+          (если в архиве были DBMSSQL events с этим context)
+        - lock_events / exception_events — для drill-down индикаторов
+        - unique_sessions / process_roles — для понимания scope
+    """
+    where, params = filters.where_clause(
+        ["context_normalized IS NOT NULL", "context_normalized <> ''"]
+    )
+
+    sort_column = {
+        "total_duration_ms": "total_duration_ms",
+        "avg_duration_ms": "avg_duration_ms",
+        "max_duration_ms": "max_duration_ms",
+        "calls": "calls",
+        "sql_duration_ms": "sql_duration_ms",
+        "lock_events": "lock_events",
+        "exception_events": "exception_events",
+    }.get(sort_by, "total_duration_ms")
+
+    sql = f"""
+        SELECT
+            context_normalized AS operation,
+            COUNT(*) AS calls,
+            SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
+            AVG(COALESCE(duration_us, 0)) / 1000.0 AS avg_duration_ms,
+            MAX(COALESCE(duration_us, 0)) / 1000.0 AS max_duration_ms,
+            SUM(CASE WHEN event_type = 'DBMSSQL' THEN COALESCE(duration_us, 0) ELSE 0 END) / 1000.0 AS sql_duration_ms,
+            SUM(CASE WHEN event_type IN ('TLOCK', 'TDEADLOCK') THEN 1 ELSE 0 END) AS lock_events,
+            SUM(CASE WHEN event_type = 'EXCP' THEN 1 ELSE 0 END) AS exception_events,
+            COUNT(DISTINCT session_id) AS unique_sessions,
+            STRING_AGG(DISTINCT process_role, ', ') AS process_roles,
+            MIN(ts) AS first_seen,
+            MAX(ts) AS last_seen
+        FROM events
+        {f"WHERE {where}" if where else ""}
+        GROUP BY context_normalized
+        ORDER BY {sort_column} DESC NULLS LAST
+        LIMIT ?
+    """
+    return _execute(archive_id, sql, params + [limit])
+
+
 # ---------- D6. Activity Heatmap ----------
 
 

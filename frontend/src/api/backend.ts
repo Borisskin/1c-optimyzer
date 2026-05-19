@@ -265,6 +265,15 @@ export const backend = {
   viewActivityHeatmap: (archive_id: string, filters?: ViewFiltersDto, metric = "count") =>
     rpc<ViewResult>("view_activity_heatmap", { archive_id, filters, metric }),
 
+  // Top Business Operations (Sprint 3 Phase B)
+  viewTopBusinessOperations: (
+    archive_id: string,
+    filters?: ViewFiltersDto,
+    sort_by = "total_duration_ms",
+    limit = 100,
+  ) =>
+    rpc<ViewResult>("view_top_business_operations", { archive_id, filters, sort_by, limit }),
+
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),
   saveQuery: (name: string, query: string, description?: string) =>

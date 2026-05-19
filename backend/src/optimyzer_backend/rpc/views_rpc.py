@@ -15,6 +15,7 @@ from optimyzer_backend.sql.views import (
     locks_timeline,
     process_roles,
     slow_queries,
+    top_business_operations,
 )
 
 
@@ -121,4 +122,19 @@ def view_activity_heatmap(
     return _wrap(
         archive_id,
         lambda: activity_heatmap(archive_id, _filters_from_params(filters), metric=metric),
+    )
+
+
+@rpc("view_top_business_operations")
+def view_top_business_operations(
+    archive_id: str,
+    filters: dict[str, Any] | None = None,
+    sort_by: str = "total_duration_ms",
+    limit: int = 100,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: top_business_operations(
+            archive_id, _filters_from_params(filters), sort_by=sort_by, limit=limit
+        ),
     )
