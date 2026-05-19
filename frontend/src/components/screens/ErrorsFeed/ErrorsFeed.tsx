@@ -6,7 +6,7 @@ import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
-import { ColumnFilterPopover } from "@/components/tables/ColumnFilterPopover";
+import { EventTypeFilter } from "@/components/tables/EventTypeFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
@@ -20,46 +20,41 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [limit, setLimit] = useState(500);
+  // Фильтр по event_type — server-side. Это критично: при limit=10000 редкий
+  // тип (например, 1 TLOCK в архиве из 100K) может полностью выпасть из top-N
+  // по ts DESC, если расположен в начале архива. Передаём selectedTypes в RPC.
+  const selectedTypesArr = useMemo(() => [...selectedTypes], [selectedTypes]);
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewErrorsFeed(archiveId, filtersToDto(filters), limit)
+        ? backend.viewErrorsFeed(archiveId, filtersToDto(filters), limit, selectedTypesArr)
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, filters, limit],
+    [archiveId, filters, limit, selectedTypesArr.join("|")],
   );
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
 
-  // Уникальные значения event_type в текущих данных — для выпадающего фильтра.
-  // Сортировка в фиксированном порядке (severity-based), неизвестные — в конце.
+  // Список всех типов в архиве (counts — независимо от selectedTypes, чтобы
+  // юзер мог переключать выбор без потери видимых counts). Сортировка
+  // severity-based: ошибки → блокировки → запросы/звонки → служебные.
   const availableTypes = useMemo(() => {
-    if (!data?.rows) return [] as string[];
-    const set = new Set<string>();
-    for (const r of data.rows) {
-      const v = r[idx["event_type"]];
-      if (v != null) set.add(String(v));
-    }
-    const order = ["EXCP", "TDEADLOCK", "TLOCK"];
-    return [...set].sort((a, b) => {
-      const ia = order.indexOf(a);
-      const ib = order.indexOf(b);
-      if (ia !== -1 && ib !== -1) return ia - ib;
-      if (ia !== -1) return -1;
-      if (ib !== -1) return 1;
-      return a.localeCompare(b);
-    });
-  }, [data, idx]);
+    const raw = data?.event_types ?? [];
+    const order = ["EXCP", "EXCPCNTX", "TDEADLOCK", "TLOCK", "DBMSSQL", "CALL", "SCALL", "Context"];
+    return [...raw]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => {
+        const ia = order.indexOf(a.value);
+        const ib = order.indexOf(b.value);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+        return a.value.localeCompare(b.value);
+      });
+  }, [data?.event_types]);
 
-  // 1. type filter (multi-select) — пустой Set = все типы
-  const typeFilteredRows = useMemo(() => {
-    if (!data?.rows) return [] as unknown[][];
-    if (selectedTypes.size === 0) return data.rows;
-    return data.rows.filter((r) => selectedTypes.has(String(r[idx["event_type"]])));
-  }, [data, idx, selectedTypes]);
-
-  // 2. useTableState — substring filter + sort внутри type-отфильтрованных rows
+  // useTableState — substring filter + sort внутри уже-server-side-фильтрованных rows
   const table = useTableState({
-    rows: typeFilteredRows,
+    rows: data?.rows ?? [],
     columns: data?.columns ?? [],
     defaultSortKey: "ts",
     defaultSortDir: "desc",
@@ -68,14 +63,14 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
   const typesSummary =
     selectedTypes.size === 0
       ? availableTypes.length > 0
-        ? availableTypes.join(" / ")
-        : "EXCP / TDEADLOCK / TLOCK"
+        ? availableTypes.map((t) => t.value).join(" / ")
+        : "все типы"
       : [...selectedTypes].join(" / ");
 
   return (
     <ViewShell
-      breadcrumbs={["Анализ", "Ошибки и исключения"]}
-      title={<>Ошибки и исключения</>}
+      breadcrumbs={["Анализ", "События ТЖ"]}
+      title={<>События ТЖ</>}
       sub={`${typesSummary} — последние сначала`}
       right={
         <ExportMenu
@@ -99,15 +94,24 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
               за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
-          {typeFilteredRows.length > 0 && (
-            <TableFilter
-              value={table.filter}
-              onChange={table.setFilter}
-              total={table.totalRows}
-              visible={table.visibleRows}
-              placeholder="Поиск по контексту, PID…"
-            />
-          )}
+          <div style={toolsGroup}>
+            {availableTypes.length > 0 && (
+              <EventTypeFilter
+                options={availableTypes}
+                selected={selectedTypes}
+                onChange={setSelectedTypes}
+              />
+            )}
+            {(data?.rows?.length ?? 0) > 0 && (
+              <TableFilter
+                value={table.filter}
+                onChange={table.setFilter}
+                total={table.totalRows}
+                visible={table.visibleRows}
+                placeholder="Поиск по контексту, PID…"
+              />
+            )}
+          </div>
         </div>
         {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
         {archiveId && loading && <div className={vshellStyles.loading}>Загрузка…</div>}
@@ -118,17 +122,7 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
               <thead>
                 <tr>
                   <th {...table.headerProps("ts")}>Время</th>
-                  <th {...table.headerProps("event_type")}>
-                    <span style={thInner}>
-                      Тип
-                      <ColumnFilterPopover
-                        label="Тип события"
-                        options={availableTypes}
-                        selected={selectedTypes}
-                        onChange={setSelectedTypes}
-                      />
-                    </span>
-                  </th>
+                  <th {...table.headerProps("event_type")}>Тип</th>
                   <th {...table.headerProps("process_role")}>Роль</th>
                   <th {...table.headerProps("process_pid")}>PID</th>
                   <th {...table.headerProps("context")}>Контекст</th>
@@ -186,18 +180,13 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
           </div>
         )}
         {archiveId && !loading && !error && (!data?.rows || data.rows.length === 0) && (
-          <div className={vshellStyles.empty}>Нет ошибок и исключений</div>
+          <div className={vshellStyles.empty}>
+            {selectedTypes.size > 0
+              ? `Нет событий выбранных типов (${[...selectedTypes].join(", ")})`
+              : "Нет событий в архиве"}
+          </div>
         )}
-        {archiveId &&
-          !loading &&
-          !error &&
-          (data?.rows?.length ?? 0) > 0 &&
-          typeFilteredRows.length === 0 && (
-            <div className={vshellStyles.empty}>
-              Нет событий выбранных типов ({[...selectedTypes].join(", ") || "—"})
-            </div>
-          )}
-        {archiveId && !loading && !error && typeFilteredRows.length > 0 && table.rows.length === 0 && (
+        {archiveId && !loading && !error && (data?.rows?.length ?? 0) > 0 && table.rows.length === 0 && (
           <div className={vshellStyles.empty}>
             Фильтр «{table.filter}» не дал совпадений
           </div>
@@ -207,9 +196,11 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
   );
 }
 
-const thInner: CSSProperties = {
+const toolsGroup: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  gap: 10,
+  marginLeft: "auto",
 };
 
 function badgeTone(type: string): "err" | "warn" | "mute" {

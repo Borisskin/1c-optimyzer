@@ -114,6 +114,7 @@ input {
   height: 100vh;
   min-width: 1280px;
   background: var(--o-bg);
+  transition: grid-template-columns 220ms ease;
 }
 
 .app[data-sidebar="open"] {

@@ -15,6 +15,16 @@ export function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
+      <div className={`${styles.header} ${open ? styles.header_open : styles.header_collapsed}`}>
+        <button
+          onClick={toggle}
+          className={styles.hamburger}
+          title={open ? t.sidebar.collapse : t.sidebar.expand}
+          aria-label={open ? t.sidebar.collapse : t.sidebar.expand}
+        >
+          <Icon name="Menu" size={14} />
+        </button>
+      </div>
       <nav className={styles.nav}>
         {GROUPS.map((g) => {
           let items = NAV_ITEMS.filter((n) => n.group === g.key);
@@ -68,7 +78,10 @@ export function Sidebar() {
         })}
       </nav>
       <div className={styles.footer}>
-        <button onClick={toggle} className={styles.collapse}>
+        <button
+          onClick={toggle}
+          className={`${styles.collapse} ${open ? styles.collapse_open : styles.collapse_collapsed}`}
+        >
           <Icon name={open ? "ChevronLeft" : "ChevronRight"} size={13} />
           {open && <span>{t.sidebar.collapse}</span>}
         </button>

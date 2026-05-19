@@ -61,6 +61,10 @@
   padding: 8px 10px;
   border-bottom: 1px solid var(--o-border);
   text-align: left;
+  position: sticky;
+  top: 0;
+  background: var(--o-panel);
+  z-index: 2;
 }
 
 .table td {

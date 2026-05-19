@@ -153,23 +153,64 @@ def test_duration_histogram_returns_fixed_order(seeded_archive: str) -> None:
     assert total == 10  # all 10 events have non-null duration_us
 
 
-def test_errors_feed_only_errors(seeded_archive: str) -> None:
+def test_errors_feed_returns_all_event_types(seeded_archive: str) -> None:
+    """errors_feed теперь — лента всех событий ТЖ. Без event_types фильтра — всё."""
     result = errors_feed(seeded_archive, ViewFilters())
-    # EXCP × 2, TDEADLOCK × 1, TLOCK × 1 = 4 events
-    assert result["row_count"] == 4
+    # CALL × 3, DBMSSQL × 3, TDEADLOCK × 1, TLOCK × 1, EXCP × 2 = 10 events
+    assert result["row_count"] == 10
     columns = [c["name"] for c in result["columns"]]
     type_col = columns.index("event_type")
     types = {row[type_col] for row in result["rows"]}
-    assert types == {"EXCP", "TDEADLOCK", "TLOCK"}
-    # total_rows совпадает с row_count, когда выборка не упирается в limit
-    assert result["total_rows"] == 4
+    assert types == {"CALL", "DBMSSQL", "TDEADLOCK", "TLOCK", "EXCP"}
+    assert result["total_rows"] == 10
+    types_dict = {t: n for t, n in result["event_types"]}
+    assert types_dict == {"CALL": 3, "DBMSSQL": 3, "EXCP": 2, "TDEADLOCK": 1, "TLOCK": 1}
 
 
 def test_errors_feed_total_rows_when_limited(seeded_archive: str) -> None:
-    """limit=2 при 4 событиях → row_count=2, total_rows=4."""
+    """limit=2 при 10 событиях → row_count=2, total_rows=10. event_types[] — все типы."""
     result = errors_feed(seeded_archive, ViewFilters(), limit=2)
     assert result["row_count"] == 2
-    assert result["total_rows"] == 4
+    assert result["total_rows"] == 10
+    types_dict = {t: n for t, n in result["event_types"]}
+    assert types_dict == {"CALL": 3, "DBMSSQL": 3, "EXCP": 2, "TDEADLOCK": 1, "TLOCK": 1}
+
+
+def test_errors_feed_event_types_filter_server_side(seeded_archive: str) -> None:
+    """event_types=['TLOCK'] → rows только TLOCK, но event_types[] — все типы.
+
+    Гарантирует: редкий тип (1 строка) точно попадёт в результат, не зависит от
+    того, где он расположен по ts (в начале/конце архива). Это покрывает баг,
+    из-за которого 1 TLOCK в архиве 100K событий выпадал из top-N по ts DESC.
+    """
+    result = errors_feed(seeded_archive, ViewFilters(), event_types=["TLOCK"])
+    assert result["row_count"] == 1
+    columns = [c["name"] for c in result["columns"]]
+    type_col = columns.index("event_type")
+    types = {row[type_col] for row in result["rows"]}
+    assert types == {"TLOCK"}
+    assert result["total_rows"] == 1
+    # event_types — все типы архива, не урезаны фильтром
+    types_dict = {t: n for t, n in result["event_types"]}
+    assert types_dict == {"CALL": 3, "DBMSSQL": 3, "EXCP": 2, "TDEADLOCK": 1, "TLOCK": 1}
+
+
+def test_errors_feed_event_types_filter_multi(seeded_archive: str) -> None:
+    """event_types=['TLOCK','TDEADLOCK'] → rows только TLOCK и TDEADLOCK."""
+    result = errors_feed(seeded_archive, ViewFilters(), event_types=["TLOCK", "TDEADLOCK"])
+    assert result["row_count"] == 2
+    columns = [c["name"] for c in result["columns"]]
+    type_col = columns.index("event_type")
+    types = {row[type_col] for row in result["rows"]}
+    assert types == {"TLOCK", "TDEADLOCK"}
+    assert result["total_rows"] == 2
+
+
+def test_errors_feed_event_types_empty_list_means_no_filter(seeded_archive: str) -> None:
+    """event_types=[] (пустой список) трактуется как «фильтр выключен» — все события."""
+    result = errors_feed(seeded_archive, ViewFilters(), event_types=[])
+    assert result["row_count"] == 10
+    assert result["total_rows"] == 10
 
 
 def test_slow_queries_returns_total_rows(seeded_archive: str) -> None:

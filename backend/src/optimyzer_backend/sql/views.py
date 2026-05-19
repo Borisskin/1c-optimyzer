@@ -273,9 +273,29 @@ def errors_feed(
     filters: ViewFilters,
     *,
     limit: int = 500,
+    event_types: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Поток исключений (EXCP / TDEADLOCK / TLOCK), последние сначала."""
-    where, params = filters.where_clause(["event_type IN ('EXCP', 'TDEADLOCK', 'TLOCK')"])
+    """Лента всех событий ТЖ, последние сначала.
+
+    `event_types` — multi-select фильтр по типам событий, применяется на
+    server-side. Это критично: при LIMIT=10000 редкий тип (например, 1 TLOCK
+    в архиве из 100K событий) может полностью выпасть из top-N по `ts DESC`,
+    если он расположен в начале архива по времени. Server-side фильтр
+    гарантирует, что 1-я TLOCK строка попадёт в результат.
+
+    Возвращаемое поле `event_types` (counts по архиву) считается БЕЗ применения
+    `event_types`-фильтра — чтобы UI мог переключать выбор без потери видимых
+    counts остальных типов.
+    """
+    base_where, base_params = filters.where_clause()
+    rows_where = base_where
+    rows_params = list(base_params)
+    if event_types:
+        placeholders = ",".join("?" for _ in event_types)
+        clause = f"event_type IN ({placeholders})"
+        rows_where = f"{base_where} AND {clause}" if base_where else clause
+        rows_params.extend(event_types)
+
     sql = f"""
         SELECT
             ts,
@@ -288,16 +308,32 @@ def errors_feed(
             source_file,
             source_line_start
         FROM events
-        {f"WHERE {where}" if where else ""}
+        {f"WHERE {rows_where}" if rows_where else ""}
         ORDER BY ts DESC
         LIMIT ?
     """
-    result = _execute(archive_id, sql, params + [limit])
+    result = _execute(archive_id, sql, rows_params + [limit])
     count_sql = f"""
         SELECT COUNT(*) FROM events
-        {f"WHERE {where}" if where else ""}
+        {f"WHERE {rows_where}" if rows_where else ""}
     """
-    result["total_rows"] = _count(archive_id, count_sql, params)
+    result["total_rows"] = _count(archive_id, count_sql, rows_params)
+
+    types_sql = f"""
+        SELECT event_type, COUNT(*) AS n FROM events
+        {f"WHERE {base_where}" if base_where else ""}
+        GROUP BY event_type
+        ORDER BY n DESC
+    """
+    try:
+        types_raw = _execute(archive_id, types_sql, base_params, max_rows=200)
+        result["event_types"] = [
+            [str(row[0]) if row[0] is not None else "", int(row[1] or 0)]
+            for row in (types_raw.get("rows") or [])
+            if row[0] is not None
+        ]
+    except SQLExecutionError:
+        result["event_types"] = []
     return result
 
 

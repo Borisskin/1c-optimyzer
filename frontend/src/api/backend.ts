@@ -209,6 +209,10 @@ export interface ViewResult {
   truncated?: boolean;
   executed_ms?: number;
   bucket?: string;
+  /** Distinct event_type из всего архива (по фильтрам). [[type, count], ...].
+   *  Заполняется errors_feed — нужно для UI-фильтра, который не может строиться
+   *  из ограниченного rows. */
+  event_types?: [string, number][];
 }
 
 interface SubTable {
@@ -398,8 +402,18 @@ export const backend = {
     rpc<ViewResult>("view_process_roles", { archive_id, filters }),
   viewDurationHistogram: (archive_id: string, filters?: ViewFiltersDto) =>
     rpc<ViewResult>("view_duration_histogram", { archive_id, filters }),
-  viewErrorsFeed: (archive_id: string, filters?: ViewFiltersDto, limit = 500) =>
-    rpc<ViewResult>("view_errors_feed", { archive_id, filters, limit }),
+  viewErrorsFeed: (
+    archive_id: string,
+    filters?: ViewFiltersDto,
+    limit = 500,
+    event_types?: string[],
+  ) =>
+    rpc<ViewResult>("view_errors_feed", {
+      archive_id,
+      filters,
+      limit,
+      ...(event_types && event_types.length > 0 ? { event_types } : {}),
+    }),
   viewActivityHeatmap: (archive_id: string, filters?: ViewFiltersDto, metric = "count") =>
     rpc<ViewResult>("view_activity_heatmap", { archive_id, filters, metric }),
 

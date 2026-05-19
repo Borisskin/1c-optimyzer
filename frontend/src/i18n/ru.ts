@@ -65,7 +65,7 @@ export const t = {
       locksView: "Блокировки",
       processRoles: "Роли процессов",
       duration: "Длительности",
-      errors: "Ошибки",
+      errors: "События ТЖ",
       activity: "Активность",
       comparison: "Сравнение архивов",
       dashboard: "Мониторинг",
@@ -89,6 +89,7 @@ export const t = {
     tooltipModule: "Доступно в модуле",
     soon: "скоро",
     collapse: "Свернуть",
+    expand: "Развернуть",
   },
   statusbar: {
     idle: "готово",

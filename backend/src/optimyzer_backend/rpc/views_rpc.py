@@ -108,10 +108,16 @@ def view_errors_feed(
     archive_id: str,
     filters: dict[str, Any] | None = None,
     limit: int = 500,
+    event_types: list[str] | None = None,
 ) -> dict[str, Any]:
     return _wrap(
         archive_id,
-        lambda: errors_feed(archive_id, _filters_from_params(filters), limit=limit),
+        lambda: errors_feed(
+            archive_id,
+            _filters_from_params(filters),
+            limit=limit,
+            event_types=event_types,
+        ),
     )
 
 
