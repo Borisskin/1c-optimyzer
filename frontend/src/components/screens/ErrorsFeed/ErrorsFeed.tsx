@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
@@ -14,6 +14,7 @@ interface Props {
 export function ErrorsFeedScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
   const [filter, setFilter] = useState<"all" | "EXCP" | "TDEADLOCK" | "TLOCK">("all");
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const { data, loading, error } = useView(
     () =>
       archiveId
@@ -84,19 +85,41 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
               <tbody>
                 {rows.map((row, ri) => {
                   const tone = badgeTone(String(row[idx["event_type"]] ?? ""));
+                  const context = String(row[idx["context"]] ?? "");
+                  const isExpanded = expanded.has(ri);
+                  const toggle = () => {
+                    setExpanded((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(ri)) next.delete(ri);
+                      else next.add(ri);
+                      return next;
+                    });
+                  };
                   return (
-                    <tr key={ri}>
-                      <td className={vshellStyles.mono}>{formatTs(row[idx["ts"]])}</td>
-                      <td>
-                        <span style={badgeStyle(tone)}>{String(row[idx["event_type"]] ?? "")}</span>
-                      </td>
-                      <td>{String(row[idx["process_role"]] ?? "—")}</td>
-                      <td className={vshellStyles.mono}>{String(row[idx["process_pid"]] ?? "—")}</td>
-                      <td title={String(row[idx["context"]] ?? "")}>
-                        {truncate(String(row[idx["context"]] ?? ""), 60)}
-                      </td>
-                      <td className={vshellStyles.mono}>{fmtMs(row[idx["duration_ms"]])}</td>
-                    </tr>
+                    <Fragment key={ri}>
+                      <tr
+                        className={`${vshellStyles.clickable}`}
+                        onClick={toggle}
+                      >
+                        <td className={vshellStyles.mono}>{formatTs(row[idx["ts"]])}</td>
+                        <td>
+                          <span style={badgeStyle(tone)}>{String(row[idx["event_type"]] ?? "")}</span>
+                        </td>
+                        <td>{String(row[idx["process_role"]] ?? "—")}</td>
+                        <td className={vshellStyles.mono}>{String(row[idx["process_pid"]] ?? "—")}</td>
+                        <td style={contextCellStyle}>
+                          <span style={contextTextStyle(isExpanded)}>{context || "—"}</span>
+                        </td>
+                        <td className={vshellStyles.mono}>{fmtMs(row[idx["duration_ms"]])}</td>
+                      </tr>
+                      {isExpanded && context && (
+                        <tr className={vshellStyles.expandRow}>
+                          <td colSpan={6} style={expandedCellStyle}>
+                            <pre style={expandedPreStyle}>{context}</pre>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -153,7 +176,41 @@ function fmtMs(v: unknown): string {
   return v.toFixed(1);
 }
 
-function truncate(s: string, n: number): string {
-  if (s.length <= n) return s;
-  return s.slice(0, n) + "…";
+const contextCellStyle: CSSProperties = {
+  maxWidth: 0,
+  width: "100%",
+};
+
+function contextTextStyle(expanded: boolean): CSSProperties {
+  if (expanded) {
+    return {
+      display: "block",
+      whiteSpace: "normal",
+      wordBreak: "break-word",
+      color: "var(--o-text-1)",
+    };
+  }
+  return {
+    display: "block",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color: "var(--o-text-2)",
+  };
 }
+
+const expandedCellStyle: CSSProperties = {
+  background: "var(--o-codebox-bg)",
+  borderBottom: "1px solid var(--o-border-2)",
+  padding: "12px 14px",
+};
+
+const expandedPreStyle: CSSProperties = {
+  margin: 0,
+  fontFamily: "var(--o-font-mono)",
+  fontSize: 11.5,
+  lineHeight: 1.55,
+  color: "var(--o-text-1)",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+};

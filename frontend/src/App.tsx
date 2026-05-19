@@ -85,7 +85,12 @@ export function App() {
       setIngest(event);
       // Зеркало в archive state — чтобы остальной UI (TopBar/StatusBar) видел статус.
       const currentArchive = useAppStore.getState().archive;
-      if (currentArchive && currentArchive.archive_id === event.archive_id) {
+      if (event.phase === "cancelled") {
+        // Архив удалён бэкендом; убираем зеркало из UI.
+        if (currentArchive && currentArchive.archive_id === event.archive_id) {
+          setArchive(null);
+        }
+      } else if (currentArchive && currentArchive.archive_id === event.archive_id) {
         setArchive({
           ...currentArchive,
           status: event.phase === "done" ? "ready" : event.phase,

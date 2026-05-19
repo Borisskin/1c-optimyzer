@@ -82,6 +82,13 @@
   cursor: pointer;
 }
 
+.table tr.expandRow:hover td {
+  background: var(--o-codebox-bg);
+}
+.table tr.expandRow td {
+  border-bottom: 1px solid var(--o-border-2);
+}
+
 .empty,
 .error,
 .loading {

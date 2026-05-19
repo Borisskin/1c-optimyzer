@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { useAppStore } from "@/store/appStore";
-import type { ProgressEvent } from "@/api/backend";
+import { backend, type ProgressEvent } from "@/api/backend";
 import { t, format } from "@/i18n/ru";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
 import styles from "./ProgressCard.module.css";
@@ -16,7 +16,7 @@ export function ProgressCard() {
 
   useEffect(() => {
     if (!ingest) return;
-    if (ingest.phase !== "done") return;
+    if (ingest.phase !== "done" && ingest.phase !== "cancelled") return;
     const timer = window.setTimeout(() => {
       setIngest(null);
       setMinimized(false);
@@ -30,28 +30,59 @@ export function ProgressCard() {
 }
 
 function ProgressCardBody({ ingest, onMinimize }: { ingest: ProgressEvent; onMinimize: () => void }) {
+  const pushToast = useAppStore((s) => s.pushToast);
+  const setArchive = useAppStore((s) => s.setArchive);
+  const [cancelling, setCancelling] = useState(false);
+
   const titleMap: Record<ProgressEvent["phase"], string> = {
     discovering: t.progress.discovering,
     parsing: t.progress.parsing,
     indexing: t.progress.indexing,
     done: t.progress.done,
     error: t.toast.error,
+    cancelled: t.progress.cancelled,
   };
 
-  const title = titleMap[ingest.phase];
+  const title = cancelling && ingest.phase !== "cancelled" ? t.progress.cancelling : titleMap[ingest.phase];
   const isDone = ingest.phase === "done";
   const isError = ingest.phase === "error";
-  const isActive = !isDone && !isError;
+  const isCancelled = ingest.phase === "cancelled";
+  const isActive = !isDone && !isError && !isCancelled;
+  const canCancel = isActive && ingest.phase !== "indexing" && !cancelling;
+
+  const handleCancel = async () => {
+    if (!window.confirm(t.progress.cancelConfirm)) return;
+    setCancelling(true);
+    try {
+      const res = await backend.cancelIngestion(ingest.archive_id);
+      if (!res.ok) {
+        setCancelling(false);
+        pushToast(format(t.progress.cancelFailedToast, { reason: res.reason ?? "—" }), "err");
+        return;
+      }
+      // Финальный 'cancelled' прилетит progress-событием; сразу очищаем
+      // активный архив, чтобы UI не показывал orphan.
+      setArchive(null);
+      pushToast(t.progress.cancelToast, "ok");
+    } catch (e) {
+      setCancelling(false);
+      pushToast(format(t.progress.cancelFailedToast, { reason: String(e) }), "err");
+    }
+  };
 
   const animatedEvents = useAnimatedCounter(ingest.events_inserted, isActive);
   const animatedBytes = useAnimatedCounter(ingest.bytes_done, isActive);
   const percent =
     ingest.bytes_total > 0 ? Math.min(100, (animatedBytes / ingest.bytes_total) * 100) : 0;
 
-  const dotClass = isDone ? styles.dot_done : isError ? styles.dot_error : styles.dot;
+  const dotClass = isDone
+    ? styles.dot_done
+    : isError || isCancelled
+      ? styles.dot_error
+      : styles.dot;
   const fillClass = isDone
     ? `${styles.bar_fill} ${styles.bar_fill_done}`
-    : isError
+    : isError || isCancelled
     ? `${styles.bar_fill} ${styles.bar_fill_error}`
     : styles.bar_fill;
 
@@ -66,10 +97,11 @@ function ProgressCardBody({ ingest, onMinimize }: { ingest: ProgressEvent; onMin
           <button
             type="button"
             className={styles.icon_btn}
-            disabled={isDone || isError || ingest.phase === "indexing"}
-            title={t.progress.cancelTooltip}
+            disabled={!canCancel}
+            title={canCancel ? t.progress.cancelTooltip : undefined}
+            onClick={canCancel ? handleCancel : undefined}
           >
-            {t.progress.cancel}
+            {cancelling ? t.progress.cancelling : t.progress.cancel}
           </button>
           <button
             type="button"

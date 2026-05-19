@@ -108,20 +108,61 @@ def test_get_archive_status_after_load(tmp_path: Path) -> None:
     handlers.unload_archive(archive_id)
 
 
-def test_cancel_ingestion_stub_returns_not_implemented(tmp_path: Path) -> None:
+def test_cancel_ingestion_after_done_rejects(tmp_path: Path) -> None:
+    """После того как ingestion завершён, cancel должен вернуть already_finished."""
     _make_log(tmp_path / "rphost_1" / "26051813.log", copies=1)
     initial = handlers.load_directory(str(tmp_path))
     archive_id = initial["archive_id"]
     _wait_ready(archive_id)
     result = handlers.cancel_ingestion(archive_id)
     assert result["ok"] is False
-    assert "sprint_2" in result["reason"]
+    assert result["reason"] == "already_finished"
     handlers.unload_archive(archive_id)
 
 
 def test_cancel_ingestion_unknown_archive() -> None:
     result = handlers.cancel_ingestion("nonexistent")
     assert result["ok"] is False
+    assert result["reason"] == "unknown_archive"
+
+
+def test_cancel_ingestion_stops_running_ingest(tmp_path: Path) -> None:
+    """Параллельная отмена долгого ingestion. Создаём много мелких файлов так,
+    чтобы между ними успеть выстрелить cancel. После cancel — status='cancelled',
+    .duckdb удалён, store не висит.
+    """
+    import time as _time
+
+    # 200 файлов × 50 событий = шанс выстрелить cancel между файлами
+    for i in range(200):
+        _make_log(tmp_path / f"rphost_{i:03}" / "26051813.log", copies=50)
+
+    initial = handlers.load_directory(str(tmp_path))
+    archive_id = initial["archive_id"]
+
+    # Дать парсингу немного поработать чтобы зайти в parsing phase
+    deadline = _time.monotonic() + 5.0
+    while _time.monotonic() < deadline:
+        st = handlers._ARCHIVES[archive_id]["status"]
+        if st in ("parsing", "indexing"):
+            break
+        if st == "ready":
+            # Слишком быстро дошло — тест не покрывает race, но не валим
+            handlers.unload_archive(archive_id)
+            return
+        _time.sleep(0.02)
+
+    result = handlers.cancel_ingestion(archive_id)
+    assert result["ok"] is True, result
+    assert result["status"] == "cancelling"
+
+    # Дать треду graceful stop
+    final = handlers.wait_for_archive(archive_id, timeout_sec=10.0)
+    assert final["status"] == "cancelled", final
+    # .duckdb должен быть удалён
+    from optimyzer_backend.storage.duckdb_store import default_db_dir
+    assert not (default_db_dir() / f"{archive_id}.duckdb").exists()
+    handlers._ARCHIVES.pop(archive_id, None)
 
 
 def test_open_stored_archive_reattach_after_unload(tmp_path: Path) -> None:

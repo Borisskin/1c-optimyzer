@@ -92,7 +92,13 @@ export interface DeleteAllArchivesResult {
   sqlite_removed: number;
 }
 
-export type ProgressPhase = "discovering" | "parsing" | "indexing" | "done" | "error";
+export type ProgressPhase =
+  | "discovering"
+  | "parsing"
+  | "indexing"
+  | "done"
+  | "error"
+  | "cancelled";
 
 export interface ProgressEvent {
   archive_id: string;
@@ -218,7 +224,7 @@ export const backend = {
   loadArchive: (path: string) => rpc<ArchiveState>("load_archive", { path }),
   loadDirectory: (path: string) => rpc<ArchiveState>("load_directory", { path }),
   cancelIngestion: (archive_id: string) =>
-    rpc<{ ok: boolean; reason?: string }>("cancel_ingestion", { archive_id }),
+    rpc<{ ok: boolean; reason?: string; status?: string }>("cancel_ingestion", { archive_id }),
   getArchiveStatus: (archive_id: string) => rpc<ArchiveState>("get_archive_status", { archive_id }),
   listRecentArchives: () => rpc<RecentArchive[]>("list_recent_archives"),
   listStoredArchives: () => rpc<StoredArchivesResponse>("list_stored_archives"),

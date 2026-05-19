@@ -8,12 +8,12 @@
   --o-hover: #f0f0f0;
   --o-codebox-bg: #fbfbfa;
 
-  /* Text */
+  /* Text — повышенный контраст (после bug report Сергея: было бледно) */
   --o-text-1: #0a0a0a;
-  --o-text-2: #525252;
-  --o-text-3: #a3a3a3;
-  --o-text-4: #737373;
-  --o-text-mute: #d4d4d4;
+  --o-text-2: #2f2f2f;
+  --o-text-3: #5a5a5a;
+  --o-text-4: #404040;
+  --o-text-mute: #b8b8b8;
 
   /* Accent (deep teal) */
   --o-accent: #0f766e;

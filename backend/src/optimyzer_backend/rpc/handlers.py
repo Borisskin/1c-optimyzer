@@ -86,6 +86,7 @@ def _start_async_ingestion(
         "store": None,
         "file_count": 0,
         "thread": None,
+        "cancel_event": threading.Event(),
     }
     _ARCHIVES[archive_id] = state
 
@@ -102,10 +103,25 @@ def _start_async_ingestion(
     return _public_state(state)
 
 
+class _IngestionCancelled(Exception):
+    """Поднимается из ingestion loop при срабатывании cancel_event.
+
+    Обрабатывается в _run_ingestion: устанавливает status='cancelled',
+    закрывает store, удаляет partial .duckdb файл с диска.
+    """
+
+
 def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
-    """Фоновый ingestion: discover → parse → index. Прогресс через ProgressReporter."""
+    """Фоновый ingestion: discover → parse → index. Прогресс через ProgressReporter.
+
+    Поддерживает cooperative cancellation через state['cancel_event']:
+    проверяется между файлами и каждые CANCEL_CHECK_EVERY_EVENTS внутри
+    больших файлов. При cancel — graceful stop, удаление .duckdb.
+    """
     archive_id = state["archive_id"]
     reporter = ProgressReporter(archive_id=archive_id)
+    cancel_event: threading.Event = state["cancel_event"]
+    CANCEL_CHECK_EVERY_EVENTS = 5000
 
     def progress(
         phase: str,
@@ -167,6 +183,8 @@ def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
 
         with store.appender() as appender:
             for idx, lf in enumerate(log_files):
+                if cancel_event.is_set():
+                    raise _IngestionCancelled()
                 encoding = detect_encoding(lf.path)
                 events_in_file = 0
                 try:
@@ -174,6 +192,8 @@ def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
                         appender.append_event(event)
                         events_inserted += 1
                         events_in_file += 1
+                        if events_in_file % CANCEL_CHECK_EVERY_EVENTS == 0 and cancel_event.is_set():
+                            raise _IngestionCancelled()
                         if events_in_file % EMIT_EVERY_EVENTS == 0:
                             state["events_parsed"] = events_inserted
                             progress(
@@ -185,6 +205,8 @@ def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
                                 events_inserted=events_inserted,
                                 current_file=lf.relative_path,
                             )
+                except _IngestionCancelled:
+                    raise
                 except Exception as exc:
                     state["errors"].append(
                         f"{lf.relative_path}: {type(exc).__name__}: {exc}"
@@ -241,6 +263,32 @@ def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
             events_inserted=events_inserted,
             current_file=None,
             force=True,
+        )
+    except _IngestionCancelled:
+        state["status"] = "cancelled"
+        state["errors"].append("Загрузка отменена пользователем")
+        # Закрываем store перед удалением .duckdb — Windows держит lock.
+        store_ref: DuckDBStore | None = state.get("store")
+        if store_ref is not None:
+            try:
+                store_ref.close()
+            except Exception:
+                pass
+            state["store"] = None
+        try:
+            DuckDBStore.delete_db_file(archive_id)
+        except Exception:
+            pass
+        progress(
+            "cancelled",
+            files_done=0,
+            files_total=state.get("file_count", 0),
+            bytes_done=0,
+            bytes_total=state.get("size_bytes", 0),
+            events_inserted=state.get("events_parsed", 0),
+            current_file=None,
+            force=True,
+            error_message="Загрузка отменена пользователем",
         )
     except Exception as exc:
         state["status"] = "error"
@@ -307,14 +355,23 @@ def load_archive(path: str) -> dict[str, Any]:
 
 @rpc("cancel_ingestion")
 def cancel_ingestion(archive_id: str) -> dict[str, Any]:
-    """Stub: Sprint 2 будет настоящий cancellation token (ADR-012 deferred).
+    """Cooperative cancel: устанавливает cancel_event, ingestion thread
+    его подхватывает между файлами / каждые 5000 событий, raises
+    _IngestionCancelled, делает graceful cleanup (close store + delete db).
 
-    Sprint 1 — RPC зарегистрирован, кнопка в UI disabled с tooltip.
+    Возвращает {ok: True, status: 'cancelling'} даже если thread ещё
+    работает — UI узнает о финальном 'cancelled' через progress event.
     """
     state = _ARCHIVES.get(archive_id)
     if state is None:
         return {"ok": False, "reason": "unknown_archive"}
-    return {"ok": False, "reason": "not_implemented_until_sprint_2"}
+    cancel_event: threading.Event | None = state.get("cancel_event")
+    if cancel_event is None:
+        return {"ok": False, "reason": "no_cancel_event"}
+    if state.get("status") in ("ready", "error", "cancelled"):
+        return {"ok": False, "reason": "already_finished", "status": state["status"]}
+    cancel_event.set()
+    return {"ok": True, "status": "cancelling"}
 
 
 @rpc("get_archive_status")
