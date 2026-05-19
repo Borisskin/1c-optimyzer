@@ -7,6 +7,7 @@ from typing import Any
 from optimyzer_backend.rpc.dispatcher import rpc
 from optimyzer_backend.rpc.handlers import _ARCHIVES
 from optimyzer_backend.sql.executor import SQLExecutionError
+from optimyzer_backend.sql.anatomy import get_operation_anatomy, get_session_anatomy
 from optimyzer_backend.sql.views import (
     ViewFilters,
     activity_heatmap,
@@ -136,5 +137,43 @@ def view_top_business_operations(
         archive_id,
         lambda: top_business_operations(
             archive_id, _filters_from_params(filters), sort_by=sort_by, limit=limit
+        ),
+    )
+
+
+@rpc("view_operation_anatomy")
+def view_operation_anatomy(
+    archive_id: str,
+    operation: str,
+    timeline_limit: int = 50,
+    top_sql_limit: int = 20,
+    exception_limit: int = 30,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: get_operation_anatomy(
+            archive_id,
+            operation,
+            timeline_limit=timeline_limit,
+            top_sql_limit=top_sql_limit,
+            exception_limit=exception_limit,
+        ),
+    )
+
+
+@rpc("view_session_anatomy")
+def view_session_anatomy(
+    archive_id: str,
+    session_id: int,
+    timeline_limit: int = 200,
+    top_sql_limit: int = 20,
+) -> dict[str, Any]:
+    return _wrap(
+        archive_id,
+        lambda: get_session_anatomy(
+            archive_id,
+            session_id,
+            timeline_limit=timeline_limit,
+            top_sql_limit=top_sql_limit,
         ),
     )

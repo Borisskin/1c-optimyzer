@@ -208,6 +208,70 @@ export interface ViewResult {
   bucket?: string;
 }
 
+interface SubTable {
+  columns: QueryColumn[];
+  rows: unknown[][];
+  row_count: number;
+}
+
+export interface OperationAnatomyResult {
+  ok: boolean;
+  error?: string;
+  summary: {
+    operation: string;
+    found: boolean;
+    total_events?: number;
+    total_duration_ms?: number;
+    avg_duration_ms?: number;
+    max_duration_ms?: number;
+    min_duration_ms?: number;
+    unique_sessions?: number;
+    unique_processes?: number;
+    process_roles?: string | null;
+    exception_count?: number;
+    lock_count?: number;
+    sql_count?: number;
+    first_seen?: string | null;
+    last_seen?: string | null;
+  };
+  timeline: SubTable;
+  breakdown: Array<{
+    event_type: string;
+    events: number;
+    total_duration_ms: number;
+    avg_duration_ms: number;
+  }>;
+  top_sql: SubTable;
+  related_exceptions: SubTable;
+}
+
+export interface SessionAnatomyResult {
+  ok: boolean;
+  error?: string;
+  summary: {
+    session_id: number;
+    found: boolean;
+    total_events?: number;
+    users?: string | null;
+    process_roles?: string | null;
+    process_pids?: string | null;
+    distinct_operations?: number;
+    total_duration_ms?: number;
+    exception_count?: number;
+    lock_count?: number;
+    sql_count?: number;
+    first_seen?: string | null;
+    last_seen?: string | null;
+  };
+  timeline: SubTable;
+  breakdown: Array<{
+    event_type: string;
+    events: number;
+    total_duration_ms: number;
+  }>;
+  top_sql: SubTable;
+}
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -273,6 +337,12 @@ export const backend = {
     limit = 100,
   ) =>
     rpc<ViewResult>("view_top_business_operations", { archive_id, filters, sort_by, limit }),
+
+  // Operation / Session Anatomy (Sprint 3 Phase C)
+  viewOperationAnatomy: (archive_id: string, operation: string) =>
+    rpc<OperationAnatomyResult>("view_operation_anatomy", { archive_id, operation }),
+  viewSessionAnatomy: (archive_id: string, session_id: number) =>
+    rpc<SessionAnatomyResult>("view_session_anatomy", { archive_id, session_id }),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),
