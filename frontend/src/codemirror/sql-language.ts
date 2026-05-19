@@ -78,10 +78,15 @@ export function makeSqlExtension(schema: SchemaShape = {}): Extension {
   for (const [table, cols] of Object.entries(schema)) {
     schemaForCm[table] = cols.map((c) => c.name);
   }
+  // defaultTable: пользователь пишет `SELECT pr` без префикса — CodeMirror
+  // не знает, из какой таблицы брать колонки. Указываем events как default,
+  // чтобы автодополнение колонок работало даже без явного `events.` префикса.
+  const defaultTable = "events" in schemaForCm ? "events" : Object.keys(schemaForCm)[0];
   return [
     sql({
       dialect: duckdbDialect,
       schema: schemaForCm,
+      defaultTable,
       upperCaseKeywords: true,
     }),
     sqlEditorTheme,

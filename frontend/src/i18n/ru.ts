@@ -164,6 +164,14 @@ export const t = {
     presets: {
       label: "ШАБЛОНЫ",
     },
+    schema: {
+      label: "СХЕМА",
+      hint: "Клик по колонке — вставить в редактор",
+      columnsCount: "{count} колонок",
+      tableEvents: "Таблица events",
+      empty: "Архив не загружен — схема пуста",
+    },
+    keymapHint: "Ctrl+/ комментарий · Ctrl+Space подсказки",
     saved: {
       label: "СОХРАНЁННЫЕ",
       empty: "Нет сохранённых запросов",

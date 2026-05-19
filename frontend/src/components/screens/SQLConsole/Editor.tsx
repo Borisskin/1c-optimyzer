@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 import { EditorView, keymap } from "@codemirror/view";
 import { EditorState, Prec } from "@codemirror/state";
+import { toggleLineComment } from "@codemirror/commands";
 import { basicSetup } from "codemirror";
 import { makeSqlExtension, type SchemaShape } from "@/codemirror";
 
@@ -11,7 +12,14 @@ interface Props {
   schema: SchemaShape;
 }
 
-export function Editor({ value, onChange, onRun, schema }: Props) {
+export interface EditorHandle {
+  insertAtCursor: (text: string) => void;
+}
+
+export const Editor = forwardRef<EditorHandle, Props>(function Editor(
+  { value, onChange, onRun, schema },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -44,6 +52,11 @@ export function Editor({ value, onChange, onRun, schema }: Props) {
                 return true;
               },
             },
+            {
+              key: "Ctrl-/",
+              mac: "Cmd-/",
+              run: toggleLineComment,
+            },
           ]),
         ),
         EditorView.updateListener.of((update) => {
@@ -75,5 +88,18 @@ export function Editor({ value, onChange, onRun, schema }: Props) {
     }
   }, [value]);
 
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(text: string) {
+      const view = viewRef.current;
+      if (!view) return;
+      const { from, to } = view.state.selection.main;
+      view.dispatch({
+        changes: { from, to, insert: text },
+        selection: { anchor: from + text.length },
+      });
+      view.focus();
+    },
+  }));
+
   return <div ref={containerRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />;
-}
+});

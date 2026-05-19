@@ -2,7 +2,7 @@
 // Полноценный SQL редактор поверх per-archive DuckDB: validate + execute,
 // результаты в таблицу + raw JSON. Charts / Timeline tabs появятся в Phase C-D.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { Badge, KBD, PageHeader, Tabs, Th, Td } from "@/components/primitives/Primitives";
 import {
@@ -13,10 +13,15 @@ import {
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
 import { useAnimatedCounter } from "@/hooks/useAnimatedCounter";
-import { Editor } from "./Editor";
+import { Editor, type EditorHandle } from "./Editor";
 import { SavedQueriesMenu } from "./SavedQueriesMenu";
+import { SchemaPanel } from "./SchemaPanel";
 import { TemplatesBar } from "./TemplatesBar";
 import styles from "./SQLConsole.module.css";
+
+const SPLITTER_STORAGE_KEY = "optimyzer:sql:editor_pct";
+const MIN_PANE_PCT = 18;
+const MAX_PANE_PCT = 82;
 
 type ResultTab = "table" | "raw";
 
@@ -42,6 +47,48 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
   const [schema, setSchema] = useState<TableSchema>({});
   const archive = useAppStore((s) => s.archive);
   const pushToast = useAppStore((s) => s.pushToast);
+  const editorRef = useRef<EditorHandle>(null);
+
+  // Resizable splitter: ширина editor pane в процентах. Сохраняется в localStorage.
+  const [editorPct, setEditorPct] = useState<number>(() => {
+    if (typeof window === "undefined") return 50;
+    const raw = window.localStorage.getItem(SPLITTER_STORAGE_KEY);
+    const parsed = raw ? Number.parseFloat(raw) : NaN;
+    return Number.isFinite(parsed) && parsed >= MIN_PANE_PCT && parsed <= MAX_PANE_PCT
+      ? parsed
+      : 50;
+  });
+  const [dragging, setDragging] = useState(false);
+  const workareaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: MouseEvent) => {
+      const el = workareaRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.min(MAX_PANE_PCT, Math.max(MIN_PANE_PCT, pct));
+      setEditorPct(clamped);
+    };
+    const onUp = () => setDragging(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [dragging]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SPLITTER_STORAGE_KEY, editorPct.toFixed(2));
+  }, [editorPct]);
 
   const ready = archive?.status === "ready";
   const archiveId = ready ? archive.archive_id : null;
@@ -135,15 +182,37 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
         }
       />
 
-      <div className={styles.workarea}>
+      <div
+        className={styles.workarea}
+        ref={workareaRef}
+        style={{ gridTemplateColumns: `${editorPct}% 6px 1fr` }}
+      >
         <section className={styles.editor_pane}>
           <div className={styles.pane_head}>
             <span className={styles.tab_label}>
               <Icon name="FileText" size={11} color="var(--o-text-3)" /> {t.sql.editor.filenameDefault}
             </span>
           </div>
-          <Editor value={query} onChange={setQuery} onRun={runQuery} schema={schema} />
+          <Editor
+            ref={editorRef}
+            value={query}
+            onChange={setQuery}
+            onRun={runQuery}
+            schema={schema}
+          />
         </section>
+
+        <div
+          className={`${styles.splitter} ${dragging ? styles.splitter_dragging : ""}`}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDoubleClick={() => setEditorPct(50)}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize editor / results"
+        />
 
         <section className={styles.results_pane}>
           <div className={styles.pane_head}>
@@ -180,6 +249,10 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
 
       <div className={styles.templates_bar}>
         <TemplatesBar onLoadTemplate={setQuery} />
+        <SchemaPanel
+          schema={schema}
+          onInsert={(text) => editorRef.current?.insertAtCursor(text)}
+        />
         <SavedQueriesMenu currentQuery={query} onLoadQuery={setQuery} />
       </div>
     </div>
