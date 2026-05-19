@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from optimyzer_backend.sql.executor import SQLExecutor
+from optimyzer_backend.sql.executor import SQLExecutionError, SQLExecutor
 
 
 @dataclass(frozen=True)
@@ -51,6 +51,30 @@ class ViewFilters:
 def _execute(archive_id: str, sql: str, params: list[Any], max_rows: int = 10_000) -> dict[str, Any]:
     with SQLExecutor(archive_id) as ex:
         return ex.execute(sql, params=params, max_rows=max_rows)
+
+
+def _count(archive_id: str, sql: str, params: list[Any]) -> int | None:
+    """Запрос COUNT(*). Возвращает int или None при ошибке.
+
+    Используется чтобы выдать UI total_rows вместе с limited result —
+    "Показано 500 из N". Дополнительный round-trip в DuckDB, но COUNT по
+    индексированной колонке быстрый (миллисекунды на наших объёмах).
+
+    SQLExecutor.execute() не возвращает поле "ok" — это добавляется RPC-слоем.
+    Поэтому ловим SQLExecutionError здесь и не падаем.
+    """
+    try:
+        result = _execute(archive_id, sql, params, max_rows=1)
+    except SQLExecutionError:
+        return None
+    rows = result.get("rows") or []
+    if not rows or not rows[0]:
+        return 0
+    val = rows[0][0]
+    try:
+        return int(val) if val is not None else 0
+    except (TypeError, ValueError):
+        return None
 
 
 # ---------- D1. Slow Queries ----------
@@ -96,7 +120,13 @@ def slow_queries(
         ORDER BY {sort_column} DESC NULLS LAST
         LIMIT ?
     """
-    return _execute(archive_id, sql, params + [limit])
+    result = _execute(archive_id, sql, params + [limit])
+    count_sql = f"""
+        SELECT COUNT(DISTINCT sql_text_hash) FROM events
+        {f"WHERE {where}" if where else ""}
+    """
+    result["total_rows"] = _count(archive_id, count_sql, params)
+    return result
 
 
 # ---------- D2. Locks Timeline ----------
@@ -262,7 +292,13 @@ def errors_feed(
         ORDER BY ts DESC
         LIMIT ?
     """
-    return _execute(archive_id, sql, params + [limit])
+    result = _execute(archive_id, sql, params + [limit])
+    count_sql = f"""
+        SELECT COUNT(*) FROM events
+        {f"WHERE {where}" if where else ""}
+    """
+    result["total_rows"] = _count(archive_id, count_sql, params)
+    return result
 
 
 # ---------- Sprint 3 / Phase B — Top Business Operations ----------
@@ -320,7 +356,13 @@ def top_business_operations(
         ORDER BY {sort_column} DESC NULLS LAST
         LIMIT ?
     """
-    return _execute(archive_id, sql, params + [limit])
+    result = _execute(archive_id, sql, params + [limit])
+    count_sql = f"""
+        SELECT COUNT(DISTINCT context_normalized) FROM events
+        {f"WHERE {where}" if where else ""}
+    """
+    result["total_rows"] = _count(archive_id, count_sql, params)
+    return result
 
 
 # ---------- D6. Activity Heatmap ----------

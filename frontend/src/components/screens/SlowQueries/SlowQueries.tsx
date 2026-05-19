@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
+import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -14,12 +15,13 @@ interface Props {
 
 export function SlowQueriesScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
+  const [limit, setLimit] = useState(100);
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewSlowQueries(archiveId, filtersToDto(filters), "total_duration", 100)
+        ? backend.viewSlowQueries(archiveId, filtersToDto(filters), "total_duration", limit)
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, filters],
+    [archiveId, filters, limit],
   );
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
@@ -46,12 +48,16 @@ export function SlowQueriesScreen({ archiveId }: Props) {
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>
-          <div className={vshellStyles.panel_title}>
-            {loading ? "Загрузка…" : `${data?.row_count ?? 0} запросов`}
-          </div>
+          <LimitSelector
+            value={limit}
+            onChange={setLimit}
+            loaded={data?.rows?.length ?? 0}
+            total={data?.total_rows ?? null}
+            unitLabel="запросов"
+          />
           {data && (
             <div className={vshellStyles.panel_sub}>
-              выполнено за {(data.executed_ms ?? 0).toFixed(0)} мс
+              за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
           {data && data.rows && data.rows.length > 0 && (
@@ -60,6 +66,7 @@ export function SlowQueriesScreen({ archiveId }: Props) {
               onChange={table.setFilter}
               total={table.totalRows}
               visible={table.visibleRows}
+              placeholder="Поиск по тексту запроса…"
             />
           )}
         </div>

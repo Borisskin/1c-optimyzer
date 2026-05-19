@@ -203,6 +203,9 @@ export interface ViewResult {
   columns?: QueryColumn[];
   rows?: unknown[][];
   row_count?: number;
+  /** Общее число строк до LIMIT (по тем же filter conditions). Заполняется
+   *  только для views с limit (slow_queries / errors_feed / top_business_operations). */
+  total_rows?: number;
   truncated?: boolean;
   executed_ms?: number;
   bucket?: string;

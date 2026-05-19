@@ -6,6 +6,8 @@ import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
+import { ColumnFilterPopover } from "@/components/tables/ColumnFilterPopover";
+import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -15,25 +17,45 @@ interface Props {
 
 export function ErrorsFeedScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
-  const [typeFilter, setTypeFilter] = useState<"all" | "EXCP" | "TDEADLOCK" | "TLOCK">("all");
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [limit, setLimit] = useState(500);
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewErrorsFeed(archiveId, filtersToDto(filters))
+        ? backend.viewErrorsFeed(archiveId, filtersToDto(filters), limit)
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, filters],
+    [archiveId, filters, limit],
   );
 
-  // 1. type filter (dropdown) — сужает до конкретного event_type
+  const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
+
+  // Уникальные значения event_type в текущих данных — для выпадающего фильтра.
+  // Сортировка в фиксированном порядке (severity-based), неизвестные — в конце.
+  const availableTypes = useMemo(() => {
+    if (!data?.rows) return [] as string[];
+    const set = new Set<string>();
+    for (const r of data.rows) {
+      const v = r[idx["event_type"]];
+      if (v != null) set.add(String(v));
+    }
+    const order = ["EXCP", "TDEADLOCK", "TLOCK"];
+    return [...set].sort((a, b) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [data, idx]);
+
+  // 1. type filter (multi-select) — пустой Set = все типы
   const typeFilteredRows = useMemo(() => {
     if (!data?.rows) return [] as unknown[][];
-    if (typeFilter === "all") return data.rows;
-    const idx = colIndex(data.columns);
-    return data.rows.filter((r) => String(r[idx["event_type"]]) === typeFilter);
-  }, [data, typeFilter]);
-
-  const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
+    if (selectedTypes.size === 0) return data.rows;
+    return data.rows.filter((r) => selectedTypes.has(String(r[idx["event_type"]])));
+  }, [data, idx, selectedTypes]);
 
   // 2. useTableState — substring filter + sort внутри type-отфильтрованных rows
   const table = useTableState({
@@ -43,37 +65,38 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
     defaultSortDir: "desc",
   });
 
+  const typesSummary =
+    selectedTypes.size === 0
+      ? availableTypes.length > 0
+        ? availableTypes.join(" / ")
+        : "EXCP / TDEADLOCK / TLOCK"
+      : [...selectedTypes].join(" / ");
+
   return (
     <ViewShell
       breadcrumbs={["Анализ", "Ошибки и исключения"]}
       title={<>Ошибки и исключения</>}
-      sub="EXCP / TDEADLOCK / TLOCK — последние сначала"
+      sub={`${typesSummary} — последние сначала`}
       right={
-        <>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
-            style={selectStyle}
-          >
-            <option value="all">Все типы</option>
-            <option value="EXCP">EXCP</option>
-            <option value="TDEADLOCK">TDEADLOCK</option>
-            <option value="TLOCK">TLOCK</option>
-          </select>
-          <ExportMenu
-            defaultName="errors_feed"
-            columns={data?.columns ?? []}
-            rows={table.rows}
-          />
-        </>
+        <ExportMenu
+          defaultName="errors_feed"
+          columns={data?.columns ?? []}
+          rows={table.rows}
+        />
       }
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>
-          <div className={vshellStyles.panel_title}>{typeFilteredRows.length} событий</div>
+          <LimitSelector
+            value={limit}
+            onChange={setLimit}
+            loaded={data?.rows?.length ?? 0}
+            total={data?.total_rows ?? null}
+            unitLabel="событий"
+          />
           {data && (
             <div className={vshellStyles.panel_sub}>
-              выполнено за {(data.executed_ms ?? 0).toFixed(0)} мс
+              за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
           {typeFilteredRows.length > 0 && (
@@ -82,6 +105,7 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
               onChange={table.setFilter}
               total={table.totalRows}
               visible={table.visibleRows}
+              placeholder="Поиск по контексту, PID…"
             />
           )}
         </div>
@@ -94,7 +118,17 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
               <thead>
                 <tr>
                   <th {...table.headerProps("ts")}>Время</th>
-                  <th {...table.headerProps("event_type")}>Тип</th>
+                  <th {...table.headerProps("event_type")}>
+                    <span style={thInner}>
+                      Тип
+                      <ColumnFilterPopover
+                        label="Тип события"
+                        options={availableTypes}
+                        selected={selectedTypes}
+                        onChange={setSelectedTypes}
+                      />
+                    </span>
+                  </th>
                   <th {...table.headerProps("process_role")}>Роль</th>
                   <th {...table.headerProps("process_pid")}>PID</th>
                   <th {...table.headerProps("context")}>Контекст</th>
@@ -151,9 +185,18 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
             </table>
           </div>
         )}
-        {archiveId && !loading && !error && typeFilteredRows.length === 0 && (
+        {archiveId && !loading && !error && (!data?.rows || data.rows.length === 0) && (
           <div className={vshellStyles.empty}>Нет ошибок и исключений</div>
         )}
+        {archiveId &&
+          !loading &&
+          !error &&
+          (data?.rows?.length ?? 0) > 0 &&
+          typeFilteredRows.length === 0 && (
+            <div className={vshellStyles.empty}>
+              Нет событий выбранных типов ({[...selectedTypes].join(", ") || "—"})
+            </div>
+          )}
         {archiveId && !loading && !error && typeFilteredRows.length > 0 && table.rows.length === 0 && (
           <div className={vshellStyles.empty}>
             Фильтр «{table.filter}» не дал совпадений
@@ -164,14 +207,9 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
   );
 }
 
-const selectStyle: CSSProperties = {
-  height: 28,
-  padding: "0 8px",
-  fontSize: 11.5,
-  border: "1px solid var(--o-border-2)",
-  borderRadius: 4,
-  background: "var(--o-panel)",
-  color: "var(--o-text-1)",
+const thInner: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
 };
 
 function badgeTone(type: string): "err" | "warn" | "mute" {

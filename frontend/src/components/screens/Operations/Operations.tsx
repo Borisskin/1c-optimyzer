@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
+import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -17,16 +18,15 @@ export function OperationsScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
   const setScreen = useAppStore((s) => s.setScreen);
   const setSelectedOperation = useAppStore((s) => s.setSelectedOperation);
-  // Backend всегда возвращает топ-500 по total_duration_ms. Клиентская
-  // sort/filter работает внутри этих 500. Это даёт хороший repr данных
-  // для производственных архивов с сотнями операций. Server-side sort
-  // selector убран — sort везде через клик по заголовку колонки.
+  const [limit, setLimit] = useState(500);
+  // Backend сортирует по total_duration_ms DESC и отдаёт топ-N (управляется
+  // через LimitSelector). Клиентская sort/filter работает внутри этой выборки.
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewTopBusinessOperations(archiveId, filtersToDto(filters), "total_duration_ms", 500)
+        ? backend.viewTopBusinessOperations(archiveId, filtersToDto(filters), "total_duration_ms", limit)
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, filters],
+    [archiveId, filters, limit],
   );
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
@@ -64,12 +64,16 @@ export function OperationsScreen({ archiveId }: Props) {
     >
       <div className={vshellStyles.panel}>
         <div className={vshellStyles.panel_head}>
-          <div className={vshellStyles.panel_title}>
-            {loading ? "Загрузка…" : `${data?.row_count ?? 0} операций`}
-          </div>
+          <LimitSelector
+            value={limit}
+            onChange={setLimit}
+            loaded={data?.rows?.length ?? 0}
+            total={data?.total_rows ?? null}
+            unitLabel="операций"
+          />
           {data && (
             <div className={vshellStyles.panel_sub}>
-              выполнено за {(data.executed_ms ?? 0).toFixed(0)} мс
+              за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
           {data && data.rows && data.rows.length > 0 && (
@@ -78,6 +82,7 @@ export function OperationsScreen({ archiveId }: Props) {
               onChange={table.setFilter}
               total={table.totalRows}
               visible={table.visibleRows}
+              placeholder="Поиск по имени операции…"
             />
           )}
         </div>
@@ -211,16 +216,6 @@ const resetBtn: CSSProperties = {
   textDecoration: "underline",
   padding: 0,
   fontSize: "inherit",
-};
-
-const _unusedSelectStyle: CSSProperties = {
-  height: 28,
-  padding: "0 8px",
-  fontSize: 11.5,
-  border: "1px solid var(--o-border-2)",
-  borderRadius: 4,
-  background: "var(--o-panel)",
-  color: "var(--o-text-1)",
 };
 
 function fmt(v: unknown): string {

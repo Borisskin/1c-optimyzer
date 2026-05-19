@@ -161,6 +161,27 @@ def test_errors_feed_only_errors(seeded_archive: str) -> None:
     type_col = columns.index("event_type")
     types = {row[type_col] for row in result["rows"]}
     assert types == {"EXCP", "TDEADLOCK", "TLOCK"}
+    # total_rows совпадает с row_count, когда выборка не упирается в limit
+    assert result["total_rows"] == 4
+
+
+def test_errors_feed_total_rows_when_limited(seeded_archive: str) -> None:
+    """limit=2 при 4 событиях → row_count=2, total_rows=4."""
+    result = errors_feed(seeded_archive, ViewFilters(), limit=2)
+    assert result["row_count"] == 2
+    assert result["total_rows"] == 4
+
+
+def test_slow_queries_returns_total_rows(seeded_archive: str) -> None:
+    result = slow_queries(seeded_archive, ViewFilters())
+    assert "total_rows" in result
+    assert result["total_rows"] == result["row_count"]
+
+
+def test_top_business_operations_returns_total_rows(seeded_archive: str) -> None:
+    result = top_business_operations(seeded_archive, ViewFilters())
+    assert "total_rows" in result
+    assert result["total_rows"] == result["row_count"]
 
 
 def test_activity_heatmap_groups_by_hour_and_dow(seeded_archive: str) -> None:
