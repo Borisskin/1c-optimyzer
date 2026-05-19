@@ -2,7 +2,34 @@
 
 > **Статус:** Closed
 > **Дата:** 2026-05-20
+> **Branch:** `main`
+> **Commit:** [`fa60327`](https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36)
+> **Repo:** https://github.com/anymasoft/1c-optimyzer
 > **Цель:** (1) Довести UX страницы «События ТЖ» до production-уровня. (2) Решить unblocked-задачу из Sprint 3 — собрать в реальный архив ТЖ **все 7 типов событий** (включая TLOCK / TDEADLOCK), чтобы запустить real-data validation deadlock-схем и rule classifier.
+
+---
+
+## Где смотреть напрямую
+
+- **Репозиторий:** https://github.com/anymasoft/1c-optimyzer
+- **Этот отчёт на GitHub:** https://github.com/anymasoft/1c-optimyzer/blob/main/docs/SPRINT_4_REPORT.md
+- **Sprint 4 commit (diff):** https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36
+- **Sprint 3 closure (для контекста):** [docs/SPRINT_3_REPORT.md](SPRINT_3_REPORT.md) · [OPUS_HANDOVER_SPRINT_3.md](OPUS_HANDOVER_SPRINT_3.md)
+
+**Ключевые файлы спринта (clickable из GitHub):**
+
+| Файл | Что смотреть |
+|---|---|
+| [`backend/src/optimyzer_backend/sql/views.py`](https://github.com/anymasoft/1c-optimyzer/blob/main/backend/src/optimyzer_backend/sql/views.py) | `errors_feed()` — server-side фильтр + counts |
+| [`backend/tests/test_views.py`](https://github.com/anymasoft/1c-optimyzer/blob/main/backend/tests/test_views.py) | 3 новых теста на event_types фильтр |
+| [`frontend/src/components/tables/EventTypeFilter.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/tables/EventTypeFilter.tsx) | Новый dropdown-компонент |
+| [`frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx) | Server-side rewrite |
+| [`frontend/src/components/chrome/Sidebar.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.tsx) · [`.module.css`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.module.css) | Sidebar polish + анимация |
+
+**Артефакты ТЖ-моделирования** (вне репозитория, на машине Сергея):
+- `D:\1C-Optimyzer\МоделированиеТЖ\` — обработка `МоделированиеТЖ.epf` (17.4 KB) + XML-исходники + build/install скрипты
+- `D:\1C-Optimyzer\ТЖМоделированиеРасш\` — расширение `ТЖМоделированиеРасш.cfe` + общий модуль `ВоркерыТЖ`
+- Если артефакты понадобятся в репо — можно перенести в `tools/tj-simulator/` отдельным коммитом
 
 ---
 
