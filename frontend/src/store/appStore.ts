@@ -26,7 +26,8 @@ export type ScreenId =
   | "knowledge"
   | "alerts"
   | "reports"
-  | "mobile";
+  | "mobile"
+  | "dev-tools";
 
 export interface ToastMessage {
   id: number;

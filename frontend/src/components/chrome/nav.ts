@@ -6,9 +6,12 @@ export interface NavItem {
   id: ScreenId;
   label: string;
   icon: IconName;
-  group: "live" | "analyze" | "config" | "manage";
+  group: "live" | "analyze" | "config" | "manage" | "dev";
   enabled: boolean;
   tooltip?: string;
+  /** Если true — пункт показывается только когда включён dev mode
+   *  (localStorage["optimyzer:dev"]="1", toggle Ctrl+Shift+D). */
+  devOnly?: boolean;
 }
 
 const futureTooltip = "Доступно в будущих обновлениях";
@@ -45,6 +48,9 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "alerts",     label: t.sidebar.items.alerts,      icon: "Bell",       group: "manage",  enabled: false, tooltip: futureTooltip },
   { id: "reports",    label: t.sidebar.items.reports,     icon: "FileText",   group: "manage",  enabled: false, tooltip: futureTooltip },
   { id: "mobile",     label: t.sidebar.items.mobile,      icon: "Phone",      group: "manage",  enabled: false, tooltip: futureTooltip },
+
+  // Dev-only — видно только при localStorage["optimyzer:dev"]="1"
+  { id: "dev-tools",  label: "DevTools",                  icon: "Settings",   group: "dev",     enabled: true,  devOnly: true },
 ];
 
 export const GROUPS: { name: string; key: NavItem["group"] }[] = [
@@ -52,4 +58,5 @@ export const GROUPS: { name: string; key: NavItem["group"] }[] = [
   { name: t.sidebar.groups.config,  key: "config" },
   { name: t.sidebar.groups.live,    key: "live" },
   { name: t.sidebar.groups.manage,  key: "manage" },
+  { name: "DEV",                    key: "dev" },
 ];

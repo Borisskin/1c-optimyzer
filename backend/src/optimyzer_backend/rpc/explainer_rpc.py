@@ -174,3 +174,34 @@ def explainer_reload_rules() -> dict[str, Any]:
     engine = get_engine()
     engine.reload_rules()
     return {"ok": True, "rules_count": len(engine.rules)}
+
+
+# ---------- Dev-tools (admin) RPCs — не для обычного UI ----------
+
+
+@rpc("explainer_cache_list")
+def explainer_cache_list(limit: int = 500) -> dict[str, Any]:
+    """Список всех cached AI explanations — для dev-tools screen."""
+    return {"ok": True, "entries": get_cache().list_all(limit=limit)}
+
+
+@rpc("explainer_cache_clear_all")
+def explainer_cache_clear_all() -> dict[str, Any]:
+    """Полная очистка кеша. Destructive — вызывает повторные API calls
+    при следующем открытии anatomy views."""
+    removed = get_cache().clear_all()
+    return {"ok": True, "removed": removed}
+
+
+@rpc("explainer_cache_clear_archive")
+def explainer_cache_clear_archive(archive_id: str) -> dict[str, Any]:
+    """Очистить кеш для конкретного архива."""
+    removed = get_cache().evict_archive(archive_id)
+    return {"ok": True, "removed": removed}
+
+
+@rpc("explainer_cache_delete_entry")
+def explainer_cache_delete_entry(cache_key: str) -> dict[str, Any]:
+    """Удалить одну entry по cache_key (для точечной перегенерации)."""
+    deleted = get_cache().delete(cache_key)
+    return {"ok": True, "deleted": deleted}

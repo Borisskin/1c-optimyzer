@@ -276,6 +276,19 @@ export interface ExplainerStatus {
   cache_entries: number;
 }
 
+export interface ExplainerCacheEntry {
+  cache_key: string;
+  archive_id: string;
+  anatomy_kind: string;
+  target_id: string;
+  rule_id: string | null;
+  ai_text_len: number;
+  model: string;
+  tokens_in: number;
+  tokens_out: number;
+  created_at: string;
+}
+
 export interface DeadlockAnatomyResult {
   ok: boolean;
   error?: string;
@@ -430,6 +443,16 @@ export const backend = {
     }),
   explainerStatus: () => rpc<ExplainerStatus>("explainer_status"),
   explainerReloadRules: () => rpc<{ ok: boolean; rules_count: number }>("explainer_reload_rules"),
+
+  // DevTools (admin) — список и очистка кеша. Не вызывается из обычного UI.
+  explainerCacheList: (limit = 500) =>
+    rpc<{ ok: boolean; entries: ExplainerCacheEntry[] }>("explainer_cache_list", { limit }),
+  explainerCacheClearAll: () =>
+    rpc<{ ok: boolean; removed: number }>("explainer_cache_clear_all"),
+  explainerCacheClearArchive: (archive_id: string) =>
+    rpc<{ ok: boolean; removed: number }>("explainer_cache_clear_archive", { archive_id }),
+  explainerCacheDeleteEntry: (cache_key: string) =>
+    rpc<{ ok: boolean; deleted: boolean }>("explainer_cache_delete_entry", { cache_key }),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),

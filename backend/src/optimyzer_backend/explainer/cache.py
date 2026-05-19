@@ -122,3 +122,31 @@ class ExplainerCache:
         with self._connect() as conn:
             row = conn.execute("SELECT COUNT(*) AS cnt FROM explainer_cache").fetchone()
             return {"entries": row["cnt"] if row else 0}
+
+    def list_all(self, limit: int = 500) -> list[dict]:
+        """Список всех cached entries — для dev-tools screen."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT cache_key, archive_id, anatomy_kind, target_id, rule_id,
+                       length(ai_text) AS ai_text_len, model, tokens_in,
+                       tokens_out, created_at
+                FROM explainer_cache
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                [limit],
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def clear_all(self) -> int:
+        """Полная очистка кеша. Возвращает количество удалённых entries."""
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM explainer_cache")
+            return cur.rowcount
+
+    def delete(self, cache_key: str) -> bool:
+        """Удалить одну entry. Возвращает True если что-то удалилось."""
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM explainer_cache WHERE cache_key = ?", [cache_key])
+            return cur.rowcount > 0

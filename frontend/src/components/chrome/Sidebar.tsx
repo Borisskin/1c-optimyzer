@@ -1,5 +1,6 @@
 import { Icon } from "@/components/icons/Icon";
 import { useAppStore } from "@/store/appStore";
+import { useDevMode } from "@/hooks/useDevMode";
 import { t } from "@/i18n/ru";
 import { GROUPS, NAV_ITEMS } from "./nav";
 import styles from "./Sidebar.module.css";
@@ -10,12 +11,18 @@ export function Sidebar() {
   const current = useAppStore((s) => s.currentScreen);
   const setScreen = useAppStore((s) => s.setScreen);
   const pushToast = useAppStore((s) => s.pushToast);
+  const devMode = useDevMode();
 
   return (
     <aside className={styles.sidebar}>
       <nav className={styles.nav}>
         {GROUPS.map((g) => {
-          const items = NAV_ITEMS.filter((n) => n.group === g.key);
+          let items = NAV_ITEMS.filter((n) => n.group === g.key);
+          // Dev-only items видны только при включённом dev mode
+          // (Ctrl+Shift+D или localStorage["optimyzer:dev"] = "1").
+          if (!devMode) {
+            items = items.filter((n) => !n.devOnly);
+          }
           if (items.length === 0) return null;
           return (
             <div key={g.key} className={styles.group}>
