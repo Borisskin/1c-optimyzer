@@ -89,7 +89,7 @@ class ClaudeExplainerClient:
 
     DEFAULT_MODEL = "claude-sonnet-4-6"
     DEFAULT_MAX_TOKENS = 1024
-    DEFAULT_TIMEOUT_S = 15.0
+    DEFAULT_TIMEOUT_S = 30.0
 
     def __init__(
         self,

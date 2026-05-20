@@ -61,3 +61,18 @@
   border-bottom: 2px solid var(--o-info);
   cursor: help;
 }
+
+/* Flash — кратковременная подсветка диапазона при клике на finding в правой панели.
+   Декорация снимается через setTimeout в QueryEditor.tsx (1 секунда). */
+.markFlash {
+  background: rgba(255, 215, 0, 0.55);
+  outline: 2px solid rgba(217, 119, 6, 0.85);
+  outline-offset: -1px;
+  animation: o-finding-flash 1s ease-out;
+}
+
+@keyframes o-finding-flash {
+  0%   { background: rgba(255, 215, 0, 0.85); }
+  60%  { background: rgba(255, 215, 0, 0.55); }
+  100% { background: rgba(255, 215, 0, 0.15); }
+}

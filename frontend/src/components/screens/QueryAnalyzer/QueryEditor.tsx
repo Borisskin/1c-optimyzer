@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorState, StateEffect, StateField, RangeSetBuilder } from "@codemirror/state";
 import { EditorView, Decoration, type DecorationSet, keymap, lineNumbers, drawSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -6,8 +6,16 @@ import { sql } from "@codemirror/lang-sql";
 import type { QAFinding } from "@/api/backend";
 import styles from "./QueryEditor.module.css";
 
+/** Imperative handle — даёт родителю возможность скроллить и подсвечивать диапазон. */
+export interface QueryEditorHandle {
+  scrollToRange: (lineStart: number, colStart: number, lineEnd: number, colEnd: number) => void;
+}
+
 /** Подсветка ranges из findings — через DecorationSet + StateField. */
 const setFindingsEffect = StateEffect.define<QAFinding[]>();
+
+/** Временная "flash" подсветка для клика по карточке finding. null → снять. */
+const setFlashEffect = StateEffect.define<{ from: number; to: number } | null>();
 
 function severityClass(sev: QAFinding["severity"]): string {
   switch (sev) {
@@ -59,6 +67,31 @@ const findingsField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+/** Flash-подсветка одного диапазона; снимается через setTimeout в QueryEditor. */
+const flashField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const eff of tr.effects) {
+      if (eff.is(setFlashEffect)) {
+        if (eff.value === null) {
+          deco = Decoration.none;
+        } else {
+          const builder = new RangeSetBuilder<Decoration>();
+          builder.add(
+            eff.value.from,
+            eff.value.to,
+            Decoration.mark({ class: styles.markFlash }),
+          );
+          deco = builder.finish();
+        }
+      }
+    }
+    return deco;
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
 
 interface QueryEditorProps {
   value: string;
@@ -68,9 +101,13 @@ interface QueryEditorProps {
   readOnly?: boolean;
 }
 
-export function QueryEditor({ value, onChange, findings, placeholder, readOnly }: QueryEditorProps) {
+export const QueryEditor = forwardRef<QueryEditorHandle, QueryEditorProps>(function QueryEditor(
+  { value, onChange, findings, placeholder, readOnly },
+  ref,
+) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const flashTimerRef = useRef<number | null>(null);
 
   // Сборка editor один раз
   useEffect(() => {
@@ -90,6 +127,7 @@ export function QueryEditor({ value, onChange, findings, placeholder, readOnly }
         keymap.of([...defaultKeymap, ...historyKeymap]),
         sql(),
         findingsField,
+        flashField,
         EditorView.editable.of(!readOnly),
         EditorView.lineWrapping,
         updateListener,
@@ -98,6 +136,10 @@ export function QueryEditor({ value, onChange, findings, placeholder, readOnly }
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
     return () => {
+      if (flashTimerRef.current !== null) {
+        window.clearTimeout(flashTimerRef.current);
+        flashTimerRef.current = null;
+      }
       view.destroy();
       viewRef.current = null;
     };
@@ -123,10 +165,44 @@ export function QueryEditor({ value, onChange, findings, placeholder, readOnly }
     view.dispatch({ effects: setFindingsEffect.of(findings) });
   }, [findings]);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToRange(lineStart, colStart, lineEnd, colEnd) {
+        const view = viewRef.current;
+        if (!view) return;
+        const doc = view.state.doc;
+        if (lineStart < 1 || lineStart > doc.lines) return;
+        const ls = doc.line(lineStart);
+        const le = doc.line(Math.min(Math.max(lineEnd, lineStart), doc.lines));
+        const fromRaw = Math.min(ls.from + Math.max(colStart - 1, 0), ls.to);
+        const toRaw = Math.min(le.from + Math.max(colEnd - 1, 0), le.to);
+        const from = Math.min(fromRaw, toRaw);
+        const to = Math.max(fromRaw, toRaw);
+        view.dispatch({
+          effects: [
+            EditorView.scrollIntoView(from, { y: "center" }),
+            setFlashEffect.of({ from, to: to > from ? to : from + 1 }),
+          ],
+        });
+        if (flashTimerRef.current !== null) {
+          window.clearTimeout(flashTimerRef.current);
+        }
+        flashTimerRef.current = window.setTimeout(() => {
+          flashTimerRef.current = null;
+          const v = viewRef.current;
+          if (!v) return;
+          v.dispatch({ effects: setFlashEffect.of(null) });
+        }, 1000);
+      },
+    }),
+    [],
+  );
+
   return (
     <div className={styles.wrap}>
       <div ref={hostRef} className={styles.editor} />
       {!value && placeholder && <div className={styles.placeholder}>{placeholder}</div>}
     </div>
   );
-}
+});

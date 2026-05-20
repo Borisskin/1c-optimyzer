@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { backend, type QAAnalyzeResult, type QAFinding, type QARewriteResult, type QAStatus } from "@/api/backend";
 import { t, format } from "@/i18n/ru";
-import { QueryEditor } from "./QueryEditor";
+import { QueryEditor, type QueryEditorHandle } from "./QueryEditor";
 import { FindingsList } from "./FindingsList";
 import { RewriteDiff } from "./RewriteDiff";
 import styles from "./QueryAnalyzer.module.css";
@@ -15,9 +15,15 @@ export function QueryAnalyzerScreen() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFinding, setSelectedFinding] = useState<QAFinding | null>(null);
   const [status, setStatus] = useState<QAStatus | null>(null);
+  const editorRef = useRef<QueryEditorHandle | null>(null);
 
   useEffect(() => {
     backend.queryAnalyzerStatus().then(setStatus).catch(() => setStatus(null));
+  }, []);
+
+  const onFindingSelect = useCallback((f: QAFinding) => {
+    setSelectedFinding(f);
+    editorRef.current?.scrollToRange(f.line_start, f.col_start, f.line_end, f.col_end);
   }, []);
 
   const onAnalyze = useCallback(async () => {
@@ -94,6 +100,7 @@ export function QueryAnalyzerScreen() {
       <div className={styles.body}>
         <div className={styles.editorCol}>
           <QueryEditor
+            ref={editorRef}
             value={text}
             onChange={setText}
             findings={findings}
@@ -137,7 +144,7 @@ export function QueryAnalyzerScreen() {
             <FindingsList
               findings={findings}
               selectedRuleId={selectedFinding?.rule_id ?? null}
-              onSelect={setSelectedFinding}
+              onSelect={onFindingSelect}
             />
           )}
           {!result && <div className={styles.findingsEmpty}>—</div>}
