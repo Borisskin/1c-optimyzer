@@ -350,6 +350,61 @@ export interface SessionAnatomyResult {
   top_sql: SubTable;
 }
 
+// Sprint 4 — Query Analyzer
+export interface QAFinding {
+  source: "native" | "bsl-language-server";
+  rule_id: string;
+  severity: "critical" | "warning" | "info";
+  category: "performance" | "correctness" | "style";
+  line_start: number;
+  line_end: number;
+  col_start: number;
+  col_end: number;
+  message: string;
+  explanation_md: string;
+  tags: string[];
+  solution_template_id: string | null;
+}
+
+export interface QAAnalyzeResult {
+  ok: boolean;
+  query_text: string;
+  findings: QAFinding[];
+  bsl_ls_available: boolean;
+  summary: { critical: number; warning: number; info: number };
+  rules_count: number;
+}
+
+export interface QARewriteChange {
+  what: string;
+  why: string;
+  lines_in_original?: number[];
+}
+
+export interface QARewriteResult {
+  ok: boolean;
+  from_cache?: boolean;
+  rewritten_query?: string;
+  changes?: QARewriteChange[];
+  notes_for_developer?: string;
+  estimated_improvement?: string;
+  model?: string;
+  tokens_in?: number;
+  tokens_out?: number;
+  elapsed_ms?: number;
+  error?: string;
+  enabled?: boolean;
+}
+
+export interface QAStatus {
+  ok: boolean;
+  native_rules_count: number;
+  bsl_ls_available: boolean;
+  ai_enabled: boolean;
+  model: string | null;
+  cache_entries: number;
+}
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -470,6 +525,18 @@ export const backend = {
     rpc<{ ok: boolean; removed: number }>("explainer_cache_clear_archive", { archive_id }),
   explainerCacheDeleteEntry: (cache_key: string) =>
     rpc<{ ok: boolean; deleted: boolean }>("explainer_cache_delete_entry", { cache_key }),
+
+  // Sprint 4 — Query Analyzer
+  queryAnalyzerAnalyze: (query_text: string) =>
+    rpc<QAAnalyzeResult>("query_analyzer.analyze", { query_text }),
+  queryAnalyzerRewrite: (
+    query_text: string,
+    findings: QAFinding[],
+    force_refresh = false,
+  ) => rpc<QARewriteResult>("query_analyzer.rewrite", { query_text, findings, force_refresh }),
+  queryAnalyzerStatus: () => rpc<QAStatus>("query_analyzer.status"),
+  queryAnalyzerReloadRules: () =>
+    rpc<{ ok: boolean; rules_count: number }>("query_analyzer.reload_rules"),
 
   // Saved queries
   listSavedQueries: () => rpc<SavedQuery[]>("list_saved_queries"),

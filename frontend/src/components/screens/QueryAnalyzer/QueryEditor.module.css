@@ -1,0 +1,63 @@
+.wrap {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  background: var(--o-panel);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-md);
+  overflow: hidden;
+}
+
+.editor {
+  height: 100%;
+  width: 100%;
+  font-family: var(--o-font-mono);
+  font-size: 13px;
+}
+
+.editor :global(.cm-editor) {
+  height: 100%;
+}
+
+.editor :global(.cm-editor.cm-focused) {
+  outline: none;
+}
+
+.editor :global(.cm-gutters) {
+  background: var(--o-subtle);
+  border-right: 1px solid var(--o-border);
+  color: var(--o-text-3);
+}
+
+.editor :global(.cm-content) {
+  padding: 8px 0;
+}
+
+.placeholder {
+  position: absolute;
+  top: 8px;
+  left: 50px;
+  color: var(--o-text-mute);
+  pointer-events: none;
+  font-family: var(--o-font-mono);
+  font-size: 13px;
+}
+
+/* Подсветка findings */
+.markCritical {
+  background: rgba(220, 38, 38, 0.18);
+  border-bottom: 2px solid var(--o-err);
+  cursor: help;
+}
+
+.markWarning {
+  background: rgba(217, 119, 6, 0.16);
+  border-bottom: 2px solid var(--o-warn);
+  cursor: help;
+}
+
+.markInfo {
+  background: rgba(37, 99, 235, 0.12);
+  border-bottom: 2px solid var(--o-info);
+  cursor: help;
+}

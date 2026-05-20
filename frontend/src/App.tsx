@@ -18,6 +18,7 @@ import { ArchiveComparisonScreen } from "@/components/screens/ArchiveComparison/
 import { OperationsScreen } from "@/components/screens/Operations/Operations";
 import { AnatomyScreen } from "@/components/screens/Anatomy/Anatomy";
 import { DeadlockAnatomyScreen } from "@/components/screens/DeadlockAnatomy/DeadlockAnatomy";
+import { QueryAnalyzerScreen } from "@/components/screens/QueryAnalyzer/QueryAnalyzer";
 import { DevToolsScreen } from "@/components/screens/DevTools/DevTools";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
@@ -214,6 +215,8 @@ function renderScreen({
       return <AnatomyScreen archiveId={archiveId} />;
     case "deadlock-anatomy":
       return <DeadlockAnatomyScreen archiveId={archiveId} />;
+    case "query-analyzer":
+      return <QueryAnalyzerScreen />;
     case "dev-tools":
       return <DevToolsScreen />;
     default:

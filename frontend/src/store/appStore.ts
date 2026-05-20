@@ -13,6 +13,7 @@ export type ScreenId =
   | "operations"
   | "anatomy"
   | "deadlock-anatomy"
+  | "query-analyzer"
   | "dashboard"
   | "apdex"
   | "workbench"

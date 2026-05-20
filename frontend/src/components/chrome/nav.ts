@@ -26,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "duration",      label: t.sidebar.items.duration,      icon: "Trend",      group: "analyze", enabled: true },
   { id: "errors",        label: t.sidebar.items.errors,        icon: "AlertTriangle", group: "analyze", enabled: true },
   { id: "activity",      label: t.sidebar.items.activity,      icon: "Activity",   group: "analyze", enabled: true },
+  { id: "query-analyzer", label: t.sidebar.items.queryAnalyzer, icon: "Code",      group: "analyze", enabled: true },
 
   // ----- CONFIG -----
   { id: "comparison",    label: t.sidebar.items.comparison,    icon: "GitCompare", group: "config",  enabled: true },
