@@ -44,3 +44,13 @@ backend/tests/fixtures/real-archive/
 
 # Local real TJ logs (~12 GiB inspection corpus — never commit)
 /logs/
+
+# Workspace-level (после Sprint 3.5: D:\1C-Optimyzer\ стал корнем репо).
+# Сергеевские локальные ресурсы рядом с кодом — не часть продукта, не публиковать.
+/.claude/
+/Design_NonProduct/
+/*.pdf
+# Методические/handoff .md на корне — храним локально. Если нужно в репо,
+# кладём в docs/methodology/ или docs/sprint_prompts/.
+/*.md
+!/README.md

@@ -9,6 +9,8 @@
 
 > **Почему 3.5, не 4:** содержательно это closure Sprint 3 (unblock deadlock acceptance + UI polish для тех же экранов), а не самостоятельный новый спринт. Sprint 4 будет про обработку накопленных TLOCK/TDEADLOCK в Deadlock Anatomy + rule classifier на real-data.
 
+> **Repo hoist в конце спринта:** корень репозитория поднят с `D:\1C-Optimyzer\1c-optimyzer\` → `D:\1C-Optimyzer\`. Промежуточной папки `1c-optimyzer\` больше нет. Все workspace-уровневые материалы (PDF методики ЦУП, sprint-промпты от Opus, `Design_NonProduct/`) — в `.gitignore`, остаются у Сергея локально, не публикуются.
+
 ---
 
 ## Где смотреть напрямую
