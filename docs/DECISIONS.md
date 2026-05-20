@@ -330,3 +330,80 @@ Universal STOP RULES (копируются дословно в каждый prom
 
 **Consequences.** + Безопасность ключа. + Возможность future hosted-edition без architectural rework. − Лишний RPC roundtrip (но он на background flow — UX не страдает).
 
+
+---
+
+## ADR-025 — BSL Language Server **не** используется в Sprint 4 (pivot на native-only)
+
+**Status:** Accepted (Sprint 4 Phase 0)
+
+**Context.** Sprint 4 promt планировал интегрировать [`1c-syntax/bsl-language-server`](https://github.com/1c-syntax/bsl-language-server) как Java sidecar для анализа SDBL-запросов. STOP RULE промта явно допускал pivot: «если выяснится что BSL LS не работает с standalone SDBL — переориентироваться только на native rules».
+
+**Решение.** Sprint 4 реализует **native-only** Query Analyzer без интеграции с BSL Language Server.
+
+**Обоснование** (см. [BSL_LS_GAP_ANALYSIS.md](BSL_LS_GAP_ANALYSIS.md) для деталей):
+
+1. BSL Language Server создан для языка **BSL** (`Процедура Х() Конец`) — синтаксис модулей конфигурации.
+2. **SDBL** (`ВЫБРАТЬ ... ИЗ ...`) — отдельный embedded язык внутри строковых литералов BSL.
+3. Sprint 4 Query Analyzer работает с **standalone SDBL** (юзер вставляет голый текст).
+4. Обёртка SDBL в фейковый BSL вызывает offset drift диагностик + проблемы с параметрами + 1-3 сек стартап оверхеда (превышает DoD «< 5 сек per query»).
+5. Native rules engine на regex покрывает весь target list 12 правил методики ЦУП 2.13.4 без зависимости от Java + .jar.
+
+**Архитектурное наследие.** `backend/src/optimyzer_backend/query_analyzer/bsl_ls_client.py` — thin stub с зарезервированным API (`available`, `analyze_query`). `Aggregator._merge_and_dedupe` уже умеет приоритизировать native над BSL LS findings. Sprint 5+ может включить интеграцию без переделки контракта.
+
+**Consequences.** + Простота: нет Java зависимости, нет 100+ MB jar в installer, нет degraded mode UI. + Стабильность: regex matcher детерминирован, Java subprocess может зависнуть/упасть. + Скорость: native engine < 0.1 сек на типичный запрос vs 1-3 сек BSL LS startup. + Полное покрытие: 13 native rules покрывают всё target list ЦУП 2.13.4. − Не получаем 100+ BSL LS диагностик для BSL модулей — но это Sprint 7+ scope (MCP BSL Atlas), не Sprint 4.
+
+---
+
+## ADR-026 — GPL-3.0 safety: BSL LS лицензия не блокирует Sprint 4
+
+**Status:** Accepted (Sprint 4 Phase 0)
+
+**Context.** `bsl-language-server` распространяется под **GPL-3.0**. GPL-3.0 — copyleft, требует: если ваш код связан (linked) с GPL кодом — ваш код тоже должен быть GPL.
+
+**Решение.** Sprint 4 **не использует** BSL LS (см. ADR-025), поэтому **GPL-3.0 контаминация не применяется**. Наш код может оставаться под любой удобной лицензией (Apache-2.0 / MIT / proprietary — owner decides).
+
+**Если бы использовали** (для справки на будущее):
+- Subprocess invocation (`java -jar bsl-language-server.jar ...`) **не** считается linking → наш код **не** становится GPL.
+- НЕ bundle `.jar` в наш installer — пользователь сам качает с GitHub releases.
+- Это soft separation, юридически чистая.
+
+**Consequences.** + Sprint 4: полная свобода в выборе лицензии. + Sprint 5+ (если включаем BSL LS): subprocess approach подтверждён как безопасный. − ничего.
+
+---
+
+## ADR-027 — Solution Generator архитектурно зарезервирован под Sprint 8
+
+**Status:** Accepted (Sprint 4 Phase F)
+
+**Context.** Sprint 8-9 в roadmap планирует **AI-генератор готовых обработок 1С** (.epf) под конкретную базу через MCP BSL Atlas. Sprint 4 нужен placeholder в API чтобы Sprint 8 не пересматривал контракт.
+
+**Решение.** В Sprint 4 создан `backend/src/optimyzer_backend/query_analyzer/solution_generator.py` — класс `SolutionGenerator` с методом `generate_solution(finding_id, base_context) → dict`. В Sprint 4 всегда возвращает `{ok: False, status_code: 501, error: "Sprint 8"}`. RPC `query_analyzer.generate_solution` зарегистрирован. Frontend кнопка "Сгенерировать решение" **не рендерится** (мы знаем что backend всегда 501).
+
+В `Finding` dataclass добавлено опциональное поле `solution_template_id: str | None = None` — placeholder для Sprint 8.
+
+**Consequences.** + Sprint 8 включает функционал без изменения contract'а / API / frontend hooks. + Документирует roadmap зависимость в коде, не только в docs. − Crystal dead code в Sprint 4 (минимальный — 30 строк).
+
+---
+
+## ADR-028 — Native rules engine как complement к explainer/
+
+**Status:** Accepted (Sprint 4 Phase B)
+
+**Context.** Sprint 3 уже имеет rule engine (`backend/src/optimyzer_backend/explainer/`) для anatomy views (deadlock / slow_op / lock / exception). Возникает вопрос: использовать ли тот же engine для SDBL-запросов, или сделать отдельный?
+
+**Решение.** Сделан **отдельный** `query_analyzer/native_rules.py` engine с собственным `NativeRule` dataclass и `analyze(query_text, rules)` функцией.
+
+**Обоснование.**
+
+- Explainer rules матчат **feature dict** (`{event_type: 'TDEADLOCK', regions_count: 1}`) — это классификация события.
+- Query analyzer rules матчат **regex patterns** против исходного текста запроса — это статический анализ кода.
+- Разная семантика → разные dataclasses (`Rule` vs `NativeRule`), разные matchers (pattern matcher vs regex finditer), разные результаты (`RuleMatch` vs `Finding` с line/col ranges).
+
+**Что переиспользуется:**
+- YAML subset parser `_parse_yaml_subset` из `explainer.rule_loader` — для парсинга frontmatter.
+- ClaudeClient pattern — `_load_dotenv_once` reused в `ai_rewriter.py` через delegate.
+- SQLite cache pattern — `QueryRewriteCache` использует тот же файл `data/explainer_cache.db`, отдельная таблица `query_rewrite_cache`.
+
+**Consequences.** + Каждый engine оптимизирован под свою задачу. + Нет coupling — изменения в Sprint 5+ explainer не ломают query analyzer. + Меньше surface area для bugs. − Минорное дублирование boilerplate (frontmatter parsing, rule loading).
+

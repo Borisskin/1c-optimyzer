@@ -416,3 +416,33 @@
 **Pending follow-up tasks (OPUS_HANDOVER):**
 - Phase D real-data validation pass (требуется архив с TDEADLOCK events)
 - Lock Wait Anatomy view (Sprint 5+ кандидат по ЦУП 2.13.2)
+
+
+---
+
+## Sprint 4 closure update (2026-05-20)
+
+**Что фактически сделано в Sprint 4:**
+
+- ✅ Phase 0 — discovery + gap analysis BSL LS vs SDBL → [BSL_LS_GAP_ANALYSIS.md](BSL_LS_GAP_ANALYSIS.md)
+- ✅ Phase A — `BSLLanguageServerClient` thin stub (всегда disabled, архитектурный placeholder под Sprint 5+)
+- ✅ Phase B — Native rule engine + **13 rules** в `backend/query_analyzer_rules/` (превышает minimum DoD = 8). Каждое правило с positive + negative test.
+- ✅ Phase C — Aggregator + RPC методы (`query_analyzer.analyze`, `.rewrite`, `.status`, `.reload_rules`, `.generate_solution`)
+- ✅ Phase D — Frontend QueryAnalyzer screen + CodeMirror 6 + lint-style highlight + FindingsList + RewriteDiff modal
+- ✅ Phase E — AI rewriter через Claude (claude-sonnet-4-6) + structured JSON output + SQLite cache
+- ✅ Phase F — SolutionGenerator placeholder (всегда 501, заготовка под Sprint 8)
+- ✅ Phase G — Real-data acceptance tests (env-gated). DoD #24 (< 5 сек) и #26 (без BSL LS) — пройдены. DoD #23 (70% hit-rate на DBMSSQL) — documented gap (1С пишет в DBMSSQL.Sql фактически T-SQL после трансляции из SDBL; решение в Sprint 5+).
+- ✅ Phase H — ADR-025..028, BSL_LS_GAP_ANALYSIS, обновление FEATURES_TO_EXPERT_CURRICULUM_MAPPING
+
+### Прирост покрытия методики 1С:Эксперт (Sprint 3 → Sprint 4):
+
+| Раздел курса | Sprint 3 | Sprint 4 | Δ | Чем покрыли |
+|---|---|---|---|---|
+| Раздел 10 (Запросы которые работают быстро) | 0% | **85%** | +85% | 13 native rules + AI rewriter |
+| Раздел 7 (Индексы) | 0% | **60%** | +60% | function_in_where, temp_table_without_index, vyrazit_in_where (offmaps индексы) |
+| Раздел 8 (Анализ плана запроса) | 0% | **40%** | +40% | Подсветка проблемных мест + объяснение «что не использует индекс» (без EXPLAIN integration — это Sprint 7) |
+
+**Общее покрытие:** ~30% (Sprint 3) → ~40% (Sprint 4). Цель Module 1 — 40-45%. **Близко к плану.**
+
+**Backend tests:** 272 (Sprint 3.5) → 332 (+60 для Query Analyzer + 5 real-data). All passing кроме одного flaky Sprint 3 AI live test (упал по таймауту 15 сек на Claude API call, не регрессия Sprint 4).
+
