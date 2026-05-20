@@ -9,28 +9,55 @@
 
 > **Почему 3.5, не 4:** содержательно это closure Sprint 3 (unblock deadlock acceptance + UI polish для тех же экранов), а не самостоятельный новый спринт. Sprint 4 будет про обработку накопленных TLOCK/TDEADLOCK в Deadlock Anatomy + rule classifier на real-data.
 
-> **Repo hoist в конце спринта:** корень репозитория поднят с `D:\1C-Optimyzer\1c-optimyzer\` → `D:\1C-Optimyzer\`. Промежуточной папки `1c-optimyzer\` больше нет. Все workspace-уровневые материалы (PDF методики ЦУП, sprint-промпты от Opus, `Design_NonProduct/`) — в `.gitignore`, остаются у Сергея локально, не публикуются.
+> **Repo hoist + переезд методических материалов в `docs/sprint_prompts/`** — в конце спринта корень репозитория поднят с `D:\1C-Optimyzer\1c-optimyzer\` → `D:\1C-Optimyzer\`. Промежуточной папки `1c-optimyzer\` больше нет. Все sprint-промпты от Opus, handoff'ы и методология перенесены в [`docs/sprint_prompts/`](https://github.com/anymasoft/1c-optimyzer/tree/main/docs/sprint_prompts) — теперь архитектор видит **полную проектную картину** через GitHub. Детали — в разделе «[Repo hoist](#repo-hoist-структурная-перестройка)» ниже.
 
 ---
 
-## Где смотреть напрямую
+## Где смотреть напрямую — Opus имеет доступ ко всему проекту через GitHub
 
-- **Репозиторий:** https://github.com/anymasoft/1c-optimyzer
-- **Этот отчёт на GitHub:** https://github.com/anymasoft/1c-optimyzer/blob/main/docs/SPRINT_3_5_REPORT.md
-- **Основной commit (diff):** https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36
-- **Sprint 3 closure (для контекста):** [docs/SPRINT_3_REPORT.md](SPRINT_3_REPORT.md) · [OPUS_HANDOVER_SPRINT_3.md](OPUS_HANDOVER_SPRINT_3.md)
+- **Репозиторий:** https://github.com/anymasoft/1c-optimyzer (public)
+- **Этот отчёт:** https://github.com/anymasoft/1c-optimyzer/blob/main/docs/SPRINT_3_5_REPORT.md
+- **Sprint 3.5 commits:**
+  - [`fa60327`](https://github.com/anymasoft/1c-optimyzer/commit/fa603279dd0aad129668e023a340f0b6cfaf2b36) — UI + backend (server-side event_types фильтр, sidebar, sticky headers)
+  - [`9029990`](https://github.com/anymasoft/1c-optimyzer/commit/9029990) — добавление repo URL/ссылок в отчёт
+  - [`3e27191`](https://github.com/anymasoft/1c-optimyzer/commit/3e27191) — rename Sprint 4 → Sprint 3.5 + move TJ simulator в `tools/tj-simulator/`
+  - [`f35a813`](https://github.com/anymasoft/1c-optimyzer/commit/f35a813) — multi-iteration loops для деdlock-сценариев (5×TDEADLOCK вместо 1)
+  - [`6dd1562`](https://github.com/anymasoft/1c-optimyzer/commit/6dd1562) — **repo hoist** (структурная перестройка)
+  - **Следующий за этим** — переезд `docs/sprint_prompts/` (этот коммит)
 
-**Ключевые файлы спринта (clickable из GitHub):**
+### Структура репозитория после Sprint 3.5
+
+| Папка / файл | Назначение |
+|---|---|
+| [`backend/`](https://github.com/anymasoft/1c-optimyzer/tree/main/backend) | Python sidecar (DuckDB, парсер ТЖ, JSON-RPC, тесты) |
+| [`frontend/`](https://github.com/anymasoft/1c-optimyzer/tree/main/frontend) | Tauri 2 + React/TypeScript UI |
+| [`design/`](https://github.com/anymasoft/1c-optimyzer/tree/main/design) | Design-документация продукта (HTML мокап + opt + скриншоты) |
+| [`docs/`](https://github.com/anymasoft/1c-optimyzer/tree/main/docs) | Все отчёты спринтов, ADR, handoff'ы для архитектора |
+| [`docs/sprint_prompts/`](https://github.com/anymasoft/1c-optimyzer/tree/main/docs/sprint_prompts) | **Новое** — sprint-промпты от Opus, методология, handoff-документы |
+| [`tools/tj-simulator/`](https://github.com/anymasoft/1c-optimyzer/tree/main/tools/tj-simulator) | **Новое** — ТЖ-симулятор: внешняя обработка `.epf` + расширение `.cfe` |
+| [`scripts/`](https://github.com/anymasoft/1c-optimyzer/tree/main/scripts) | Сервисные скрипты |
+| [`start.bat`](https://github.com/anymasoft/1c-optimyzer/blob/main/start.bat) | Запуск dev-окружения (vcvars64 + tauri dev) |
+| [`README.md`](https://github.com/anymasoft/1c-optimyzer/blob/main/README.md) | Корневой README |
+| [`.gitignore`](https://github.com/anymasoft/1c-optimyzer/blob/main/.gitignore) | + workspace-правила для локальных ресурсов |
+
+**Ключевые файлы Sprint 3.5 (clickable из GitHub):**
 
 | Файл | Что смотреть |
 |---|---|
-| [`backend/src/optimyzer_backend/sql/views.py`](https://github.com/anymasoft/1c-optimyzer/blob/main/backend/src/optimyzer_backend/sql/views.py) | `errors_feed()` — server-side фильтр + counts |
-| [`backend/tests/test_views.py`](https://github.com/anymasoft/1c-optimyzer/blob/main/backend/tests/test_views.py) | 3 новых теста на event_types фильтр |
-| [`frontend/src/components/tables/EventTypeFilter.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/tables/EventTypeFilter.tsx) | Новый dropdown-компонент |
-| [`frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx) | Server-side rewrite |
-| [`frontend/src/components/chrome/Sidebar.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.tsx) · [`.module.css`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.module.css) | Sidebar polish + анимация |
-| [`tools/tj-simulator/`](https://github.com/anymasoft/1c-optimyzer/tree/main/tools/tj-simulator) | ТЖ-симулятор: обработка + расширение **теперь в репо** |
-| [`tools/tj-simulator/README.md`](https://github.com/anymasoft/1c-optimyzer/blob/main/tools/tj-simulator/README.md) | Quick start + как пересобрать |
+| [`backend/src/optimyzer_backend/sql/views.py`](https://github.com/anymasoft/1c-optimyzer/blob/main/backend/src/optimyzer_backend/sql/views.py) | `errors_feed()` — server-side фильтр event_types + counts |
+| [`backend/src/optimyzer_backend/rpc/views_rpc.py`](https://github.com/anymasoft/1c-optimyzer/blob/main/backend/src/optimyzer_backend/rpc/views_rpc.py) | RPC прокидывает `event_types` |
+| [`backend/tests/test_views.py`](https://github.com/anymasoft/1c-optimyzer/blob/main/backend/tests/test_views.py) | 3 новых теста на event_types фильтр (19/19 passing) |
+| [`frontend/src/api/backend.ts`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/api/backend.ts) | TS-сигнатура `viewErrorsFeed(archive, filters, limit, event_types?)` |
+| [`frontend/src/components/tables/EventTypeFilter.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/tables/EventTypeFilter.tsx) | **Новый** multi-select dropdown с counts |
+| [`frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/screens/ErrorsFeed/ErrorsFeed.tsx) | Убран client-side фильтр, server-side rewrite |
+| [`frontend/src/components/chrome/Sidebar.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.tsx) · [`Sidebar.module.css`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/chrome/Sidebar.module.css) | Мини-гамбургер + анимация + выравнивание |
+| [`frontend/src/styles/optimyzer-design.css`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/styles/optimyzer-design.css) | Transition `grid-template-columns` 220ms |
+| [`frontend/src/components/icons/Icon.tsx`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/icons/Icon.tsx) | Иконка `Menu` (3 полосы) |
+| [`frontend/src/components/views/ViewShell.module.css`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/components/views/ViewShell.module.css) | Sticky `<th>` для всех таблиц |
+| [`frontend/src/i18n/ru.ts`](https://github.com/anymasoft/1c-optimyzer/blob/main/frontend/src/i18n/ru.ts) | Переименование на «События ТЖ» |
+| [`tools/tj-simulator/README.md`](https://github.com/anymasoft/1c-optimyzer/blob/main/tools/tj-simulator/README.md) | Quick start ТЖ-симулятора |
+| [`tools/tj-simulator/МоделированиеТЖ/src/МоделированиеТЖ/Ext/ObjectModule.bsl`](https://github.com/anymasoft/1c-optimyzer/blob/main/tools/tj-simulator/%D0%9C%D0%BE%D0%B4%D0%B5%D0%BB%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%D0%A2%D0%96/src/%D0%9C%D0%BE%D0%B4%D0%B5%D0%BB%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%D0%A2%D0%96/Ext/ObjectModule.bsl) | Серверный модуль с воркер-методами (1С BSL) |
+| [`tools/tj-simulator/МоделированиеТЖ/src/МоделированиеТЖ/Forms/Форма/Ext/Form/Module.bsl`](https://github.com/anymasoft/1c-optimyzer/blob/main/tools/tj-simulator/%D0%9C%D0%BE%D0%B4%D0%B5%D0%BB%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%D0%A2%D0%96/src/%D0%9C%D0%BE%D0%B4%D0%B5%D0%BB%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%D0%A2%D0%96/Forms/%D0%A4%D0%BE%D1%80%D0%BC%D0%B0/Ext/Form/Module.bsl) | Модуль формы (с server-side обёртками через РеквизитФормыВЗначение) |
 
 ---
 
@@ -246,6 +273,28 @@ tools/tj-simulator/
     install.ps1, uninstall.ps1           — установка/удаление расширения
 ```
 
+Переезд `docs/sprint_prompts/` (после repo hoist):
+```
+docs/sprint_prompts/
+  README.md                                       — навигация по архиву
+  SPRINT_0_PROMPT_OPTIMYZER.md                    — исходный промпт Sprint 0 (40 KB)
+  SPRINT_1_PROMPT_OPTIMYZER.md                    — исходный промпт Sprint 1 (69 KB)
+  SPRINT_3_PROMPT_OPTIMYZER.md                    — workspace-копия Sprint 3 prompt
+  HANDOFF_CONTEXT.md                              — handoff между фазами
+  CLAUDE_CODE_PREPROMPT_OPTIMYZER.md              — pre-prompt для Claude Code
+  CLOSURE_INSTRUCTIONS_FOR_CLAUDE_CODE.md         — инструкции закрытия модуля
+  development_methodology.md                      — общая методология (38 KB)
+```
+
+`.gitignore` (добавлено):
+```
+/.claude/                — локальные настройки Claude Code
+/Design_NonProduct/      — HTML-мокапы других продуктов Сергея
+/*.pdf                   — методика ЦУП из ИТС (copyright)
+/МоделированиеТЖ/        — пустая папка-остаток от устаревшего дубликата
+frontend/src-tauri/target/, Cargo.lock, gen/    — Tauri build artifacts (явные правила)
+```
+
 ---
 
 ## Что осталось open для следующего спринта
@@ -263,3 +312,86 @@ tools/tj-simulator/
 - **Server-side фильтрация всегда выигрывает у client-side**, когда `total > limit`. Client-side фильтр выглядит безобидно, но скрытый баг проявляется только на редких значениях колонки.
 - **Counts должны быть независимы от выбора.** Если `event_types[]` пересчитываются с учётом выбранных типов — UI не сможет корректно отображать «есть/нет других типов в архиве», и юзер потеряет возможность переключения.
 - **UTF-8 BOM критичен для .bsl.** Тихая ошибка: 1С загружает файл, но методы перестают быть экспортными. Это второй раз когда мы на этом обжигались — закреплено в memory.
+
+---
+
+## Repo hoist — структурная перестройка
+
+> Этот раздел — **специально для архитектора**. Объясняет почему до Sprint 3.5 Opus не видел всю проектную картину через GitHub, и что изменилось.
+
+### Как было до Sprint 3.5
+
+```
+D:\1C-Optimyzer\                          ← workspace Сергея (НЕ git-репо)
+├── 1c-optimyzer\                         ← это был git-репо
+│   ├── backend\ frontend\ docs\          ← код продукта
+│   └── ...                               ← (Opus видел только это)
+├── МоделированиеТЖ\                      ← обработка для ТЖ-моделирования (вне репо)
+├── ТЖМоделированиеРасш\                  ← расширение конфигурации (вне репо)
+├── Design\                               ← HTML-мокапы (часть наши, часть других продуктов)
+├── *.pdf (4 шт.)                         ← методика ЦУП (вне репо)
+├── SPRINT_*_PROMPT_OPTIMYZER.md (4 шт.)  ← промпты архитектора (вне репо)
+├── HANDOFF_CONTEXT.md                    ← (вне репо)
+├── PROMPT_AUTHORING_STANDARD.md          ← (вне репо)
+├── development_methodology.md            ← (вне репо)
+└── ... ещё 7 .md handoff'ов
+```
+
+**Проблема:** архитектор Opus, открывая https://github.com/anymasoft/1c-optimyzer, видел только содержимое **внутренней** папки `1c-optimyzer/`. Все sprint-промпты, handoff-документы, методология, ТЖ-симулятор лежали **на уровень выше** — вне git, локально у Сергея. Из GitHub архитектор не мог проследить эволюцию задач или открыть .epf-обработку для review.
+
+### Как стало после Sprint 3.5
+
+```
+D:\1C-Optimyzer\                          ← КОРЕНЬ git-репо (origin/main)
+├── backend\ frontend\ design\            ← код продукта
+├── docs\                                 ← отчёты спринтов, ADR, handoff'ы для архитектора
+│   ├── SPRINT_0..3_REPORT.md
+│   ├── SPRINT_3_5_REPORT.md              ← (этот документ)
+│   ├── OPUS_HANDOVER_SPRINT_*.md
+│   ├── DECISIONS.md, ARCHITECT_NOTES.md
+│   └── sprint_prompts\                   ← НОВОЕ: исходные промпты от Opus
+│       ├── SPRINT_0..3_PROMPT_OPTIMYZER.md
+│       ├── HANDOFF_CONTEXT.md
+│       ├── development_methodology.md
+│       └── README.md (навигация)
+├── tools\
+│   └── tj-simulator\                     ← НОВОЕ: ТЖ-симулятор (внешняя обработка + расширение)
+├── scripts\, logs\
+├── start.bat, README.md, .gitignore
+└── (локально, в .gitignore — НЕ в репо):
+    ├── Design_NonProduct\                ← HTML-мокапы Agenter, GosLog, Konvey
+    ├── *.pdf                             ← методика ЦУП из ИТС (copyright)
+    └── .claude\                          ← локальные настройки Claude Code
+```
+
+### Что было физически сделано
+
+1. **Снесены устаревшие дубликаты** на уровне `D:\1C-Optimyzer\`: `МоделированиеТЖ\` и `ТЖМоделированиеРасш\` (их актуальные копии живут в [`tools/tj-simulator/`](https://github.com/anymasoft/1c-optimyzer/tree/main/tools/tj-simulator)).
+2. **Подняли корень репо**: все 18 элементов из `D:\1C-Optimyzer\1c-optimyzer\*` (включая `.git/`, backend, frontend, и т.д.) перемещены на уровень выше через `Move-Item` / `robocopy /MOVE`. Промежуточная папка `1c-optimyzer\` удалена.
+3. **Разрешены конфликты имён** (Windows case-insensitive):
+   - `Design\` (личные мокапы других проектов) переименована в `Design_NonProduct\` — добавлена в `.gitignore`.
+   - `.claude\` (пустая локальная) удалена — в репо переехала `.claude/skills/` из бывшего `1c-optimyzer/` (но оставлена untracked, в `.gitignore`).
+4. **Дубликаты `.md` устранены** (5 файлов): в `D:\1C-Optimyzer\` лежали более старые версии тех же документов, что были в `docs/` (видно по размеру: `docs/` версии 16-29 KB, корневые 16-25 KB). Корневые сняты, оставлены docs/-версии.
+5. **Уникальные `.md` промпты перенесены** в [`docs/sprint_prompts/`](https://github.com/anymasoft/1c-optimyzer/tree/main/docs/sprint_prompts) — 7 файлов:
+   - SPRINT_0/1/3_PROMPT_OPTIMYZER.md (исходные промпты архитектора)
+   - HANDOFF_CONTEXT.md, CLAUDE_CODE_PREPROMPT_OPTIMYZER.md
+   - CLOSURE_INSTRUCTIONS_FOR_CLAUDE_CODE.md
+   - development_methodology.md (общая методология, 37 KB)
+6. **`.gitignore` обновлён** для workspace-уровня: PDF из ИТС, `Design_NonProduct/`, `.claude/` остаются у Сергея локально, не публикуются в публичный репо.
+7. **Editable Python install переустановлен** (`pip install -e .` в `backend/.venv/`) — после переезда `backend/src/optimyzer_backend/` venv-метаданные указывали на старый путь.
+
+### Verification после hoist
+
+- `git fsck` — clean (только один dangling commit от прежних операций, не критично).
+- `git log` — история коммитов сохранена, последние 5 коммитов on track.
+- Frontend `npm run typecheck` — 0 errors.
+- Backend `pytest tests/test_views.py` — 19/19 passing.
+
+### Что Opus теперь видит на GitHub
+
+Полную проектную картину: код продукта + методология + sprint-промпты + ТЖ-симулятор. Один URL — https://github.com/anymasoft/1c-optimyzer — даёт всё необходимое для review/анализа/планирования следующего спринта.
+
+**Что осталось локально у Сергея** (НЕ нужно для архитектора):
+- PDF про ЦУП — это материалы из ИТС 1С, copyright, не для публичного репо.
+- HTML-мокапы других продуктов (Agenter, Konvey, GosLog) — к 1C-Optimyzer не относятся.
+- `.claude/skills/` — локальный инструментарий Claude Code (60+ PowerShell-скиллов для работы с XML-выгрузкой 1С). См. отдельную секцию «Доступные ассистенту инструменты» выше.

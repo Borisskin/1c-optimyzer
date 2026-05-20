@@ -18,6 +18,9 @@ dist/
 src-tauri/target/
 src-tauri/Cargo.lock
 src-tauri/gen/
+frontend/src-tauri/target/
+frontend/src-tauri/Cargo.lock
+frontend/src-tauri/gen/
 
 # IDE
 .idea/
@@ -46,11 +49,15 @@ backend/tests/fixtures/real-archive/
 /logs/
 
 # Workspace-level (после Sprint 3.5: D:\1C-Optimyzer\ стал корнем репо).
-# Сергеевские локальные ресурсы рядом с кодом — не часть продукта, не публиковать.
+# Локальные ресурсы рядом с кодом — не часть продукта, не публиковать.
 /.claude/
+# HTML-мокапы других продуктов Сергея (Agenter, GosLog, Konvey).
+# К 1C-Optimyzer не относятся.
 /Design_NonProduct/
+# PDF методики ЦУП / "Корпоративный инструментальный пакет" — материалы из ИТС.
+# Не публиковать в репо (copyright + большие файлы). Все sprint-промпты,
+# handoff'ы и методология — уже в docs/sprint_prompts/ под git.
 /*.pdf
-# Методические/handoff .md на корне — храним локально. Если нужно в репо,
-# кладём в docs/methodology/ или docs/sprint_prompts/.
-/*.md
-!/README.md
+# Пустая папка-остаток от устаревшего дубликата (Sprint 3.5 hoist).
+# Windows handle не отпускает; исчезнет после ребута. Не трогаем git.
+/МоделированиеТЖ/
