@@ -189,7 +189,21 @@
 					<ContextMenu name="КоличествоTLOCKКонтекстноеМеню" id="36"/>
 					<ExtendedTooltip name="КоличествоTLOCKРасширеннаяПодсказка" id="37"/>
 				</InputField>
-				<InputField name="КоличествоЗапросов" id="38">
+				<InputField name="КоличествоDEADLOCK" id="38">
+					<DataPath>КоличествоDEADLOCK</DataPath>
+					<Title>
+						<v8:item>
+							<v8:lang>ru</v8:lang>
+							<v8:content>Итераций каждого дедлока</v8:content>
+						</v8:item>
+					</Title>
+					<TitleLocation>Top</TitleLocation>
+					<SpinButton>true</SpinButton>
+					<Width>15</Width>
+					<ContextMenu name="КоличествоDEADLOCKКонтекстноеМеню" id="39"/>
+					<ExtendedTooltip name="КоличествоDEADLOCKРасширеннаяПодсказка" id="40"/>
+				</InputField>
+				<InputField name="КоличествоЗапросов" id="41">
 					<DataPath>КоличествоЗапросов</DataPath>
 					<Title>
 						<v8:item>
@@ -200,10 +214,10 @@
 					<TitleLocation>Top</TitleLocation>
 					<SpinButton>true</SpinButton>
 					<Width>15</Width>
-					<ContextMenu name="КоличествоЗапросовКонтекстноеМеню" id="39"/>
-					<ExtendedTooltip name="КоличествоЗапросовРасширеннаяПодсказка" id="40"/>
+					<ContextMenu name="КоличествоЗапросовКонтекстноеМеню" id="42"/>
+					<ExtendedTooltip name="КоличествоЗапросовРасширеннаяПодсказка" id="43"/>
 				</InputField>
-				<InputField name="ПорогДлительностиЗапросаМс" id="41">
+				<InputField name="ПорогДлительностиЗапросаМс" id="44">
 					<DataPath>ПорогДлительностиЗапросаМс</DataPath>
 					<Title>
 						<v8:item>
@@ -214,12 +228,12 @@
 					<TitleLocation>Top</TitleLocation>
 					<SpinButton>true</SpinButton>
 					<Width>15</Width>
-					<ContextMenu name="ПорогДлительностиЗапросаМсКонтекстноеМеню" id="42"/>
-					<ExtendedTooltip name="ПорогДлительностиЗапросаМсРасширеннаяПодсказка" id="43"/>
+					<ContextMenu name="ПорогДлительностиЗапросаМсКонтекстноеМеню" id="45"/>
+					<ExtendedTooltip name="ПорогДлительностиЗапросаМсРасширеннаяПодсказка" id="46"/>
 				</InputField>
 			</ChildItems>
 		</UsualGroup>
-		<UsualGroup name="ГруппаКнопкиСценариев" id="44">
+		<UsualGroup name="ГруппаКнопкиСценариев" id="47">
 			<Title>
 				<v8:item>
 					<v8:lang>ru</v8:lang>
@@ -228,9 +242,9 @@
 			</Title>
 			<Group>Horizontal</Group>
 			<Representation>StrongSeparation</Representation>
-			<ExtendedTooltip name="ГруппаКнопкиСценариевРасширеннаяПодсказка" id="45"/>
+			<ExtendedTooltip name="ГруппаКнопкиСценариевРасширеннаяПодсказка" id="48"/>
 			<ChildItems>
-				<Button name="КнопкаTLOCK" id="46">
+				<Button name="КнопкаTLOCK" id="49">
 					<CommandName>Form.Command.СценарийTLOCK</CommandName>
 					<Title>
 						<v8:item>
@@ -238,9 +252,9 @@
 							<v8:content>1. TLOCK</v8:content>
 						</v8:item>
 					</Title>
-					<ExtendedTooltip name="КнопкаTLOCKРасширеннаяПодсказка" id="47"/>
+					<ExtendedTooltip name="КнопкаTLOCKРасширеннаяПодсказка" id="50"/>
 				</Button>
-				<Button name="КнопкаDeadlockЭскалация" id="48">
+				<Button name="КнопкаDeadlockЭскалация" id="51">
 					<CommandName>Form.Command.СценарийDeadlockЭскалация</CommandName>
 					<Title>
 						<v8:item>
@@ -248,9 +262,9 @@
 							<v8:content>2. Дедлок: эскалация</v8:content>
 						</v8:item>
 					</Title>
-					<ExtendedTooltip name="КнопкаDeadlockЭскалацияРасширеннаяПодсказка" id="49"/>
+					<ExtendedTooltip name="КнопкаDeadlockЭскалацияРасширеннаяПодсказка" id="52"/>
 				</Button>
-				<Button name="КнопкаDeadlockРазныйПорядок" id="50">
+				<Button name="КнопкаDeadlockРазныйПорядок" id="53">
 					<CommandName>Form.Command.СценарийDeadlockРазныйПорядок</CommandName>
 					<Title>
 						<v8:item>
@@ -258,9 +272,9 @@
 							<v8:content>3. Дедлок: разный порядок</v8:content>
 						</v8:item>
 					</Title>
-					<ExtendedTooltip name="КнопкаDeadlockРазныйПорядокРасширеннаяПодсказка" id="51"/>
+					<ExtendedTooltip name="КнопкаDeadlockРазныйПорядокРасширеннаяПодсказка" id="54"/>
 				</Button>
-				<Button name="КнопкаDeadlockОдинРесурс" id="52">
+				<Button name="КнопкаDeadlockОдинРесурс" id="55">
 					<CommandName>Form.Command.СценарийDeadlockОдинРесурс</CommandName>
 					<Title>
 						<v8:item>
@@ -268,9 +282,9 @@
 							<v8:content>4. Дедлок: один ресурс</v8:content>
 						</v8:item>
 					</Title>
-					<ExtendedTooltip name="КнопкаDeadlockОдинРесурсРасширеннаяПодсказка" id="53"/>
+					<ExtendedTooltip name="КнопкаDeadlockОдинРесурсРасширеннаяПодсказка" id="56"/>
 				</Button>
-				<Button name="КнопкаDBMSSQL" id="54">
+				<Button name="КнопкаDBMSSQL" id="57">
 					<CommandName>Form.Command.СценарийDBMSSQL</CommandName>
 					<Title>
 						<v8:item>
@@ -278,9 +292,9 @@
 							<v8:content>5. DBMSSQL</v8:content>
 						</v8:item>
 					</Title>
-					<ExtendedTooltip name="КнопкаDBMSSQLРасширеннаяПодсказка" id="55"/>
+					<ExtendedTooltip name="КнопкаDBMSSQLРасширеннаяПодсказка" id="58"/>
 				</Button>
-				<Button name="КнопкаВсе" id="56">
+				<Button name="КнопкаВсе" id="59">
 					<CommandName>Form.Command.СценарийВсе</CommandName>
 					<Title>
 						<v8:item>
@@ -288,11 +302,11 @@
 							<v8:content>6. Все подряд</v8:content>
 						</v8:item>
 					</Title>
-					<ExtendedTooltip name="КнопкаВсеРасширеннаяПодсказка" id="57"/>
+					<ExtendedTooltip name="КнопкаВсеРасширеннаяПодсказка" id="60"/>
 				</Button>
 			</ChildItems>
 		</UsualGroup>
-		<Table name="ИсторияЗапусковТаблица" id="58">
+		<Table name="ИсторияЗапусковТаблица" id="61">
 			<DataPath>ИсторияЗапусков</DataPath>
 			<Title>
 				<v8:item>
@@ -301,13 +315,13 @@
 				</v8:item>
 			</Title>
 			<HeightInTableRows>12</HeightInTableRows>
-			<ContextMenu name="ИсторияЗапусковТаблицаКонтекстноеМеню" id="59"/>
-			<AutoCommandBar name="ИсторияЗапусковТаблицаКоманднаяПанель" id="60"/>
-			<SearchStringAddition name="ИсторияЗапусковТаблицаСтрокаПоиска" id="61"/>
-			<ViewStatusAddition name="ИсторияЗапусковТаблицаСостояниеПросмотра" id="62"/>
-			<SearchControlAddition name="ИсторияЗапусковТаблицаУправлениеПоиском" id="63"/>
+			<ContextMenu name="ИсторияЗапусковТаблицаКонтекстноеМеню" id="62"/>
+			<AutoCommandBar name="ИсторияЗапусковТаблицаКоманднаяПанель" id="63"/>
+			<SearchStringAddition name="ИсторияЗапусковТаблицаСтрокаПоиска" id="64"/>
+			<ViewStatusAddition name="ИсторияЗапусковТаблицаСостояниеПросмотра" id="65"/>
+			<SearchControlAddition name="ИсторияЗапусковТаблицаУправлениеПоиском" id="66"/>
 			<ChildItems>
-				<InputField name="ИсторияВремя" id="64">
+				<InputField name="ИсторияВремя" id="67">
 					<DataPath>ИсторияЗапусков.Время</DataPath>
 					<Title>
 						<v8:item>
@@ -315,10 +329,10 @@
 							<v8:content>Время</v8:content>
 						</v8:item>
 					</Title>
-					<ContextMenu name="ИсторияВремяКонтекстноеМеню" id="65"/>
-					<ExtendedTooltip name="ИсторияВремяРасширеннаяПодсказка" id="66"/>
+					<ContextMenu name="ИсторияВремяКонтекстноеМеню" id="68"/>
+					<ExtendedTooltip name="ИсторияВремяРасширеннаяПодсказка" id="69"/>
 				</InputField>
-				<InputField name="ИсторияСценарий" id="67">
+				<InputField name="ИсторияСценарий" id="70">
 					<DataPath>ИсторияЗапусков.Сценарий</DataPath>
 					<Title>
 						<v8:item>
@@ -326,10 +340,10 @@
 							<v8:content>Сценарий</v8:content>
 						</v8:item>
 					</Title>
-					<ContextMenu name="ИсторияСценарийКонтекстноеМеню" id="68"/>
-					<ExtendedTooltip name="ИсторияСценарийРасширеннаяПодсказка" id="69"/>
+					<ContextMenu name="ИсторияСценарийКонтекстноеМеню" id="71"/>
+					<ExtendedTooltip name="ИсторияСценарийРасширеннаяПодсказка" id="72"/>
 				</InputField>
-				<InputField name="ИсторияСтатус" id="70">
+				<InputField name="ИсторияСтатус" id="73">
 					<DataPath>ИсторияЗапусков.Статус</DataPath>
 					<Title>
 						<v8:item>
@@ -337,10 +351,10 @@
 							<v8:content>Статус</v8:content>
 						</v8:item>
 					</Title>
-					<ContextMenu name="ИсторияСтатусКонтекстноеМеню" id="71"/>
-					<ExtendedTooltip name="ИсторияСтатусРасширеннаяПодсказка" id="72"/>
+					<ContextMenu name="ИсторияСтатусКонтекстноеМеню" id="74"/>
+					<ExtendedTooltip name="ИсторияСтатусРасширеннаяПодсказка" id="75"/>
 				</InputField>
-				<InputField name="ИсторияРезультат" id="73">
+				<InputField name="ИсторияРезультат" id="76">
 					<DataPath>ИсторияЗапусков.Результат</DataPath>
 					<Title>
 						<v8:item>
@@ -348,20 +362,20 @@
 							<v8:content>Результат</v8:content>
 						</v8:item>
 					</Title>
-					<ContextMenu name="ИсторияРезультатКонтекстноеМеню" id="74"/>
-					<ExtendedTooltip name="ИсторияРезультатРасширеннаяПодсказка" id="75"/>
+					<ContextMenu name="ИсторияРезультатКонтекстноеМеню" id="77"/>
+					<ExtendedTooltip name="ИсторияРезультатРасширеннаяПодсказка" id="78"/>
 				</InputField>
 			</ChildItems>
 		</Table>
 	</ChildItems>
 	<Attributes>
-		<Attribute name="Объект" id="76">
+		<Attribute name="Объект" id="79">
 			<Type>
 				<v8:Type>cfg:ExternalDataProcessorObject.МоделированиеТЖ</v8:Type>
 			</Type>
 			<MainAttribute>true</MainAttribute>
 		</Attribute>
-		<Attribute name="ПараметрыПодключения" id="77">
+		<Attribute name="ПараметрыПодключения" id="80">
 			<Type>
 				<v8:Type>xs:string</v8:Type>
 				<v8:StringQualifiers>
@@ -370,7 +384,7 @@
 				</v8:StringQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="ПользовательИБ" id="78">
+		<Attribute name="ПользовательИБ" id="81">
 			<Type>
 				<v8:Type>xs:string</v8:Type>
 				<v8:StringQualifiers>
@@ -379,7 +393,7 @@
 				</v8:StringQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="ПарольИБ" id="79">
+		<Attribute name="ПарольИБ" id="82">
 			<Type>
 				<v8:Type>xs:string</v8:Type>
 				<v8:StringQualifiers>
@@ -388,7 +402,7 @@
 				</v8:StringQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="ПутьКПлатформе" id="80">
+		<Attribute name="ПутьКПлатформе" id="83">
 			<Type>
 				<v8:Type>xs:string</v8:Type>
 				<v8:StringQualifiers>
@@ -397,7 +411,7 @@
 				</v8:StringQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="Регистр1" id="81">
+		<Attribute name="Регистр1" id="84">
 			<Type>
 				<v8:Type>xs:string</v8:Type>
 				<v8:StringQualifiers>
@@ -406,7 +420,7 @@
 				</v8:StringQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="Регистр2" id="82">
+		<Attribute name="Регистр2" id="85">
 			<Type>
 				<v8:Type>xs:string</v8:Type>
 				<v8:StringQualifiers>
@@ -415,7 +429,7 @@
 				</v8:StringQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="Регистр3" id="83">
+		<Attribute name="Регистр3" id="86">
 			<Type>
 				<v8:Type>xs:string</v8:Type>
 				<v8:StringQualifiers>
@@ -424,7 +438,7 @@
 				</v8:StringQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="КоличествоTLOCK" id="84">
+		<Attribute name="КоличествоTLOCK" id="87">
 			<Type>
 				<v8:Type>xs:decimal</v8:Type>
 				<v8:NumberQualifiers>
@@ -434,7 +448,7 @@
 				</v8:NumberQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="КоличествоЗапросов" id="85">
+		<Attribute name="КоличествоDEADLOCK" id="88">
 			<Type>
 				<v8:Type>xs:decimal</v8:Type>
 				<v8:NumberQualifiers>
@@ -444,7 +458,17 @@
 				</v8:NumberQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="ПорогДлительностиЗапросаМс" id="86">
+		<Attribute name="КоличествоЗапросов" id="89">
+			<Type>
+				<v8:Type>xs:decimal</v8:Type>
+				<v8:NumberQualifiers>
+					<v8:Digits>5</v8:Digits>
+					<v8:FractionDigits>0</v8:FractionDigits>
+					<v8:AllowedSign>Nonnegative</v8:AllowedSign>
+				</v8:NumberQualifiers>
+			</Type>
+		</Attribute>
+		<Attribute name="ПорогДлительностиЗапросаМс" id="90">
 			<Type>
 				<v8:Type>xs:decimal</v8:Type>
 				<v8:NumberQualifiers>
@@ -454,12 +478,12 @@
 				</v8:NumberQualifiers>
 			</Type>
 		</Attribute>
-		<Attribute name="ИсторияЗапусков" id="87">
+		<Attribute name="ИсторияЗапусков" id="91">
 			<Type>
 				<v8:Type>v8:ValueTable</v8:Type>
 			</Type>
 			<Columns>
-				<Column name="Время" id="88">
+				<Column name="Время" id="92">
 					<Type>
 						<v8:Type>xs:dateTime</v8:Type>
 						<v8:DateQualifiers>
@@ -467,7 +491,7 @@
 						</v8:DateQualifiers>
 					</Type>
 				</Column>
-				<Column name="Сценарий" id="89">
+				<Column name="Сценарий" id="93">
 					<Type>
 						<v8:Type>xs:string</v8:Type>
 						<v8:StringQualifiers>
@@ -476,7 +500,7 @@
 						</v8:StringQualifiers>
 					</Type>
 				</Column>
-				<Column name="Статус" id="90">
+				<Column name="Статус" id="94">
 					<Type>
 						<v8:Type>xs:string</v8:Type>
 						<v8:StringQualifiers>
@@ -485,7 +509,7 @@
 						</v8:StringQualifiers>
 					</Type>
 				</Column>
-				<Column name="Результат" id="91">
+				<Column name="Результат" id="95">
 					<Type>
 						<v8:Type>xs:string</v8:Type>
 						<v8:StringQualifiers>
@@ -498,7 +522,7 @@
 		</Attribute>
 	</Attributes>
 	<Commands>
-		<Command name="СценарийTLOCK" id="92">
+		<Command name="СценарийTLOCK" id="96">
 			<Title>
 				<v8:item>
 					<v8:lang>ru</v8:lang>
@@ -507,7 +531,7 @@
 			</Title>
 			<Action>СценарийTLOCKКоманда</Action>
 		</Command>
-		<Command name="СценарийDeadlockЭскалация" id="93">
+		<Command name="СценарийDeadlockЭскалация" id="97">
 			<Title>
 				<v8:item>
 					<v8:lang>ru</v8:lang>
@@ -516,7 +540,7 @@
 			</Title>
 			<Action>СценарийDeadlockЭскалацияКоманда</Action>
 		</Command>
-		<Command name="СценарийDeadlockРазныйПорядок" id="94">
+		<Command name="СценарийDeadlockРазныйПорядок" id="98">
 			<Title>
 				<v8:item>
 					<v8:lang>ru</v8:lang>
@@ -525,7 +549,7 @@
 			</Title>
 			<Action>СценарийDeadlockРазныйПорядокКоманда</Action>
 		</Command>
-		<Command name="СценарийDeadlockОдинРесурс" id="95">
+		<Command name="СценарийDeadlockОдинРесурс" id="99">
 			<Title>
 				<v8:item>
 					<v8:lang>ru</v8:lang>
@@ -534,7 +558,7 @@
 			</Title>
 			<Action>СценарийDeadlockОдинРесурсКоманда</Action>
 		</Command>
-		<Command name="СценарийDBMSSQL" id="96">
+		<Command name="СценарийDBMSSQL" id="100">
 			<Title>
 				<v8:item>
 					<v8:lang>ru</v8:lang>
@@ -543,7 +567,7 @@
 			</Title>
 			<Action>СценарийDBMSSQLКоманда</Action>
 		</Command>
-		<Command name="СценарийВсе" id="97">
+		<Command name="СценарийВсе" id="101">
 			<Title>
 				<v8:item>
 					<v8:lang>ru</v8:lang>

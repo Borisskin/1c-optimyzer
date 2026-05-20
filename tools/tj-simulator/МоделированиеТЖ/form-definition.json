@@ -21,6 +21,7 @@
     ]},
     { "group": "horizontal", "name": "ГруппаПараметрыСценариев", "title": "Количество событий", "showTitle": true, "children": [
       { "input": "КоличествоTLOCK", "path": "КоличествоTLOCK", "title": "TLOCK событий (сценарий 1)", "spinButton": true, "width": 15, "titleLocation": "top" },
+      { "input": "КоличествоDEADLOCK", "path": "КоличествоDEADLOCK", "title": "Итераций каждого дедлока", "spinButton": true, "width": 15, "titleLocation": "top" },
       { "input": "КоличествоЗапросов", "path": "КоличествоЗапросов", "title": "DBMSSQL запросов (сценарий 5)", "spinButton": true, "width": 15, "titleLocation": "top" },
       { "input": "ПорогДлительностиЗапросаМс", "path": "ПорогДлительностиЗапросаМс", "title": "Цель длит. запроса (мс)", "spinButton": true, "width": 15, "titleLocation": "top" }
     ]},
@@ -49,6 +50,7 @@
     { "name": "Регистр2", "type": "string(150)" },
     { "name": "Регистр3", "type": "string(150)" },
     { "name": "КоличествоTLOCK", "type": "decimal(5,0,nonneg)" },
+    { "name": "КоличествоDEADLOCK", "type": "decimal(5,0,nonneg)" },
     { "name": "КоличествоЗапросов", "type": "decimal(5,0,nonneg)" },
     { "name": "ПорогДлительностиЗапросаМс", "type": "decimal(7,0,nonneg)" },
     { "name": "ИсторияЗапусков", "type": "ValueTable", "columns": [
