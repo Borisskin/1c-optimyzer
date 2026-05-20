@@ -45,7 +45,10 @@ def _load_dotenv_once() -> None:
                 # Снять кавычки если есть
                 if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
                     value = value[1:-1]
-                if key and key not in os.environ:
+                # Перезаписываем пустые значения (Windows/CI окружение иногда
+                # устанавливает ANTHROPIC_API_KEY="" — это блокирует загрузку
+                # из .env). Не-пустые env vars сохраняем.
+                if key and not os.environ.get(key):
                     os.environ[key] = value
             logger.info(f"Loaded .env from {path}")
             break
