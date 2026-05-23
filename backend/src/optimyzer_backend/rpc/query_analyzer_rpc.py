@@ -47,6 +47,11 @@ def _rules_dir() -> Path:
     return Path(__file__).resolve().parents[3] / "query_analyzer_rules"
 
 
+def _semantic_rules_dir() -> Path:
+    """Sprint 5: путь к semantic rules внутри пакета."""
+    return Path(__file__).resolve().parents[1] / "query_analyzer" / "semantic_rules"
+
+
 def _cache_path() -> Path:
     # Тот же файл что у Sprint 3 explainer — отдельная таблица query_rewrite_cache
     return Path(__file__).resolve().parents[3] / "data" / "explainer_cache.db"
@@ -55,8 +60,22 @@ def _cache_path() -> Path:
 def get_analyzer() -> QueryAnalyzer:
     global _analyzer
     if _analyzer is None:
-        _analyzer = QueryAnalyzer(_rules_dir())
+        _analyzer = QueryAnalyzer(
+            rules_dir=_rules_dir(),
+            semantic_rules_dir=_semantic_rules_dir(),
+        )
     return _analyzer
+
+
+def _get_active_config_store() -> "object | None":
+    """Sprint 5: если configuration подключена — возвращаем store, иначе None.
+
+    None → analyze() автоматически skip'ает semantic rules.
+    """
+    from optimyzer_backend.configuration_metadata.api import get_default_store
+
+    store = get_default_store()
+    return store if store.is_indexed() else None
 
 
 def get_rewriter() -> QueryRewriter:
@@ -85,10 +104,15 @@ def get_solution_gen() -> SolutionGenerator:
 
 @rpc("query_analyzer.analyze")
 def analyze_rpc(query_text: str) -> dict[str, Any]:
-    """Synchronous rule-based анализ. Возвращает findings + summary."""
+    """Synchronous rule-based анализ. Возвращает findings + summary.
+
+    Sprint 5: если configuration подключена через configuration.connect —
+    автоматически запускаются semantic rules. Если нет — semantic rules
+    silent.
+    """
     if not isinstance(query_text, str):
         return {"ok": False, "error": "query_text must be string"}
-    result = get_analyzer().analyze(query_text)
+    result = get_analyzer().analyze(query_text, config_store=_get_active_config_store())
     result["ok"] = True
     return result
 
@@ -169,13 +193,16 @@ def status_rpc() -> dict[str, Any]:
     analyzer = get_analyzer()
     rewriter = get_rewriter()
     cache = get_cache()
+    store = _get_active_config_store()
     return {
         "ok": True,
         "native_rules_count": len(analyzer.native_rules),
+        "semantic_rules_count": len(analyzer.semantic_rules),
         "bsl_ls_available": analyzer.bsl_ls_available,
         "ai_enabled": rewriter.enabled,
         "model": rewriter.model if rewriter.enabled else None,
         "cache_entries": cache.stats()["entries"],
+        "configuration_connected": store is not None,
     }
 
 
@@ -183,7 +210,11 @@ def status_rpc() -> dict[str, Any]:
 def reload_rules_rpc() -> dict[str, Any]:
     analyzer = get_analyzer()
     analyzer.reload_rules()
-    return {"ok": True, "rules_count": len(analyzer.native_rules)}
+    return {
+        "ok": True,
+        "rules_count": len(analyzer.native_rules),
+        "semantic_rules_count": len(analyzer.semantic_rules),
+    }
 
 
 @rpc("query_analyzer.generate_solution")
