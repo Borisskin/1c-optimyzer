@@ -185,6 +185,26 @@ export const cloud = {
     });
   },
 
+  /** Email-only вход для desktop (без OAuth). Возвращает device JWT. */
+  async lookupByEmail(input: {
+    email: string;
+    fingerprint: string;
+    deviceName: string;
+    platform: "windows" | "macos" | "linux";
+    appVersion: string;
+  }): Promise<ActivateResponse> {
+    return request<ActivateResponse>("/v1/license/lookup-by-email", {
+      method: "POST",
+      body: JSON.stringify({
+        email: input.email,
+        fingerprint: input.fingerprint,
+        device_name: input.deviceName,
+        platform: input.platform,
+        app_version: input.appVersion,
+      }),
+    });
+  },
+
   /** Device flow step 1 — desktop создаёт pending сессию активации. */
   async desktopInit(input: {
     fingerprint: string;

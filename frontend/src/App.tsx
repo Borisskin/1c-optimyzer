@@ -31,7 +31,6 @@ import { useTelemetryFlush } from "@/hooks/useTelemetryFlush";
 import { telemetry } from "@/utils/telemetry";
 import { WelcomeModal, useWelcomeModal } from "@/components/overlays/WelcomeModal";
 import { EmptyArchiveState } from "@/components/overlays/EmptyArchiveState";
-import { LoginGate } from "@/components/overlays/LoginGate";
 import { useAccountStore } from "@/store/accountStore";
 
 export function App() {
@@ -191,13 +190,10 @@ export function App() {
     }
   }, [loadDirectoryFromPath, pushToast]);
 
-  // Mandatory login gate — пока юзер не активирован, всё приложение заблокировано
-  // (решение Сергея 23.05.2026: учёт AI-генераций требует user_id, без login
-  // нельзя ничем пользоваться, даже анализом архивов).
-  if (!accessToken) {
-    return <LoginGate />;
-  }
-
+  // Анализ архивов работает БЕЗ регистрации (решение Сергея 24.05.2026:
+  // не блокировать desktop full-screen'ом). Email-вход требуется только на
+  // AI-консультации — paywall показывается в ExplainerCard когда нет accessToken.
+  void accessToken; // keep import wired
   return (
     <div className="app" data-sidebar={sidebarOpen ? "open" : "closed"}>
       <TopBar onOpenArchive={onPickFolder} onActiveArchiveDeleted={onActiveArchiveDeleted} />

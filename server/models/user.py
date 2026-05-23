@@ -1,4 +1,4 @@
-"""User — единственный признанный auth-источник: Yandex OAuth."""
+"""User — две дороги: email-only (desktop) или Yandex OAuth (cabinet)."""
 
 from __future__ import annotations
 
@@ -11,12 +11,18 @@ from models.base import Base, TimestampMixin, UUIDPrimaryKey
 
 
 class User(Base, UUIDPrimaryKey, TimestampMixin):
-    """Пользователь — привязан к Yandex аккаунту."""
+    """Пользователь.
+
+    Identity ─ email (всегда). yandex_id опционально — заполняется когда юзер
+    логинится в cabinet через Yandex OAuth. Desktop-юзеры создаются только
+    с email (без yandex_id) через /v1/license/lookup-by-email.
+    """
 
     __tablename__ = "users"
 
-    yandex_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
-    email: Mapped[str] = mapped_column(String(320), index=True, nullable=False)
+    # Заполняется только при Yandex OAuth (cabinet). Desktop-юзеры — NULL.
+    yandex_id: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

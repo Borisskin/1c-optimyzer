@@ -43,10 +43,13 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
-    # CORS — только для cabinet и landing.
+    # CORS: cabinet + landing + Tauri webview (desktop).
+    # Tauri даёт origin `http://tauri.localhost` (Windows) или `tauri://localhost`
+    # (старые версии). Разрешаем regex'ом, плюс явные cabinet/landing origins.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
+        allow_origin_regex=r"^(https?|tauri)://(localhost|127\.0\.0\.1|tauri\.localhost)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

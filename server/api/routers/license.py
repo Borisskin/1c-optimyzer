@@ -27,6 +27,7 @@ from services import (
     credits_service,
     desktop_session_service,
     device_service,
+    email_lookup_service,
     license_keys_service,
     soft_caps,
 )
@@ -34,6 +35,14 @@ from services.auth_service import mask_ip
 from services.jwt_service import create_device_token
 
 router = APIRouter(prefix="/v1/license", tags=["license"])
+
+
+class LookupByEmailRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=320)
+    fingerprint: str = Field(..., min_length=10, max_length=64)
+    device_name: str = Field(..., min_length=1, max_length=255)
+    platform: str = Field(..., pattern="^(windows|macos|linux)$")
+    app_version: str = Field(..., min_length=1, max_length=32)
 
 
 class IssueKeyForCabinetResponse(BaseModel):
@@ -79,6 +88,55 @@ class DesktopPollResponse(BaseModel):
     user: UserContext | None = None
     device: DeviceContext | None = None
     subscription: SubscriptionContext | None = None
+
+
+@router.post(
+    "/lookup-by-email",
+    response_model=LicenseActivateResponse,
+    responses={409: {"description": "Лимит устройств превышен"}},
+    summary="Email-only вход для desktop (без OAuth)",
+)
+def lookup_by_email(
+    payload: LookupByEmailRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+) -> LicenseActivateResponse:
+    """Desktop: юзер ввёл email → находим/создаём user → device JWT + подписка.
+
+    Без верификации email (по решению Сергея: простой UX > security здесь).
+    Если email уже привязан к Pro через cabinet OAuth — отдаём Pro.
+    Иначе создаём новый Free аккаунт.
+    """
+    user = email_lookup_service.get_or_create_user_by_email(db, payload.email)
+    try:
+        device = email_lookup_service.attach_device_to_user(
+            db,
+            user,
+            fingerprint=payload.fingerprint,
+            device_name=payload.device_name,
+            platform=payload.platform,
+            app_version=payload.app_version,
+            ip_masked=mask_ip(get_client_ip(request)),
+        )
+    except email_lookup_service.DeviceLimitReached as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Этот email уже привязан к {exc.active_count}/{exc.limit} устройствам. "
+            "Деактивируйте старое устройство в личном кабинете.",
+        ) from exc
+
+    token = create_device_token(user_id=user.id, device_id=device.id)
+    sub = user.subscription
+    return LicenseActivateResponse(
+        access_token=token,
+        user=UserContext(id=user.id, email=user.email, display_name=user.display_name),
+        device=DeviceContext(id=device.id, name=device.name),
+        subscription=SubscriptionContext(
+            plan=sub.plan.value if sub else "free",
+            ends_at=sub.ends_at if sub else device.last_seen_at,
+            pro_active=sub.is_pro_active if sub else False,
+        ),
+    )
 
 
 @router.post(
