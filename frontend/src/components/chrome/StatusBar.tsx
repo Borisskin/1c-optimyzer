@@ -64,9 +64,7 @@ export function StatusBar() {
       <span className={styles.right}>
         <span>{parseTime}</span>
         <span className={styles.divider} />
-        <span>
-          {t.app.version}-{t.statusbar.devBuild}
-        </span>
+        <span>{t.app.version}</span>
       </span>
     </div>
   );

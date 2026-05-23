@@ -43,16 +43,9 @@ export function CommandPalette({
           onLoadArchive();
         },
       },
-      {
-        id: "recent",
-        label: t.cmdpalette.commands.recentSources,
-        hint: t.cmdpalette.hints.list,
-        icon: "FileText",
-        action: () => {
-          onClose();
-          pushToast(t.cmdpalette.commands.recentSourcesHint, "info");
-        },
-      },
+      // Sales build: команда «Недавние источники» удалена — она показывала
+      // toast «Sprint 1» и не имела реальной функциональности (список
+      // недавних архивов доступен через ArchivesMenu в TopBar).
       ...NAV_ITEMS.filter((n) => n.enabled).map((n) => ({
         id: `nav-${n.id}`,
         label: format(t.cmdpalette.commands.goTo, { label: n.label }),

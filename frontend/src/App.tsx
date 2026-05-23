@@ -3,6 +3,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "@/components/chrome/TopBar";
 import { Sidebar } from "@/components/chrome/Sidebar";
 import { StatusBar } from "@/components/chrome/StatusBar";
+import { SettingsDialog } from "@/components/chrome/SettingsDialog";
 import { CommandPalette } from "@/components/overlays/CommandPalette";
 import { DropZone } from "@/components/overlays/DropZone";
 import { Toasts } from "@/components/overlays/Toasts";
@@ -79,6 +80,11 @@ export function App() {
           e.preventDefault();
           useAppStore.getState().setScreen(target);
         }
+      }
+      // Ctrl+Q — Query Analyzer (главная Pro-фича, мнемоника Q = Query).
+      if (meta && !e.shiftKey && (e.key === "q" || e.key === "Q")) {
+        e.preventDefault();
+        useAppStore.getState().setScreen("query-analyzer");
       }
     };
     window.addEventListener("keydown", handler);
@@ -173,6 +179,7 @@ export function App() {
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onLoadArchive={onPickFolder} />
       <DropZone onPath={loadDirectoryFromPath} />
       <ProgressCard />
+      <SettingsDialog />
       <Toasts />
     </div>
   );

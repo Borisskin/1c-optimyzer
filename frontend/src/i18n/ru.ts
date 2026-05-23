@@ -5,13 +5,11 @@ export const t = {
   app: {
     name: "1C-Optimyzer",
     edition: "standalone",
-    version: "v0.1.0",
-    devTag: "dev",
-    screenPlaceholder: 'Экран "{id}" появится в Module 2+',
+    version: "v0.5.0",
+    screenPlaceholder: 'Экран "{id}" появится в следующих обновлениях',
   },
   topbar: {
     loadFolder: "Загрузить папку с логами…",
-    recentSources: "Недавние",
     searchPlaceholder: "Поиск...",
     healthIdle: "Готово",
     healthReady: "Готово",
@@ -21,10 +19,6 @@ export const t = {
     healthIndexing: "Индексация",
     healthExtracting: "Распаковка",
     eventsSuffix: "событий",
-    aiHelperTooltip: "AI-помощник — доступен в Pro-версии",
-    aiBadge: "AI",
-    aiBadgePro: "Pro",
-    alertsTooltip: "Алерты — Module 2",
     settingsTooltip: "Настройки",
     expandProgressTooltip: "Показать карточку прогресса",
     minimizeProgressTooltip: "Свернуть карточку прогресса",
@@ -104,13 +98,10 @@ export const t = {
     duckdb: "DuckDB",
     events: "событий",
     parsedIn: "обработано за",
-    devBuild: "dev",
   },
   sql: {
     pageTitle: "SQL Console",
     breadcrumb: "Анализ",
-    badgeFreeTier: "free tier",
-    sprintLabel: "Sprint 2 · Phase B",
     description: "SQL-запросы поверх событий технологического журнала",
     editor: {
       filenameDefault: "untitled.sql",
@@ -120,8 +111,10 @@ export const t = {
       cursor: "стр",
       column: "кол",
       rows: "строк",
-      placeholderDefault: `-- Sprint 2 Phase B: SQL Engine появится здесь.
--- Пример будущего запроса:
+      placeholderDefault: `-- Введите SQL-запрос. Доступна схема таблицы events — см. панель слева.
+-- Ctrl+Enter / F5 — выполнить запрос.
+--
+-- Пример:
 --
 --   SELECT ts, duration_us, sql_text_normalized
 --   FROM events
@@ -141,13 +134,9 @@ export const t = {
         noArchive: "Загрузите логи ТЖ, чтобы начать запросы",
         hint: "Перетащите папку с логами в окно или нажмите кнопку ниже",
         loadButton: "Загрузить папку с логами…",
-        ready: "Архив готов",
-        readyHint: "событий · SQL-консоль появится в Phase B",
       },
       placeholder: "Напишите SQL-запрос или выберите шаблон ниже",
-      placeholderTable: "Выберите шаблон ниже, чтобы получить результаты.",
-      placeholderChart: "График — Phase C.",
-      placeholderTimeline: "Хронология — Phase D.",
+      placeholderTable: "Запустите запрос чтобы увидеть результат.",
       rowsCounter: "строк",
       executedIn: "выполнено за",
       scannedEvents: "просканировано событий",
@@ -231,8 +220,6 @@ export const t = {
     },
     commands: {
       loadFolder: "Загрузить папку с логами…",
-      recentSources: "Недавние источники",
-      recentSourcesHint: "Sprint 1",
       newQuery: "Новый SQL-запрос",
       runQuery: "Выполнить запрос",
       goTo: "Перейти к {label}",
@@ -240,10 +227,10 @@ export const t = {
       quit: "Выйти",
       openSettings: "Настройки",
     },
-    aboutToast: "1C-Optimyzer v0.1.0 · Module 1 (OptimyzerQL Standalone)",
+    aboutToast: "Optimyzer v0.5.0 — Анализатор производительности 1С",
     hints: {
-      file: "Файл · Module 1",
-      list: "Список · Module 1",
+      file: "Файл",
+      list: "Список",
       navigate: "Навигация",
       info: "Информация",
     },
@@ -330,6 +317,20 @@ export const t = {
     lines: "строки",
     copyButtonLabel: "Скопировать",
     error: "Ошибка анализа: {detail}",
+  },
+  settings: {
+    title: "Настройки",
+    close: "Закрыть",
+    tabs: {
+      about: "О программе",
+    },
+    about: {
+      description:
+        "Optimyzer — анализатор производительности 1С с AI-объяснениями. Загружает технологические журналы, выявляет долгие операции, блокировки, проблемные запросы.",
+      versionLabel: "Версия:",
+      editionLabel: "Сборка:",
+      repoLabel: "Репозиторий:",
+    },
   },
   errors: {
     folderNotFound: "Папка не найдена",

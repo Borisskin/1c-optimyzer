@@ -1,10 +1,9 @@
-// SQL Console (Sprint 2 Phase B).
-// Полноценный SQL редактор поверх per-archive DuckDB: validate + execute,
-// результаты в таблицу + raw JSON. Charts / Timeline tabs появятся в Phase C-D.
+// SQL Console — полноценный SQL-редактор поверх per-archive DuckDB:
+// validate + execute, результаты в таблицу + raw JSON.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
-import { Badge, KBD, PageHeader, Tabs, Th, Td } from "@/components/primitives/Primitives";
+import { KBD, PageHeader, Tabs, Th, Td } from "@/components/primitives/Primitives";
 import {
   backend,
   type SQLExecuteResult,
@@ -172,12 +171,7 @@ export function SQLConsoleScreen({ onLoadArchive }: { onLoadArchive: () => void 
     <div className={styles.screen}>
       <PageHeader
         breadcrumbs={[t.sql.breadcrumb, t.sql.pageTitle]}
-        title={
-          <span className={styles.title_inline}>
-            {t.sql.pageTitle} <Badge tone="teal">{t.sql.badgeFreeTier}</Badge>
-            <Badge tone="mute">{t.sql.sprintLabel}</Badge>
-          </span>
-        }
+        title={<span className={styles.title_inline}>{t.sql.pageTitle}</span>}
         sub={t.sql.description}
         right={
           <>
