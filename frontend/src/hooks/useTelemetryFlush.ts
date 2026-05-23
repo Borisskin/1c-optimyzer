@@ -35,10 +35,8 @@ async function flushOnce(token: string | null): Promise<void> {
 
 export function useTelemetryFlush() {
   const accessToken = useAccountStore((s) => s.accessToken);
-  const enabled = useTelemetryStore((s) => s.prefs.enabled);
 
   useEffect(() => {
-    if (!enabled) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
 
@@ -62,5 +60,5 @@ export function useTelemetryFlush() {
       if (timer) clearTimeout(timer);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [accessToken, enabled]);
+  }, [accessToken]);
 }

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAccountStore } from "@/store/accountStore";
 import { useAppStore } from "@/store/appStore";
-import { useTelemetryStore } from "@/store/telemetryStore";
 import { t } from "@/i18n/ru";
 import { cabinetUrl, cloud, CloudError, pricingUrl } from "@/api/cloud";
 import { computeFingerprint, detectDeviceName, detectPlatform } from "@/utils/fingerprint";
@@ -26,53 +25,22 @@ export function AccountTab() {
 
   if (profile && isProActive) {
     return (
-      <>
-        <ProState
-          email={profile.email}
-          displayName={profile.displayName}
-          endsAt={subscription?.endsAt ?? ""}
-          creditsRemaining={cache.creditsRemaining}
-          offline={isOfflineTooLong}
-          onSignOut={signOut}
-        />
-        <PrivacySection />
-      </>
+      <ProState
+        email={profile.email}
+        displayName={profile.displayName}
+        endsAt={subscription?.endsAt ?? ""}
+        creditsRemaining={cache.creditsRemaining}
+        offline={isOfflineTooLong}
+        onSignOut={signOut}
+      />
     );
   }
 
   return (
-    <>
-      <FreeState
-        degraded={!!(subscription && !isProActive)}
-        offline={isOfflineTooLong}
-      />
-      <PrivacySection />
-    </>
-  );
-}
-
-// ---------- Privacy toggle (Phase 1.6) ----------
-
-function PrivacySection() {
-  const enabled = useTelemetryStore((s) => s.prefs.enabled);
-  const setEnabled = useTelemetryStore((s) => s.setEnabled);
-  return (
-    <div className={styles.heroPro}>
-      <div className={styles.privacyRow}>
-        <div className={styles.privacyText}>
-          <div className={styles.privacyTitle}>{t.account.privacy.title}</div>
-          <p className={styles.privacyHint}>{t.account.privacy.hint}</p>
-        </div>
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-          />
-          <span />
-        </label>
-      </div>
-    </div>
+    <FreeState
+      degraded={!!(subscription && !isProActive)}
+      offline={isOfflineTooLong}
+    />
   );
 }
 

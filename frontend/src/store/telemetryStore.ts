@@ -2,18 +2,24 @@
  * telemetryStore — буфер событий, отправляется батчем на /v1/telemetry/batch
  * каждые 5 минут или при flush().
  *
- * Privacy:
- *   • Включена по умолчанию для Pro юзеров
- *   • Opt-in для Free (default: false) — см. AccountTab toggle
- *   • Содержимое payload — только anonymous-safe данные (см. utils/telemetry.ts)
+ * Telemetry собирается всегда (нет opt-out). Это решение Сергея: метаданных
+ * нет персональных данных, юзеру про это знать не обязательно. См.
+ * landing/docs/technical/privacy-and-data.html — публичное описание того что
+ * собираем, для законодательного compliance (152-ФЗ).
  *
- * Storage: пока — localStorage (живёт между запусками). При flush — POST + clear.
+ * Что собираем — только anonymous-safe данные (см. utils/telemetry.ts):
+ * размер архивов, переключения экранов, версии. НЕ собираем: содержимое
+ * запросов, имена баз, AI-ответы, пользовательские данные.
+ *
+ * Storage: localStorage (живёт между запусками). При flush — POST + clear.
+ * Старая privacy_toggle preferences не используется — оставляем cleanup
+ * на случай если у юзера был старый ключ в storage.
  */
 
 import { create } from "zustand";
 
 const STORAGE_KEY = "optimyzer.telemetry.buffer.v1";
-const PREFS_KEY = "optimyzer.telemetry.prefs.v1";
+const LEGACY_PREFS_KEY = "optimyzer.telemetry.prefs.v1";  // для cleanup
 const MAX_BUFFER_SIZE = 1000; // если больше — старейшие выбрасываются
 
 export type EventCategory = "tech" | "behavior" | "conversion";
@@ -28,16 +34,10 @@ export interface TelemetryEvent {
   timestamp: string; // ISO
 }
 
-export interface TelemetryPrefs {
-  enabled: boolean;
-}
-
 interface TelemetryState {
   buffer: TelemetryEvent[];
-  prefs: TelemetryPrefs;
   add: (e: TelemetryEvent) => void;
   clear: () => void;
-  setEnabled: (v: boolean) => void;
   hydrate: () => void;
 }
 
@@ -58,35 +58,20 @@ function saveBuffer(events: TelemetryEvent[]): void {
   }
 }
 
-function loadPrefs(): TelemetryPrefs {
-  try {
-    const raw = localStorage.getItem(PREFS_KEY);
-    if (raw) return JSON.parse(raw) as TelemetryPrefs;
-  } catch {
-    /* ignored */
-  }
-  // Default: включаем для всех (но юзер может отключить в Settings → Аккаунт)
-  return { enabled: true };
-}
-
-function savePrefs(prefs: TelemetryPrefs): void {
-  try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
-  } catch {
-    /* ignored */
-  }
-}
-
 export const useTelemetryStore = create<TelemetryState>((set, get) => ({
   buffer: [],
-  prefs: { enabled: true },
 
   hydrate: () => {
-    set({ buffer: loadBuffer(), prefs: loadPrefs() });
+    set({ buffer: loadBuffer() });
+    // Cleanup устаревшего privacy-toggle preferences key (был до 23.05.2026).
+    try {
+      localStorage.removeItem(LEGACY_PREFS_KEY);
+    } catch {
+      /* ignored */
+    }
   },
 
   add: (event) => {
-    if (!get().prefs.enabled) return;
     const next = [...get().buffer, event].slice(-MAX_BUFFER_SIZE);
     saveBuffer(next);
     set({ buffer: next });
@@ -95,17 +80,6 @@ export const useTelemetryStore = create<TelemetryState>((set, get) => ({
   clear: () => {
     saveBuffer([]);
     set({ buffer: [] });
-  },
-
-  setEnabled: (v) => {
-    const prefs = { enabled: v };
-    savePrefs(prefs);
-    set({ prefs });
-    if (!v) {
-      // Юзер отключил — сразу выбрасываем накопленный буфер.
-      saveBuffer([]);
-      set({ buffer: [] });
-    }
   },
 }));
 
