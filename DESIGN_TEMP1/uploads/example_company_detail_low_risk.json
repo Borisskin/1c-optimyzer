@@ -1,0 +1,115 @@
+{
+  "inn": "7743170326",
+  "short_name": "ООО \"ЛК \"ФЕНИКС\"",
+  "full_name": "ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ \"ЛОГИСТИЧЕСКАЯ КОМПАНИЯ \"ФЕНИКС\"",
+  "ogrn": "1167746806765",
+  "kpp": "774301001",
+  "address": "125493, Г.МОСКВА, ВН.ТЕР.Г. МУНИЦИПАЛЬНЫЙ ОКРУГ ЛЕВОБЕРЕЖНЫЙ, УЛ ФЛОТСКАЯ, Д. 5, К. А, ПОМЕЩ. 15/1",
+  "okved": "49.41",
+  "okved_name": "Деятельность автомобильного грузового транспорта",
+  "opf_short": "ООО",
+  "opf_full": "Общество с ограниченной ответственностью",
+  "status": "ACTIVE",
+  "registration_date": "2016-08-26",
+  "liquidation_date": null,
+  "head": {
+    "name": "Александров Алексей Александрович",
+    "position": "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР",
+    "is_invalid": false
+  },
+  "contacts": {
+    "phones": [],
+    "emails": []
+  },
+  "finance": {
+    "tax_debt": null,
+    "tax_penalty": null,
+    "capital": "1000000.0",
+    "employee_count": 19,
+    "smb_category": "MICRO",
+    "tax_system": null,
+    "income": "237046000.0",
+    "branch_count": 0
+  },
+  "registry": {
+    "is_registered": false,
+    "registry_number": null,
+    "inclusion_date": null,
+    "exclusion_date": null
+  },
+  "risk": {
+    "score": 0,
+    "level": "low",
+    "categories": []
+  },
+  "meta": {
+    "enriched_at": "2026-05-12T04:17:40.795571",
+    "enrichment_error": null
+  },
+  "sites": [],
+  "licenses": [],
+  "managers": [
+    {
+      "name": "Александров Алексей Александрович",
+      "position": "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР",
+      "inn": "774303602100",
+      "start_date": "2016-08-26",
+      "is_current": true,
+      "is_invalid": false
+    }
+  ],
+  "founders": [
+    {
+      "name": "Алексей",
+      "inn": "774303602100",
+      "ogrn": null,
+      "type": "PHYSICAL",
+      "share_percent": "50",
+      "start_date": "2016-08-26",
+      "is_invalid": false
+    },
+    {
+      "name": "Елена",
+      "inn": "771307428754",
+      "ogrn": null,
+      "type": "PHYSICAL",
+      "share_percent": "50",
+      "start_date": "2016-08-26",
+      "is_invalid": false
+    }
+  ],
+  "finance_history": [
+    {
+      "year": 2025,
+      "revenue": "236019000.0",
+      "expense": "235975000.0",
+      "profit": null
+    }
+  ],
+  "compliance": {
+    "is_invalid": false,
+    "address_invalid": false,
+    "management_invalid": false,
+    "founders_invalid": false,
+    "head_disqualified": false
+  },
+  "negative_signals": {
+    "in_negative_lists": false,
+    "in_sanctions": false,
+    "illegal_rewards": false,
+    "offshore_owners": false
+  },
+  "ai": {
+    "summary": "ООО \"ЛК \"ФЕНИКС\" работает с 2016 года в сфере грузовых автомобильных перевозок, имеет 19 сотрудников и выручку около 236 млн руб. Владелец и генеральный директор совпадают. Отсутствуют лицензии и контактные данные для связи. Риски и негативные факторы не выявлены.",
+    "risks": [
+      {
+        "title": "Отсутствие контактных данных",
+        "severity": "low",
+        "evidence": "Для компании не найдено ни одного контактного телефона или email. Затруднена верификация и связь."
+      }
+    ],
+    "anomalies": [],
+    "model": "gpt-4.1-mini",
+    "generated_at": "2026-05-12T04:17:44"
+  }
+}

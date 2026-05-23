@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — Анализ производительности 1С с AI-объяснениями</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* =================================================================
+     LANDING-LOCAL STYLES
+     ================================================================= */
+
+  /* ---------- Hero ---------- */
+
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(14,165,164,0.07), transparent 60%),
+      linear-gradient(to bottom, #FFFFFF 0%, #F8FAFB 100%);
+    padding-block: 88px 120px;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(15,27,45,0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15,27,45,0.04) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(700px 400px at 20% 30%, #000 0%, transparent 70%);
+    -webkit-mask-image: radial-gradient(700px 400px at 20% 30%, #000 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 72px;
+    align-items: center;
+    position: relative;
+  }
+  @media (max-width: 1024px) {
+    .hero { padding-block: 64px 80px; }
+    .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 8px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: var(--r-pill);
+    font-size: var(--t-sm);
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+  .hero-eyebrow .dot { width: 8px; height: 8px; background: var(--accent); box-shadow: 0 0 0 4px rgba(14,165,164,.18); }
+
+  .hero h1 { margin-bottom: 24px; max-width: 14ch; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero p.lede { font-size: var(--t-body-l); color: var(--fg-2); max-width: 52ch; margin: 0 0 28px; }
+
+  /* Typewriter */
+  .typewriter-shell {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #0F1B2D;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 17px;
+    color: var(--accent-bright);
+    min-width: 0;
+    max-width: 100%;
+    box-shadow: 0 8px 24px rgba(15,27,45,0.18);
+  }
+  .typewriter-shell::before {
+    content: ">";
+    color: #5C6B7E;
+    font-weight: 500;
+  }
+  .typewriter {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+  .typewriter::after {
+    content: "▌";
+    margin-left: 2px;
+    color: var(--accent-bright);
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (max-width: 640px) {
+    .typewriter-shell { font-size: 14px; padding: 10px 12px; }
+  }
+
+  .hero-cta { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
+  .hero-sub-cta { margin-top: 16px; color: var(--fg-3); font-size: var(--t-sm); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .hero-sub-cta .sep { color: var(--border-strong); }
+
+  /* Hero screenshot frame */
+  .hero-shot-wrap {
+    position: relative;
+    perspective: 1800px;
+    animation: shot-in 700ms 200ms ease-out both;
+  }
+  @keyframes shot-in { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+
+  .hero-shot {
+    transform: rotateY(-3deg) rotateX(2deg) rotate(1.5deg);
+    transform-origin: 30% 50%;
+    box-shadow: var(--shadow-xl);
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--border);
+  }
+  .hero-shot .appwin-body img { display: block; width: 100%; }
+
+  .hero-shot-glow {
+    position: absolute;
+    inset: -40px -40px -60px -40px;
+    background: radial-gradient(60% 60% at 50% 60%, rgba(14,165,164,.18), transparent 70%);
+    z-index: -1;
+    filter: blur(20px);
+  }
+
+  /* Floating annotation chips on hero screenshot */
+  .hero-chip {
+    position: absolute;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    box-shadow: var(--shadow-md);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg);
+    line-height: 1.3;
+    z-index: 2;
+    white-space: nowrap;
+  }
+  .hero-chip .chip-mark {
+    width: 18px; height: 18px; border-radius: 5px;
+    background: var(--accent-light); color: var(--accent);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .hero-chip strong { font-weight: 700; }
+  .hero-chip.chip-1 { top: 14%; left: -56px; animation: chip-in 600ms 800ms ease-out both; }
+  .hero-chip.chip-2 { bottom: 10%; right: -40px; animation: chip-in 600ms 1000ms ease-out both; }
+  @keyframes chip-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 1280px) {
+    .hero-chip.chip-1 { left: -16px; }
+    .hero-chip.chip-2 { right: -8px; }
+  }
+  @media (max-width: 1024px) {
+    .hero-chip { display: none; }
+  }
+
+  /* ---------- "Что делает" trio ---------- */
+
+  .trio {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 64px;
+    margin-top: 64px;
+  }
+  @media (max-width: 900px) { .trio { grid-template-columns: 1fr; gap: 40px; } }
+
+  .feat {
+    text-align: left;
+  }
+  .feat-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--accent-light);
+    color: var(--accent);
+    display: grid; place-items: center;
+    margin-bottom: 20px;
+  }
+  .feat h4 { margin-bottom: 12px; }
+  .feat p  { color: var(--fg-2); font-size: var(--t-body); line-height: 1.6; margin: 0; }
+
+  /* ---------- Demo big screenshot ---------- */
+
+  .demo-shot {
+    margin-top: 56px;
+    max-width: 1180px;
+    margin-inline: auto;
+  }
+  .demo-meta {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+    color: var(--fg-2);
+    font-size: var(--t-sm);
+  }
+  .demo-meta span { display: inline-flex; align-items: center; gap: 8px; }
+  .demo-meta .sep { color: var(--border-strong); }
+
+  /* ---------- Workflow steps ---------- */
+
+  .steps {
+    margin-top: 56px;
+    display: grid;
+    gap: 24px;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 48px;
+    align-items: center;
+    padding: 32px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-lg);
+  }
+  @media (max-width: 900px) {
+    .step { grid-template-columns: 1fr; gap: 24px; padding: 24px; }
+  }
+  .step-num {
+    font-size: 72px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 8px;
+  }
+  .step h3 { margin-bottom: 12px; }
+  .step p  { color: var(--fg-2); font-size: var(--t-body); line-height: 1.6; margin: 0; }
+  .step-shot {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    background: #fff;
+    aspect-ratio: 16/9;
+    position: relative;
+  }
+  .step-shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top left;
+  }
+  .step-shot.crop-bottom img { object-position: bottom left; }
+  .step-shot.crop-ai img { object-position: 0 25%; }
+
+  /* ---------- Analytics trio cards ---------- */
+
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 56px;
+  }
+  @media (max-width: 900px) { .analytics-grid { grid-template-columns: 1fr; } }
+
+  .acard {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-lg);
+    padding: 20px;
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+    display: flex;
+    flex-direction: column;
+  }
+  .acard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent);
+  }
+  .acard-shot {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    height: 220px;
+    margin-bottom: 20px;
+    position: relative;
+    background: #fff;
+  }
+  .acard-shot img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: top left;
+  }
+  .acard h4 { margin-bottom: 8px; }
+  .acard p { font-size: var(--t-sm); color: var(--fg-2); line-height: 1.55; margin: 0; }
+
+  /* SQL Console mock (we don't have a screenshot of this) */
+  .sql-mock {
+    width: 100%; height: 100%;
+    padding: 20px;
+    background: #0F1B2D;
+    color: #E1E7ED;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    overflow: hidden;
+  }
+  .sql-mock .sql-bar {
+    display: flex; gap: 6px; margin-bottom: 14px;
+  }
+  .sql-mock .sql-bar span { width: 10px; height: 10px; border-radius: 50%; background: #2A3A52; }
+  .sql-mock .sql-bar span:nth-child(1) { background: #FF5F57; }
+  .sql-mock .sql-bar span:nth-child(2) { background: #FEBC2E; }
+  .sql-mock .sql-bar span:nth-child(3) { background: #28C840; }
+  .sql-mock .kw { color: #5EEAD4; font-weight: 500; }
+  .sql-mock .fn { color: #FBBF24; }
+  .sql-mock .str { color: #C4B5FD; }
+  .sql-mock .num { color: #F59E0B; }
+  .sql-mock .com { color: #5C6B7E; }
+  .sql-mock .cursor { display: inline-block; width: 7px; height: 14px; background: #5EEAD4; vertical-align: -2px; animation: blink 1s steps(2) infinite; }
+
+  /* ---------- Pricing ---------- */
+
+  .price-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 56px;
+    align-items: stretch;
+  }
+  @media (max-width: 900px) { .price-grid { grid-template-columns: 1fr; } }
+
+  .plan {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-lg);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .plan.featured {
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 0 6px rgba(14,165,164,0.06), var(--shadow-md);
+  }
+  .plan-ribbon {
+    position: absolute;
+    top: -14px; left: 32px;
+    background: var(--accent);
+    color: #fff;
+    font-size: var(--t-caption);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+  }
+  .plan-name {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 4px;
+  }
+  .plan-name h3 { letter-spacing: -0.01em; }
+  .plan-price {
+    display: flex; align-items: baseline; gap: 8px;
+    margin: 16px 0 4px;
+  }
+  .plan-price .num { font-size: 48px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+  .plan-price .per { color: var(--fg-3); font-size: var(--t-sm); }
+  .plan-sub { color: var(--fg-3); font-size: var(--t-sm); margin: 0 0 8px; }
+  .plan-note { color: var(--accent); font-size: var(--t-caption); font-weight: 600; letter-spacing: 0.02em; margin: 0; text-transform: none; }
+
+  .plan-feats { list-style: none; margin: 28px 0; padding: 0; display: grid; gap: 12px; flex: 1; }
+  .plan-feats li { display: flex; gap: 12px; align-items: flex-start; font-size: var(--t-body); }
+  .plan-feats svg { flex-shrink: 0; margin-top: 3px; color: var(--accent); }
+  .plan-feats li.strong { font-weight: 600; }
+
+  .plan .btn { margin-top: auto; }
+
+  /* Credits trio */
+  .creds-wrap { margin-top: 32px; padding-top: 32px; border-top: 1px solid var(--border); }
+  .creds-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;  }
+  .creds-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 720px) { .creds-grid { grid-template-columns: 1fr; } }
+  .cred {
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-sm);
+    padding: 20px;
+    background: var(--bg);
+    transition: border-color 150ms;
+  }
+  .cred:hover { border-color: var(--accent); }
+  .cred-name { font-size: var(--t-sm); font-weight: 600; color: var(--fg-2); margin-bottom: 8px; }
+  .cred-price { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .cred-ops { font-size: var(--t-body); color: var(--fg); margin: 0 0 2px; font-weight: 500; }
+  .cred-life { color: var(--fg-3); font-size: var(--t-sm); margin: 0 0 16px; }
+
+  .team-row {
+    margin-top: 16px;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-sm);
+    display: flex; justify-content: space-between; align-items: center; gap: 24px;
+    flex-wrap: wrap;
+    background: var(--bg-2);
+  }
+
+  /* ---------- FAQ ---------- */
+
+  .faq {
+    margin-top: 48px;
+    border-top: 1px solid var(--border);
+  }
+  .qa {
+    border-bottom: 1px solid var(--border);
+  }
+  .qa summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    font-size: var(--t-body-l);
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .qa summary::-webkit-details-marker { display: none; }
+  .qa summary .plus {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    color: var(--fg-2);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    transition: transform 200ms ease-out, background 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out;
+  }
+  .qa[open] summary .plus {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    transform: rotate(45deg);
+  }
+  .qa-body {
+    padding: 0 0 24px 0;
+    color: var(--fg-2);
+    font-size: var(--t-body);
+    line-height: 1.65;
+    max-width: 64ch;
+  }
+
+  /* ---------- Footer ---------- */
+
+  footer.foot {
+    background: #0F1B2D;
+    color: #E1E7ED;
+    padding-block: 64px 48px;
+  }
+  .foot-grid {
+    display: grid;
+    grid-template-columns: 1.4fr repeat(3, 1fr);
+    gap: 48px;
+  }
+  @media (max-width: 800px) { .foot-grid { grid-template-columns: 1fr 1fr; gap: 32px; } }
+  @media (max-width: 480px) { .foot-grid { grid-template-columns: 1fr; } }
+  .foot h5 { font-size: var(--t-caption); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8898AC; margin: 0 0 16px; }
+  .foot .brand .o-accent { color: var(--accent-bright); }
+  .foot ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .foot ul a { font-size: var(--t-sm); color: #C2CCD8; transition: color 150ms; }
+  .foot ul a:hover { color: #fff; }
+  .foot-bottom {
+    border-top: 1px solid #1F2C42;
+    margin-top: 48px;
+    padding-top: 24px;
+    font-size: var(--t-caption);
+    color: #6B7A90;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+
+  /* Section heading helpers */
+  .sec-head { max-width: 720px; margin-inline: auto; text-align: center; }
+  .sec-head h2 { margin-bottom: 16px; }
+  .sec-head p  { font-size: var(--t-body-l); color: var(--fg-2); margin: 0; }
+
+</style>
+</head>
+<body data-screen-label="Landing optimyzer.pro">
+
+<!-- ============= TOP NAV ============= -->
+<header class="topnav" data-screen-label="01 Top nav">
+  <div class="container topnav-inner">
+    <a href="#top" class="brand">
+      <span class="brand-mark">O</span>
+      <span class="brand-text"><span class="o-accent">O</span>ptimyzer</span>
+    </a>
+    <nav class="topnav-links">
+      <a href="#what">Возможности</a>
+      <a href="#workflow">Как это работает</a>
+      <a href="#pricing">Цена</a>
+      <a href="#faq">FAQ</a>
+      <a href="account.html">Личный кабинет</a>
+    </nav>
+    <div class="topnav-cta">
+      <a class="btn btn-ghost btn-sm hide-mobile" href="account.html">Войти</a>
+      <a class="btn btn-primary btn-sm" href="#pricing">Скачать</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============= HERO ============= -->
+<section class="hero" id="top" data-screen-label="02 Hero">
+  <div class="container hero-grid">
+    <div class="hero-text">
+      <span class="hero-eyebrow"><span class="dot"></span> v0.5.0 · ранний доступ</span>
+      <h1 class="display text-balance">
+        Анализ производительности 1С — <span class="accent">без курса 1С:Эксперт</span>
+      </h1>
+      <p class="lede text-pretty">
+        Загрузите архив технологического журнала. Получите готовое объяснение проблем
+        на русском языке. Без серверов, без КИП-лицензии.
+      </p>
+
+      <div class="typewriter-shell">
+        <span class="typewriter" id="typewriter" aria-live="polite"></span>
+      </div>
+
+      <div class="hero-cta">
+        <a class="btn btn-primary btn-lg" href="#pricing">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Скачать бесплатно
+        </a>
+        <a class="btn btn-secondary btn-lg" href="#demo">Посмотреть демо</a>
+      </div>
+
+      <p class="hero-sub-cta">
+        <span>Windows</span><span class="sep">·</span>
+        <span>macOS</span><span class="sep">·</span>
+        <span>Linux</span><span class="sep">·</span>
+        <span>без регистрации</span>
+      </p>
+    </div>
+
+    <div class="hero-shot-wrap" aria-hidden="false">
+      <div class="hero-shot-glow"></div>
+      <div class="hero-shot appwin">
+        <div class="appwin-bar">
+          <div class="traffic"><span></span><span></span><span></span></div>
+          <div class="appwin-title">Optimyzer · 1C-TechLog · 1.66 ГБ</div>
+        </div>
+        <div class="appwin-body">
+          <img src="assets/screen-2-anatomy-hero.png" alt="Анатомия операции с AI Explainer" loading="eager" />
+        </div>
+      </div>
+      <div class="hero-chip chip-1">
+        <span class="chip-mark">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </span>
+        <span><strong>838.9 тыс</strong> событий · 9 мин</span>
+      </div>
+      <div class="hero-chip chip-2">
+        <span class="chip-mark" style="background: #D1FAE5; color: #065F46;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 1 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </span>
+        <span>AI объяснение готово</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= ЧТО ДЕЛАЕТ ============= -->
+<section class="section" id="what" data-screen-label="03 What it does">
+  <div class="container">
+    <div class="sec-head">
+      <h2 class="h2">Один инструмент. Полный цикл расследования.</h2>
+      <p class="text-pretty">От архива в десятки гигабайт до конкретного плана действий — внутри одного desktop-приложения.</p>
+    </div>
+
+    <div class="trio">
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12 10 12 16"/><polyline points="9 13 12 10 15 13"/></svg>
+        </div>
+        <h4 class="h4">Парсинг ТЖ любого размера</h4>
+        <p class="text-pretty">Загрузите архив с десятками миллионов событий. Внутренний движок DuckDB обрабатывает их за минуты, без серверной инфраструктуры. Парсятся все 8 типов событий 1С: <span class="mono small">CALL</span>, <span class="mono small">SCALL</span>, <span class="mono small">DBMSSQL</span>, <span class="mono small">TLOCK</span>, <span class="mono small">TDEADLOCK</span>, <span class="mono small">EXCP</span>, <span class="mono small">EXCPCNTX</span>, <span class="mono small">Context</span>.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>
+        </div>
+        <h4 class="h4">10 аналитических разрезов</h4>
+        <p class="text-pretty">Топ бизнес-операций, анатомия операции с timeline, анатомия дедлока с lock graph, медленные запросы, события ТЖ с фильтрацией, временные ряды блокировок, активность по часам — каждый разрез показывает свою грань проблемы.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-5 4.3L16.5 21 12 17.8 7.5 21 9 14.3 4 10l6.1-1.2z"/></svg>
+        </div>
+        <h4 class="h4">AI объясняет на русском</h4>
+        <p class="text-pretty">Claude Sonnet работает поверх данных и объясняет проблемы на русском языке: что произошло, почему так получилось, что делать конкретно. Не «общие советы», а actionable план для разработчика.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= DEMO ============= -->
+<section class="section bg-2" id="demo" data-screen-label="04 AI Demo">
+  <div class="container">
+    <div class="sec-head">
+      <h2 class="h2">Так работает AI Explainer</h2>
+      <p class="text-pretty">Кликаете на медленную операцию — Claude разворачивает её внутри, читает данные, и пишет на русском объяснение: что не так, почему, и что менять в коде. Без знаний методики 1С:Эксперт.</p>
+    </div>
+
+    <div class="demo-shot reveal">
+      <div class="appwin">
+        <div class="appwin-bar">
+          <div class="traffic"><span></span><span></span><span></span></div>
+          <div class="appwin-title">Optimyzer · Анатомия операции · ВнешняяОбработка.StandardDocumentsPosting</div>
+        </div>
+        <div class="appwin-body">
+          <img src="assets/screen-9-anatomy-full.png" alt="Полная анатомия операции с AI-объяснением и сводкой метрик" />
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-meta">
+      <span><span class="dot"></span>Объяснение на русском</span>
+      <span class="sep">·</span>
+      <span><span class="dot"></span>Конкретные числа из ваших данных</span>
+      <span class="sep">·</span>
+      <span><span class="dot"></span>Actionable шаги</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============= WORKFLOW ============= -->
+<section class="section" id="workflow" data-screen-label="05 Workflow">
+  <div class="container">
+    <div class="sec-head">
+      <h2 class="h2">От архива ТЖ до решения — 4 шага</h2>
+      <p class="text-pretty">Без bash-скриптов, без gawk/sed/grep, без 30 000 ₽/мес за ЦУП.</p>
+    </div>
+
+    <div class="steps">
+
+      <div class="step reveal">
+        <div>
+          <div class="step-num">01</div>
+          <h3 class="h3">Загрузите архив</h3>
+          <p class="text-pretty">Перетащите папку с ТЖ-логами в окно приложения. Поддерживаются <span class="mono small">.log</span> файлы любого размера, типичный архив 1–50 ГБ. Парсинг автоматический, занимает 1–15 минут в зависимости от размера. Архив 838 тысяч событий — 9 минут.</p>
+        </div>
+        <div class="step-shot crop-bottom">
+          <img src="assets/screen-8-operations-sidebar.png" alt="Приложение Optimyzer с открытым sidebar и загруженным архивом" />
+        </div>
+      </div>
+
+      <div class="step reveal">
+        <div>
+          <div class="step-num">02</div>
+          <h3 class="h3">Увидьте топ проблем</h3>
+          <p class="text-pretty">На главном экране — топ бизнес-операций по суммарной длительности. Красные значения сразу подсвечивают аномалии: <strong>78 тысяч locks</strong>, <strong>64 EXCP</strong>, <strong>36 тысяч секунд</strong> на одну операцию. Один клик — анатомия операции.</p>
+        </div>
+        <div class="step-shot">
+          <img src="assets/screen-1-operations-collapsed.png" alt="Топ бизнес-операций с красными значениями аномалий" />
+        </div>
+      </div>
+
+      <div class="step reveal">
+        <div>
+          <div class="step-num">03</div>
+          <h3 class="h3">Разверните анатомию</h3>
+          <p class="text-pretty">Click на проблемную операцию открывает анатомию: timeline, breakdown по типам событий, top SQL внутри, related исключения и блокировки. Все данные на одном экране, без необходимости запоминать что было раньше.</p>
+        </div>
+        <div class="step-shot crop-bottom">
+          <img src="assets/screen-9-anatomy-full.png" alt="Анатомия операции — сводка метрик" />
+        </div>
+      </div>
+
+      <div class="step reveal">
+        <div>
+          <div class="step-num">04</div>
+          <h3 class="h3">Получите план в одном клике</h3>
+          <p class="text-pretty">Кнопка «Объяснить через AI» — Claude читает все данные операции и пишет на русском: что именно тормозит, почему, и какие конкретные изменения в коде нужны. Не общие советы — конкретный план для разработчика.</p>
+        </div>
+        <div class="step-shot crop-ai">
+          <img src="assets/screen-2-anatomy-hero.png" alt="Карточка AI Explainer с разделами Что произошло / Что делать" />
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============= ANALYTICS ============= -->
+<section class="section bg-2" id="analytics" data-screen-label="06 Deep analytics">
+  <div class="container">
+    <div class="sec-head">
+      <h2 class="h2">Глубокая аналитика без программирования</h2>
+      <p class="text-pretty">Десять разрезов одних и тех же данных. Каждый отвечает на свой вопрос.</p>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="acard reveal">
+        <div class="acard-shot">
+          <img src="assets/screen-7-events-filter.png" alt="События ТЖ с открытым dropdown фильтра типов" />
+        </div>
+        <h4 class="h4">События ТЖ с фильтрацией</h4>
+        <p>7 типов событий — <span class="mono">EXCP&nbsp;2 522</span>, <span class="mono">TDEADLOCK&nbsp;7</span>, <span class="mono">TLOCK&nbsp;78 698</span>, <span class="mono">DBMSSQL&nbsp;582 354</span>. Серверная фильтрация мгновенная даже на миллионе записей. Поиск по контексту, drill-down по клику.</p>
+      </div>
+
+      <div class="acard reveal">
+        <div class="acard-shot">
+          <img src="assets/screen-3-slow-queries.png" alt="Таблица медленных SQL-запросов" />
+        </div>
+        <h4 class="h4">Топ медленных запросов</h4>
+        <p>SQL-запросы агрегированы по нормализованному тексту. Видны <span class="mono">calls</span>, <span class="mono">Σ длительность</span>, средняя, максимум. Click — раскрытый запрос для копирования.</p>
+      </div>
+
+      <div class="acard reveal">
+        <div class="acard-shot">
+          <div class="sql-mock" aria-label="SQL Console mock">
+            <div class="sql-bar"><span></span><span></span><span></span></div>
+            <div><span class="com">-- топ операций по суммарному времени</span></div>
+            <div><span class="kw">SELECT</span> context_normalized,</div>
+            <div>&nbsp;&nbsp;<span class="fn">SUM</span>(duration_us)/<span class="num">1000</span> <span class="kw">AS</span> total_ms</div>
+            <div><span class="kw">FROM</span> events</div>
+            <div><span class="kw">WHERE</span> event_type = <span class="str">'CALL'</span></div>
+            <div><span class="kw">GROUP BY</span> context_normalized</div>
+            <div><span class="kw">ORDER BY</span> total_ms <span class="kw">DESC</span></div>
+            <div><span class="kw">LIMIT</span> <span class="num">100</span>;<span class="cursor"></span></div>
+          </div>
+        </div>
+        <h4 class="h4">SQL Console</h4>
+        <p>Если стандартных разрезов мало — пишите любой SQL поверх архива. Полный DuckDB engine с миллионом событий в индексе. Для опытных пользователей.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= PRICING ============= -->
+<section class="section" id="pricing" data-screen-label="07 Pricing">
+  <div class="container">
+    <div class="sec-head">
+      <h2 class="h2">Цена</h2>
+      <p class="text-pretty">Бесплатная версия — для разовых проверок. Pro — для регулярной работы.</p>
+    </div>
+
+    <div class="price-grid">
+
+      <!-- Free -->
+      <div class="plan reveal">
+        <div class="plan-name">
+          <h3 class="h3">Free</h3>
+        </div>
+        <div class="plan-price">
+          <span class="num">0&nbsp;₽</span>
+        </div>
+        <p class="plan-sub">бесплатная версия</p>
+
+        <ul class="plan-feats">
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Все аналитические разрезы (10 экранов)</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Импорт архивов любого размера</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>SQL Console</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Фильтрация и поиск</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Один открытый архив одновременно</li>
+          <li class="strong"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>5 AI-объяснений в месяц</li>
+        </ul>
+
+        <a class="btn btn-secondary btn-block">Скачать бесплатно</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="plan featured reveal">
+        <span class="plan-ribbon">Рекомендуем</span>
+        <div class="plan-name">
+          <h3 class="h3">Pro</h3>
+          <span class="pill">ранний доступ</span>
+        </div>
+        <div class="plan-price">
+          <span class="num">2&nbsp;990&nbsp;₽</span>
+          <span class="per">/ месяц</span>
+        </div>
+        <p class="plan-sub">при оплате на год — 2 390 ₽/мес</p>
+        <p class="plan-note">Цена раннего доступа сохраняется для первых пользователей</p>
+
+        <ul class="plan-feats">
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Всё из Free</li>
+          <li class="strong"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Неограниченные AI-объяснения <span class="dim small">(soft cap 1000/мес)</span></li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Сравнение архивов (до / после оптимизации)</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Экспорт отчётов (Markdown / PDF)</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Сохранение расследований</li>
+          <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Email-поддержка с приоритетом</li>
+        </ul>
+
+        <a class="btn btn-primary btn-block">Купить Pro</a>
+      </div>
+    </div>
+
+    <!-- Credits + Team -->
+    <div class="creds-wrap">
+      <div class="creds-head">
+        <h3 class="h4">Дополнительно</h3>
+        <span class="muted small">Разовые покупки без подписки</span>
+      </div>
+      <div class="creds-grid">
+        <div class="cred">
+          <div class="cred-name">Mini</div>
+          <div class="cred-price">299&nbsp;₽</div>
+          <p class="cred-ops">30 AI-операций</p>
+          <p class="cred-life">срок жизни: 1 месяц</p>
+          <a class="btn btn-ghost btn-sm btn-block">Купить</a>
+        </div>
+        <div class="cred">
+          <div class="cred-name">Standard</div>
+          <div class="cred-price">990&nbsp;₽</div>
+          <p class="cred-ops">100 AI-операций</p>
+          <p class="cred-life">срок жизни: 1 месяц</p>
+          <a class="btn btn-ghost btn-sm btn-block">Купить</a>
+        </div>
+        <div class="cred">
+          <div class="cred-name">Bulk</div>
+          <div class="cred-price">2&nbsp;490&nbsp;₽</div>
+          <p class="cred-ops">300 AI-операций</p>
+          <p class="cred-life">срок жизни: 1 месяц</p>
+          <a class="btn btn-ghost btn-sm btn-block">Купить</a>
+        </div>
+      </div>
+
+      <div class="team-row">
+        <div>
+          <div class="h4" style="margin-bottom:4px;">Team — 5+ рабочих мест</div>
+          <p class="muted small" style="margin:0;">Корпоративная лицензия. Скидка от количества мест, счёт юрлицу, email/Telegram-поддержка.</p>
+        </div>
+        <a class="btn btn-secondary btn-sm">Связаться</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============= FAQ ============= -->
+<section class="section bg-2" id="faq" data-screen-label="08 FAQ">
+  <div class="container narrow">
+    <div class="sec-head">
+      <h2 class="h2">Часто спрашивают</h2>
+    </div>
+
+    <div class="faq">
+      <details class="qa">
+        <summary>Чем Optimyzer отличается от ЦУПа?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">ЦУП — серверное решение в составе КИП (Корпоративного Инструментального Пакета 1С), стоимость от 30 000 ₽/мес, требует развёртывания на сервере. Optimyzer — standalone desktop приложение без серверной части. Не пытается заменить ЦУП в крупных компаниях с continuous monitoring — мы для тех, кому нужен offline-анализ архивов ТЖ без КИП-лицензии. Плюс у нас AI-объяснения, которых в ЦУПе нет.</div>
+      </details>
+      <details class="qa">
+        <summary>Работает с любой конфигурацией 1С?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">Да. Парсер ТЖ платформенный, не зависит от конфигурации. Тестировалось на 1С:ERP, БП 3.0, УТ 11, самописных конфигурациях. Если у вас стандартные настройки технологического журнала через <span class="mono">logcfg.xml</span> — продукт прочитает.</div>
+      </details>
+      <details class="qa">
+        <summary>Где хранятся мои данные?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">Полностью локально на вашем компьютере. Архивы ТЖ парсятся в локальный DuckDB-индекс. AI-объяснения отправляются в Claude API только для конкретных запросов (метрики операции, не сами данные ТЖ), результаты кешируются локально. Содержимое архивов никогда не покидает ваш компьютер.</div>
+      </details>
+      <details class="qa">
+        <summary>Какой размер архива можно загрузить?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">Технически — любой. Тестировалось на архивах 50 ГБ. Время парсинга растёт линейно: 1 ГБ архив парсится за 1–2 минуты, 10 ГБ — за 10–15 минут, 50 ГБ — за час. Размер архива не ограничивается тарифом.</div>
+      </details>
+      <details class="qa">
+        <summary>Как платить из России?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">Через YooKassa. Принимаются карты МИР, Visa, Mastercard российских банков, СБП. Чеки автоматически формируются и доступны в личном кабинете. Подходит для оплаты как физлицом, так и через ИП/самозанятость.</div>
+      </details>
+      <details class="qa">
+        <summary>Можно ли купить Team-лицензию для команды?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">Да, через форму «Связаться». Корпоративные лицензии от 5 рабочих мест, со скидкой от количества, выставлением счёта юрлицу. Напишите нам контакт и количество мест — пришлём коммерческое предложение.</div>
+      </details>
+      <details class="qa">
+        <summary>Можно вернуть деньги если Pro не подошёл?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">Подписка отменяется в личном кабинете в любой момент, после отмены доступ остаётся до конца оплаченного периода. Возврат частичной суммы за неиспользованные дни — по запросу через email-поддержку.</div>
+      </details>
+      <details class="qa">
+        <summary>Есть ли пробный период Pro?<span class="plus"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></summary>
+        <div class="qa-body">Не делаем 14-дневный trial. Вместо этого Free версия даёт полный доступ ко всем разрезам данных и 5 AI-объяснений в месяц — этого достаточно, чтобы понять подходит ли продукт. Если регулярно упираетесь в лимит AI — это сигнал что Pro вам действительно нужен.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============= FOOTER ============= -->
+<footer class="foot" data-screen-label="09 Footer">
+  <div class="container">
+    <div class="foot-grid">
+      <div>
+        <a href="#top" class="brand" style="color:#fff;">
+          <span class="brand-mark">O</span>
+          <span class="brand-text"><span class="o-accent">O</span>ptimyzer</span>
+        </a>
+        <p class="small" style="color:#8898AC; margin:16px 0 0; max-width:34ch;">Анализатор производительности 1С с AI-объяснениями. Standalone, без сервера, без КИП-лицензии.</p>
+        <p class="small" style="color:#5C6B7E; margin:16px 0 0;">© 2026</p>
+      </div>
+      <div>
+        <h5>Продукт</h5>
+        <ul>
+          <li><a href="#pricing">Скачать</a></li>
+          <li><a href="#pricing">Цены</a></li>
+          <li><a href="#">Что нового</a></li>
+          <li><a href="#">Roadmap</a></li>
+          <li><a href="logo-options.html">Варианты лого <span style="color: var(--accent-bright);">·v2</span></a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Поддержка</h5>
+        <ul>
+          <li><a href="#">Документация</a></li>
+          <li><a href="#">Связаться</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#">GitHub</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Документы</h5>
+        <ul>
+          <li><a href="#">Условия использования</a></li>
+          <li><a href="#">Конфиденциальность</a></li>
+          <li><a href="#">Возврат</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      Optimyzer — независимый продукт, не аффилирован с фирмой «1С».
+    </div>
+  </div>
+</footer>
+
+<!-- ============= SCRIPTS ============= -->
+<script>
+  /* ===== Typewriter ===== */
+  (function () {
+    const el = document.getElementById('typewriter');
+    if (!el) return;
+    const phrases = [
+      'Загрузите архив ТЖ — получите готовое объяснение.',
+      'AI объясняет дедлок 1С на русском языке.',
+      'От 10 ГБ логов до actionable плана за 10 минут.',
+      '838 тысяч событий ТЖ анализируются за 9 минут.'
+    ];
+    let pIdx = 0, cIdx = 0, deleting = false;
+
+    function tick() {
+      const phrase = phrases[pIdx];
+      if (!deleting) {
+        cIdx++;
+        el.textContent = phrase.slice(0, cIdx);
+        if (cIdx === phrase.length) {
+          deleting = true;
+          setTimeout(tick, 2000);
+          return;
+        }
+        setTimeout(tick, 60 + Math.random() * 25);
+      } else {
+        cIdx--;
+        el.textContent = phrase.slice(0, cIdx);
+        if (cIdx === 0) {
+          deleting = false;
+          pIdx = (pIdx + 1) % phrases.length;
+          setTimeout(tick, 500);
+          return;
+        }
+        setTimeout(tick, 30);
+      }
+    }
+    tick();
+  })();
+
+  /* ===== Reveal on scroll ===== */
+  (function () {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  })();
+</script>
+
+</body>
+</html>
