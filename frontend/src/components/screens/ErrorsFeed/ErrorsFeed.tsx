@@ -11,6 +11,7 @@ import { EventTypeFilter } from "@/components/tables/EventTypeFilter";
 import { ContextFilter, type ContextPresenceFilter } from "@/components/tables/ContextFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -146,7 +147,7 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
             )}
           </div>
         </div>
-        {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
+        {!archiveId && <EmptyArchiveHint what="чтобы увидеть события ТЖ" />}
         {archiveId && loading && <div className={vshellStyles.loading}>Загрузка…</div>}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
         {archiveId && !loading && !error && table.rows.length > 0 && (

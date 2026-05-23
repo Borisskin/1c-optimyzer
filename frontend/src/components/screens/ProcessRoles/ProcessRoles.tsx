@@ -7,6 +7,7 @@ import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { filtersToDto, useAppStore } from "@/store/appStore";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -60,7 +61,7 @@ export function ProcessRolesScreen({ archiveId }: Props) {
           <div className={vshellStyles.panel_title} style={{ marginBottom: 8 }}>
             События по ролям
           </div>
-          {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
+          {!archiveId && <EmptyArchiveHint what="чтобы увидеть распределение по ролям процессов" />}
           {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
           {archiveId && !error && (
             <DonutChart

@@ -5,6 +5,7 @@ import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -50,7 +51,7 @@ export function DurationHistogramScreen({ archiveId }: Props) {
         <div className={vshellStyles.panel_head}>
           <div className={vshellStyles.panel_title}>{total.toLocaleString("ru-RU")} событий</div>
         </div>
-        {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
+        {!archiveId && <EmptyArchiveHint what="чтобы построить распределение длительностей" />}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
         {archiveId && !error && (
           <HistogramChart

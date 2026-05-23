@@ -8,6 +8,7 @@ import { TableFilter } from "@/components/tables/TableFilter";
 import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { useAppStore } from "@/store/appStore";
 import { formatSql } from "@/utils/sqlFormat";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -61,9 +62,7 @@ export function AnatomyScreen({ archiveId }: Props) {
         ]}
         title={<>Анатомия операции</>}
       >
-        <div className={vshellStyles.panel}>
-          <div className={vshellStyles.empty}>Загрузите архив</div>
-        </div>
+        <EmptyArchiveHint what="чтобы открыть анатомию операции" />
       </ViewShell>
     );
   }

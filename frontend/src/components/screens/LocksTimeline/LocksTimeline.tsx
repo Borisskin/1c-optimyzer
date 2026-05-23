@@ -5,6 +5,7 @@ import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -53,7 +54,7 @@ export function LocksTimelineScreen({ archiveId }: Props) {
             {totalLocks.toLocaleString("ru-RU")} locks · {totalDeadlocks.toLocaleString("ru-RU")} deadlocks
           </div>
         </div>
-        {!archiveId && <div className={vshellStyles.empty}>Загрузите архив, чтобы увидеть блокировки</div>}
+        {!archiveId && <EmptyArchiveHint what="чтобы увидеть распределение блокировок по времени" />}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
         {archiveId && !error && (
           <LineChart

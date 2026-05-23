@@ -7,6 +7,7 @@ import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { filtersToDto, useAppStore } from "@/store/appStore";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 type Metric = "count" | "total_duration_ms" | "peak_duration_ms" | "error_count";
@@ -64,7 +65,7 @@ export function ActivityHeatmapScreen({ archiveId }: Props) {
       }
     >
       <div className={vshellStyles.panel}>
-        {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
+        {!archiveId && <EmptyArchiveHint what="чтобы построить тепловую карту активности" />}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
         {archiveId && !error && (
           <HeatmapChart

@@ -9,6 +9,7 @@ import { TableFilter } from "@/components/tables/TableFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { filtersToDto, useAppStore } from "@/store/appStore";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -90,7 +91,7 @@ export function OperationsScreen({ archiveId }: Props) {
           )}
         </div>
 
-        {!archiveId && <div className={vshellStyles.empty}>Загрузите архив</div>}
+        {!archiveId && <EmptyArchiveHint what="чтобы увидеть топ бизнес-операций" />}
         {archiveId && loading && <div className={vshellStyles.loading}>Загрузка…</div>}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
         {archiveId && !loading && !error && table.rows.length > 0 && (

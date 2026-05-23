@@ -6,6 +6,7 @@ import { ExplainerCard } from "@/components/explainer/ExplainerCard";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { useAppStore } from "@/store/appStore";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -70,7 +71,7 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
     return (
       <ViewShell breadcrumbs={["Анализ", "Анатомия дедлока"]} title={<>Анатомия дедлока</>}>
         <div className={vshellStyles.panel}>
-          <div className={vshellStyles.empty}>Загрузите архив</div>
+          <EmptyArchiveHint what="чтобы открыть анатомию дедлока" />
         </div>
       </ViewShell>
     );

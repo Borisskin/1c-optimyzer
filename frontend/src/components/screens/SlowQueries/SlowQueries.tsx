@@ -10,6 +10,7 @@ import { TableFilter } from "@/components/tables/TableFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import { formatSql } from "@/utils/sqlFormat";
+import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -90,7 +91,7 @@ export function SlowQueriesScreen({ archiveId }: Props) {
           )}
         </div>
 
-        {!archiveId && <div className={vshellStyles.empty}>Загрузите архив, чтобы увидеть медленные запросы</div>}
+        {!archiveId && <EmptyArchiveHint what="чтобы увидеть медленные запросы" />}
         {archiveId && loading && <div className={vshellStyles.loading}>Загрузка…</div>}
         {archiveId && error && <div className={vshellStyles.error}>{error}</div>}
         {archiveId && !loading && !error && data && data.rows && data.rows.length > 0 && (
