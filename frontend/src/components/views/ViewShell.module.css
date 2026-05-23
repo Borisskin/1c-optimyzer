@@ -26,17 +26,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* Sticky — фильтры и заголовок панели всегда видны при скролле таблицы.
-     z-index 3 выше чем у thead (2), чтобы при перекрытии panel_head
-     перекрывал заголовок колонок. Padding снизу даёт визуальный отступ
-     перед thead; margin negative компенсирует чтобы panel_head «прилип»
-     к верху panel, без 16px дырки от panel padding-top. */
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: var(--o-panel);
-  padding: 4px 0 12px;
-  margin: -4px 0 0;
+  /* НЕ sticky. Раньше было sticky top:0 + thead sticky top:44px, но в
+     ErrorsFeed panel_head по высоте больше 44px (LimitSelector +
+     event-type filter + context filter + поиск в одну строку), и thead
+     приклеивался ВНУТРИ panel_head — данные скроллились "сквозь" thead.
+     Решение: обычный заголовок в потоке (сергей-feedback "ОБЫЧНЫЕ
+     ЗАГОЛОВКИ"). При прокрутке всё уезжает вместе. */
+  padding-bottom: 12px;
 }
 
 .panel_title {
@@ -51,13 +47,10 @@
   font-family: var(--o-font-mono);
 }
 
-/* НЕ ставим overflow-x: auto — это создаёт scroll context (имплицитно
-   overflow-y: auto по CSS Overflow Module Level 3), и тогда sticky <th>
-   прилипает к верху .table_wrap (зависает посреди таблицы), а не к верху
-   .body. Без overflow таблица растягивает .body — если ширина > viewport,
-   .body скроллится горизонтально (PageHeader/FilterBar остаются на месте,
-   двигается только содержимое body). Sticky panel_head (top:0) и thead
-   (top:44px) при этом работают единым стеком относительно .body. */
+/* Без overflow — таблица растягивает .body. Если ширина > viewport,
+   .body скроллится горизонтально (PageHeader/FilterBar остаются на
+   месте, двигается только содержимое body). Sticky thead убран — см.
+   panel_head выше про reasoning. */
 .table_wrap {
   margin-top: 8px;
 }
@@ -77,14 +70,7 @@
   padding: 8px 10px;
   border-bottom: 1px solid var(--o-border);
   text-align: left;
-  /* Sticky — header колонок прилипает к панель_head (которая сама sticky top:0).
-     top:44px = высота panel_head (24px content + 12px padding-bottom + 8px buffer).
-     Если panel_head в screen'е выше — th может частично перекрыться, но
-     z-index:2 panel_head > z-index:1 thead обеспечит правильный порядок. */
-  position: sticky;
-  top: 44px;
   background: var(--o-panel);
-  z-index: 2;
 }
 
 .table td {

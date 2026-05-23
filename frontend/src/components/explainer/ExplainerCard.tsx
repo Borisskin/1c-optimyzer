@@ -17,12 +17,22 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   const [aiRequested, setAiRequested] = useState(false);
 
   // Rule-based classification — instant, кеш в backend, дешёво. Запускаем
-  // сразу при mount. AI же стартует только по явной кнопке (Sprint 5 hotfix
-  // — раньше дёргался автоматически на каждый клик по операции и грузил
-  // Claude API без нужды).
+  // сразу при mount.
+  //
+  // AI: на mount делаем read-only проверку кеша (explainer_check_cache — НЕ
+  // вызывает Claude API). Если объяснение уже было сгенерировано раньше —
+  // показываем его сразу, без кнопки. Если кеша нет — показываем кнопку.
+  // Так пользователь не платит за повторную генерацию того же самого
+  // объяснения, но и не тратит токены автоматически на новые операции
+  // (это требование Fix #10, "только по кнопке").
   useEffect(() => {
     if (!archiveId || !targetId) return;
     let cancelled = false;
+
+    // При смене операции сбрасываем AI-state до проверки кеша.
+    setAi(null);
+    setAiRequested(false);
+    setAiLoading(false);
 
     backend
       .explainerClassify(archiveId, anatomyKind, targetId, features)
@@ -33,11 +43,26 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
         if (!cancelled) setRule(null);
       });
 
-    // При смене операции сбрасываем AI-state — старый ответ не должен
-    // висеть на новой странице.
-    setAi(null);
-    setAiRequested(false);
-    setAiLoading(false);
+    backend
+      .explainerCheckCache(archiveId, anatomyKind, targetId)
+      .then((res) => {
+        if (cancelled || !res.found || !res.text) return;
+        setAi({
+          ok: true,
+          text: res.text,
+          from_cache: true,
+          model: res.model,
+          tokens_in: res.tokens_in,
+          tokens_out: res.tokens_out,
+          created_at: res.created_at,
+        });
+        // aiRequested = true чтобы UI не показывал кнопку «Сгенерировать»
+        // когда объяснение уже есть (даже если rule.matched=false).
+        setAiRequested(true);
+      })
+      .catch(() => {
+        // Если check_cache упал — продолжаем как будто кеша нет.
+      });
 
     return () => {
       cancelled = true;

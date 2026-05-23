@@ -8,6 +8,7 @@ import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
+import { formatSql } from "@/utils/sqlFormat";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -128,7 +129,7 @@ export function SlowQueriesScreen({ archiveId }: Props) {
                       {isExpanded && (
                         <tr>
                           <td colSpan={7} style={expandedCellStyle}>
-                            <pre style={expandedPreStyle}>{queryFull}</pre>
+                            <pre style={expandedPreStyle}>{formatSql(queryFull)}</pre>
                           </td>
                         </tr>
                       )}

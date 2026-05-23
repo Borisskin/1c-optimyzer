@@ -283,6 +283,16 @@ export interface ExplainerStatus {
   cache_entries: number;
 }
 
+export interface ExplainerCacheCheckResult {
+  ok: boolean;
+  found: boolean;
+  text?: string;
+  model?: string;
+  tokens_in?: number;
+  tokens_out?: number;
+  created_at?: string;
+}
+
 export interface ExplainerCacheEntry {
   cache_key: string;
   archive_id: string;
@@ -551,6 +561,14 @@ export const backend = {
   ) =>
     rpc<AiExplanationResult>("explainer_ai", {
       archive_id, anatomy_kind, target_id, anatomy_data, rule_id, rule_body, force_refresh,
+    }),
+  explainerCheckCache: (
+    archive_id: string,
+    anatomy_kind: string,
+    target_id: string,
+  ) =>
+    rpc<ExplainerCacheCheckResult>("explainer_check_cache", {
+      archive_id, anatomy_kind, target_id,
     }),
   explainerStatus: () => rpc<ExplainerStatus>("explainer_status"),
   explainerReloadRules: () => rpc<{ ok: boolean; rules_count: number }>("explainer_reload_rules"),

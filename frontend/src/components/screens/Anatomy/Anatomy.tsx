@@ -6,6 +6,7 @@ import { ExplainerCard } from "@/components/explainer/ExplainerCard";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { useAppStore } from "@/store/appStore";
+import { formatSql } from "@/utils/sqlFormat";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
 interface Props {
@@ -331,7 +332,9 @@ function SubTableRender({
                   {isExpanded && (
                     <tr>
                       <td colSpan={st.columns.length} style={expandedCellStyle}>
-                        <pre style={expandedPreStyle}>{rawTrunc}</pre>
+                        <pre style={expandedPreStyle}>
+                          {truncateCol === "query" ? formatSql(rawTrunc) : rawTrunc}
+                        </pre>
                       </td>
                     </tr>
                   )}

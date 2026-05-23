@@ -155,6 +155,33 @@ def explainer_ai(
     }
 
 
+@rpc("explainer_check_cache")
+def explainer_check_cache(
+    archive_id: str,
+    anatomy_kind: str,
+    target_id: str,
+) -> dict[str, Any]:
+    """Read-only проверка кеша AI-объяснения. НЕ вызывает Claude API.
+
+    Frontend дёргает этот метод на mount ExplainerCard, чтобы сразу
+    показать уже сгенерированное объяснение (без кнопки и без повторной
+    траты токенов). Если в кеше пусто — возвращает found=False, тогда
+    UI показывает кнопку «Сгенерировать».
+    """
+    cached = get_cache().get(make_cache_key(archive_id, anatomy_kind, target_id))
+    if cached is None:
+        return {"ok": True, "found": False}
+    return {
+        "ok": True,
+        "found": True,
+        "text": cached.ai_text,
+        "model": cached.model,
+        "tokens_in": cached.tokens_in,
+        "tokens_out": cached.tokens_out,
+        "created_at": cached.created_at,
+    }
+
+
 @rpc("explainer_status")
 def explainer_status() -> dict[str, Any]:
     client = get_client()
