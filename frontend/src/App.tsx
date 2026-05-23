@@ -19,7 +19,9 @@ import { ArchiveComparisonScreen } from "@/components/screens/ArchiveComparison/
 import { OperationsScreen } from "@/components/screens/Operations/Operations";
 import { AnatomyScreen } from "@/components/screens/Anatomy/Anatomy";
 import { DeadlockAnatomyScreen } from "@/components/screens/DeadlockAnatomy/DeadlockAnatomy";
-import { QueryAnalyzerScreen } from "@/components/screens/QueryAnalyzer/QueryAnalyzer";
+// QueryAnalyzer экран скрыт до Sprint 6 — оставляем код и backend RPC,
+// но не импортируем компонент в App. См. docs/UI_INVENTORY_2026_05.md.
+// import { QueryAnalyzerScreen } from "@/components/screens/QueryAnalyzer/QueryAnalyzer";
 import { DevToolsScreen } from "@/components/screens/DevTools/DevTools";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
@@ -81,11 +83,9 @@ export function App() {
           useAppStore.getState().setScreen(target);
         }
       }
-      // Ctrl+Q — Query Analyzer (главная Pro-фича, мнемоника Q = Query).
-      if (meta && !e.shiftKey && (e.key === "q" || e.key === "Q")) {
-        e.preventDefault();
-        useAppStore.getState().setScreen("query-analyzer");
-      }
+      // Ctrl+Q был зарезервирован за Query Analyzer, но раздел скрыт до
+      // Sprint 6 (см. nav.ts). Шорткат тоже отключён, чтобы юзер случайно
+      // не попадал на пустой routing-кейс.
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -223,7 +223,14 @@ function renderScreen({
     case "deadlock-anatomy":
       return <DeadlockAnatomyScreen archiveId={archiveId} />;
     case "query-analyzer":
-      return <QueryAnalyzerScreen />;
+      // Скрыт до Sprint 6 (Sales build) — если юзер каким-то образом попадёт
+      // сюда (CommandPalette / прямой setScreen из консоли), показываем
+      // нейтральный placeholder, а не QueryAnalyzer компонент.
+      return (
+        <div style={{ padding: 32, color: "var(--o-text-3)" }}>
+          {t.app.queryAnalyzerHiddenPlaceholder}
+        </div>
+      );
     case "dev-tools":
       return <DevToolsScreen />;
     default:

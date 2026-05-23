@@ -7,6 +7,10 @@ export const t = {
     edition: "standalone",
     version: "v0.5.0",
     screenPlaceholder: 'Экран "{id}" появится в следующих обновлениях',
+    // Текст показываем, если юзер попадёт на скрытый экран
+    // «Анализ запроса» через CommandPalette или прямой setScreen.
+    queryAnalyzerHiddenPlaceholder:
+      "Раздел «Анализ запроса» временно скрыт до следующей версии. Спасибо за терпение.",
   },
   topbar: {
     loadFolder: "Загрузить папку с логами…",
