@@ -2,6 +2,8 @@
 
 **Анализ архивов технологического журнала 1С — performance investigation workbench.**
 
+👉 **Хочешь поднять локально?** Читай [`QUICKSTART.md`](QUICKSTART.md) — пошагово все 5 компонентов (desktop / cabinet / server / landing).
+
 ## Status
 
 🚀 **Active development.** Sprint 2 (Performance Investigation Workbench) завершён 2026-05-19. Module 1 production-ready.
