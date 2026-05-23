@@ -327,11 +327,6 @@ function SubTableRender({
                           : raw;
                       return (
                         <td key={ci} className={vshellStyles.mono}>
-                          {isExpandable && isTruncCell && (
-                            <span style={expandToggleStyle} aria-hidden>
-                              {isExpanded ? "▼" : "▶"}{" "}
-                            </span>
-                          )}
                           {display}
                         </td>
                       );
@@ -355,12 +350,6 @@ function SubTableRender({
     </div>
   );
 }
-
-const expandToggleStyle: CSSProperties = {
-  color: "var(--o-text-3)",
-  fontSize: 10,
-  userSelect: "none",
-};
 
 const expandedCellStyle: CSSProperties = {
   background: "var(--o-subtle)",
