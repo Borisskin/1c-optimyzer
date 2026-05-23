@@ -109,8 +109,6 @@ export const t = {
   sql: {
     pageTitle: "SQL Console",
     breadcrumb: "Анализ",
-    badgeFreeTier: "free tier",
-    sprintLabel: "Sprint 2 · Phase B",
     description: "SQL-запросы поверх событий технологического журнала",
     editor: {
       filenameDefault: "untitled.sql",
@@ -120,8 +118,10 @@ export const t = {
       cursor: "стр",
       column: "кол",
       rows: "строк",
-      placeholderDefault: `-- Sprint 2 Phase B: SQL Engine появится здесь.
--- Пример будущего запроса:
+      placeholderDefault: `-- Введите SQL-запрос. Доступна схема таблицы events — см. панель слева.
+-- Ctrl+Enter / F5 — выполнить запрос.
+--
+-- Пример:
 --
 --   SELECT ts, duration_us, sql_text_normalized
 --   FROM events
@@ -142,12 +142,10 @@ export const t = {
         hint: "Перетащите папку с логами в окно или нажмите кнопку ниже",
         loadButton: "Загрузить папку с логами…",
         ready: "Архив готов",
-        readyHint: "событий · SQL-консоль появится в Phase B",
+        readyHint: "событий загружено · запустите запрос чтобы увидеть результат",
       },
       placeholder: "Напишите SQL-запрос или выберите шаблон ниже",
-      placeholderTable: "Выберите шаблон ниже, чтобы получить результаты.",
-      placeholderChart: "График — Phase C.",
-      placeholderTimeline: "Хронология — Phase D.",
+      placeholderTable: "Запустите запрос чтобы увидеть результат.",
       rowsCounter: "строк",
       executedIn: "выполнено за",
       scannedEvents: "просканировано событий",
