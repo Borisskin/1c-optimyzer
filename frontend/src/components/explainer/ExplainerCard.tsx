@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/icons/Icon";
 import { backend, type AiExplanationResult, type RuleClassifyResult } from "@/api/backend";
 
 interface Props {
@@ -10,26 +11,34 @@ interface Props {
   anatomyData: Record<string, unknown>;
 }
 
+/**
+ * Компактная карточка-объяснение для anatomy-view.
+ *
+ * UX (Sprint 5 feedback batch 4):
+ *  - Если контента нет (rule не сматчил И AI ещё не запрашивался) —
+ *    показываем ТОЛЬКО тонкую кнопку-ссылку «Объяснить через AI». Никаких
+ *    больших жёлтых баннеров «нет правила».
+ *  - Если есть rule-объяснение ИЛИ AI-текст — разворачиваем полноценную
+ *    панель с заголовком и markdown-телом.
+ *  - Иконки — из общей Icon-системы (минималистичные SVG, currentColor),
+ *    без эмодзи 💡✨.
+ *  - Цвет панели — нейтральный синий-accent (а не «алертный жёлтый»):
+ *    объяснение это полезная информация, а не предупреждение.
+ *
+ * AI-кеш проверяется на mount через explainer_check_cache (read-only RPC,
+ * не дёргает Claude API). Если объяснение уже есть в БД — показываем сразу.
+ */
 export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anatomyData }: Props) {
   const [rule, setRule] = useState<RuleClassifyResult | null>(null);
   const [ai, setAi] = useState<AiExplanationResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiRequested, setAiRequested] = useState(false);
 
-  // Rule-based classification — instant, кеш в backend, дешёво. Запускаем
-  // сразу при mount.
-  //
-  // AI: на mount делаем read-only проверку кеша (explainer_check_cache — НЕ
-  // вызывает Claude API). Если объяснение уже было сгенерировано раньше —
-  // показываем его сразу, без кнопки. Если кеша нет — показываем кнопку.
-  // Так пользователь не платит за повторную генерацию того же самого
-  // объяснения, но и не тратит токены автоматически на новые операции
-  // (это требование Fix #10, "только по кнопке").
   useEffect(() => {
     if (!archiveId || !targetId) return;
     let cancelled = false;
 
-    // При смене операции сбрасываем AI-state до проверки кеша.
+    setRule(null);
     setAi(null);
     setAiRequested(false);
     setAiLoading(false);
@@ -56,12 +65,10 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
           tokens_out: res.tokens_out,
           created_at: res.created_at,
         });
-        // aiRequested = true чтобы UI не показывал кнопку «Сгенерировать»
-        // когда объяснение уже есть (даже если rule.matched=false).
         setAiRequested(true);
       })
       .catch(() => {
-        // Если check_cache упал — продолжаем как будто кеша нет.
+        /* кеша нет — продолжаем как обычно */
       });
 
     return () => {
@@ -81,70 +88,82 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
       .finally(() => setAiLoading(false));
   }, [archiveId, anatomyKind, targetId, anatomyData, aiLoading, aiRequested]);
 
-  // Если rule не сработал и AI ещё не запрашивался — компактное сообщение
-  // + кнопка для AI (вдруг AI знает что rule не сумел распознать).
-  if (rule && !rule.matched && !aiRequested) {
+  const hasRuleBody = Boolean(rule?.matched && rule.body);
+  const hasAiText = Boolean(ai?.ok && ai.text);
+  const hasContent = hasRuleBody || hasAiText;
+  const aiError = ai && !ai.ok ? ai.error : null;
+
+  // Compact mode: правил нет, AI не запрашивался, ошибок нет —
+  // только тонкая inline-кнопка, никакой большой панели.
+  if (!hasContent && !aiLoading && !aiRequested && !aiError) {
     return (
-      <div style={cardStyle}>
-        <div style={titleStyle}>
-          <span style={iconStyle}>💡</span> Объяснение
-        </div>
-        <div style={bodyMutedStyle}>
-          Для этого паттерна нет подходящего готового правила.
-        </div>
-        <button type="button" style={aiButtonStyle} onClick={onRequestAi}>
-          ✨ Сгенерировать AI-объяснение
-        </button>
+      <button type="button" style={compactBtnStyle} onClick={onRequestAi}>
+        <Icon name="Brain" size={13} color="var(--o-accent)" />
+        <span>Объяснить через AI</span>
+        <Icon name="ArrowRight" size={11} color="var(--o-accent)" />
+      </button>
+    );
+  }
+
+  // Loading mode: показываем компактную «думающую» строку, не разворачивая
+  // пустую панель.
+  if (aiLoading && !hasContent) {
+    return (
+      <div style={loadingRowStyle}>
+        <Icon name="Brain" size={13} color="var(--o-accent)" className="pulse" />
+        <span>AI готовит объяснение…</span>
       </div>
     );
   }
 
+  // Full panel: есть rule body или AI text (или AI вернул ошибку).
   return (
     <div style={cardStyle}>
-      <div style={titleStyle}>
-        <span style={iconStyle}>💡</span>
-        {rule?.matched ? rule.title : "Объяснение"}
+      <div style={titleRowStyle}>
+        <Icon name={hasAiText ? "Brain" : "Info"} size={14} color="var(--o-accent)" />
+        <span style={titleTextStyle}>
+          {rule?.matched ? rule.title : "Объяснение"}
+        </span>
+        {hasAiText && (
+          <span style={aiBadgeStyle} title="Объяснение сгенерировано AI">AI</span>
+        )}
         {aiLoading && (
-          <span style={aiLoadingStyle}>думаю…</span>
+          <span style={loadingHintStyle}>обновляю…</span>
         )}
       </div>
 
-      {/* Body: AI приоритетнее rule если он успешно вернулся (содержит ту же
-          rule-инфу + расширения). Иначе показываем rule body. */}
-      {ai?.ok && ai.text ? (
-        <div style={aiBodyStyle}>
-          <Markdown text={ai.text} />
+      {hasAiText ? (
+        <div style={bodyStyle}>
+          <Markdown text={ai!.text!} />
         </div>
-      ) : rule?.matched && rule.body ? (
-        <div style={ruleBodyStyle}>
-          <Markdown text={rule.body} />
+      ) : hasRuleBody ? (
+        <div style={bodyStyle}>
+          <Markdown text={rule!.body!} />
         </div>
       ) : null}
 
-      {/* Янтарная кнопка "Сгенерировать AI-объяснение" — показываем если
-          AI ещё не запрашивался. После клика — кнопка скрывается, в
-          заголовке появляется "думаю…", потом ai body (или ошибка). */}
-      {!aiRequested && rule?.matched && (
-        <button type="button" style={aiButtonStyle} onClick={onRequestAi}>
-          ✨ Сгенерировать AI-объяснение
+      {/* Кнопка «Объяснить через AI» — показываем когда есть rule body,
+          но AI ещё не запрашивался (юзер может захотеть второе мнение). */}
+      {!aiRequested && hasRuleBody && (
+        <button type="button" style={inlineAiBtnStyle} onClick={onRequestAi}>
+          <Icon name="Brain" size={12} color="var(--o-accent)" />
+          <span>Объяснить через AI</span>
         </button>
       )}
 
-      {/* AI error показываем ТОЛЬКО когда rule НЕ matched. Если rule сработал
-          — у пользователя уже есть rule-объяснение, AI failure нерелевантен. */}
-      {ai && !ai.ok && ai.error && !rule?.matched && (
+      {aiError && !rule?.matched && (
         <div style={errLineStyle}>
-          AI: {ai.error}
-          {ai.enabled === false && " (ANTHROPIC_API_KEY не задан в .env)"}
+          AI: {aiError}
+          {ai!.enabled === false && " (ANTHROPIC_API_KEY не задан в .env)"}
         </div>
       )}
     </div>
   );
 }
 
+// ---------- Markdown render (минимальный inline) ----------
+
 function Markdown({ text }: { text: string }) {
-  // Минимальный markdown render — заголовки + параграфы + bullet lists.
-  // Полноценный markdown — отдельная зависимость; пока inline для одной функции.
   const blocks = text.split(/\n\n+/);
   return (
     <>
@@ -155,7 +174,6 @@ function Markdown({ text }: { text: string }) {
         if (block.startsWith("## ")) {
           return <h4 key={i} style={h4Style}>{block.slice(3)}</h4>;
         }
-        // bullet list
         if (block.split("\n").every((line) => line.trim().startsWith("- ") || line.trim().startsWith("* "))) {
           const items = block.split("\n").map((l) => l.trim().replace(/^[-*]\s+/, ""));
           return (
@@ -166,7 +184,6 @@ function Markdown({ text }: { text: string }) {
             </ul>
           );
         }
-        // numbered list
         if (block.split("\n").every((line) => /^\d+\.\s/.test(line.trim()))) {
           const items = block.split("\n").map((l) => l.trim().replace(/^\d+\.\s+/, ""));
           return (
@@ -184,7 +201,6 @@ function Markdown({ text }: { text: string }) {
 }
 
 function renderInline(s: string): React.ReactNode {
-  // **bold** и `code`
   const parts: React.ReactNode[] = [];
   let buf = "";
   let i = 0;
@@ -228,71 +244,102 @@ function renderInline(s: string): React.ReactNode {
   return <>{parts}</>;
 }
 
-const cardStyle: CSSProperties = {
-  background: "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)",
-  border: "1px solid #FDE68A",
+// ---------- Styles ----------
+// Палитра: нейтральный фон (subtle), accent-синий для иконок и AI-бейджа.
+// Без жёлтого «алертного» цвета — объяснение это полезная информация,
+// а не предупреждение.
+
+const compactBtnStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 10px",
+  marginBottom: 12,
+  border: "1px solid var(--o-border-2)",
   borderRadius: 6,
-  padding: 16,
+  background: "transparent",
+  color: "var(--o-text-2)",
+  fontSize: 12,
+  fontFamily: "inherit",
+  cursor: "pointer",
+  transition: "border-color 120ms ease, background 120ms ease",
+};
+
+const loadingRowStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 12px",
+  marginBottom: 12,
+  border: "1px solid var(--o-border-2)",
+  borderRadius: 6,
+  background: "var(--o-subtle)",
+  color: "var(--o-text-2)",
+  fontSize: 12,
+  fontFamily: "inherit",
+};
+
+const cardStyle: CSSProperties = {
+  background: "var(--o-panel)",
+  border: "1px solid var(--o-border)",
+  borderLeft: "3px solid var(--o-accent)",
+  borderRadius: 6,
+  padding: "12px 16px",
   marginBottom: 12,
 };
 
-const titleStyle: CSSProperties = {
+const titleRowStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
-  fontSize: 14,
-  fontWeight: 600,
-  color: "#78350F",
   marginBottom: 8,
 };
 
-const iconStyle: CSSProperties = {
-  fontSize: 16,
+const titleTextStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--o-text-1)",
 };
 
-const aiLoadingStyle: CSSProperties = {
-  marginLeft: 8,
-  fontSize: 10.5,
-  fontWeight: 400,
-  color: "#92400E",
+const aiBadgeStyle: CSSProperties = {
+  padding: "1px 6px",
+  borderRadius: 3,
+  background: "var(--o-accent)",
+  color: "#fff",
+  fontSize: 9.5,
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  fontFamily: "var(--o-font-mono)",
+};
+
+const loadingHintStyle: CSSProperties = {
+  marginLeft: 4,
+  fontSize: 11,
+  color: "var(--o-text-3)",
   fontFamily: "var(--o-font-mono)",
   fontStyle: "italic",
 };
 
-const aiButtonStyle: CSSProperties = {
-  marginTop: 12,
-  padding: "8px 14px",
-  background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
-  color: "#FFFBEB",
-  border: "1px solid #B45309",
-  borderRadius: 6,
-  fontFamily: "inherit",
-  fontSize: 12.5,
-  fontWeight: 600,
-  cursor: "pointer",
+const bodyStyle: CSSProperties = {
+  color: "var(--o-text-1)",
+  fontSize: 13,
+  lineHeight: 1.55,
+};
+
+const inlineAiBtnStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 6,
-  boxShadow: "0 1px 2px rgba(180, 83, 9, 0.18)",
-};
-
-
-const aiBodyStyle: CSSProperties = {
-  color: "#451A03",
-  fontSize: 13,
-  lineHeight: 1.6,
-};
-
-const ruleBodyStyle: CSSProperties = {
-  color: "#451A03",
-  fontSize: 13,
-  lineHeight: 1.6,
-};
-
-const bodyMutedStyle: CSSProperties = {
-  color: "#92400E",
-  fontSize: 12,
-  fontStyle: "italic",
+  gap: 5,
+  marginTop: 10,
+  padding: "5px 9px",
+  border: "1px solid var(--o-border-2)",
+  borderRadius: 4,
+  background: "transparent",
+  color: "var(--o-text-2)",
+  fontSize: 11.5,
+  fontFamily: "inherit",
+  cursor: "pointer",
 };
 
 const errLineStyle: CSSProperties = {
@@ -306,15 +353,16 @@ const errLineStyle: CSSProperties = {
   fontFamily: "var(--o-font-mono)",
 };
 
-const h3Style: CSSProperties = { fontSize: 14, fontWeight: 600, margin: "8px 0 4px", color: "#451A03" };
-const h4Style: CSSProperties = { fontSize: 12.5, fontWeight: 600, margin: "8px 0 4px", color: "#78350F", textTransform: "uppercase", letterSpacing: "0.04em" };
-const pStyle: CSSProperties = { margin: "4px 0", lineHeight: 1.55 };
+const h3Style: CSSProperties = { fontSize: 13.5, fontWeight: 600, margin: "8px 0 4px", color: "var(--o-text-1)" };
+const h4Style: CSSProperties = { fontSize: 12, fontWeight: 600, margin: "8px 0 4px", color: "var(--o-text-2)", textTransform: "uppercase", letterSpacing: "0.04em" };
+const pStyle: CSSProperties = { margin: "4px 0", lineHeight: 1.5 };
 const listStyle: CSSProperties = { margin: "4px 0 4px 20px", padding: 0 };
 const listItemStyle: CSSProperties = { margin: "2px 0", lineHeight: 1.5 };
 const codeInlineStyle: CSSProperties = {
   fontFamily: "var(--o-font-mono)",
   fontSize: 11.5,
-  background: "rgba(180, 83, 9, 0.1)",
+  background: "var(--o-subtle)",
+  color: "var(--o-text-1)",
   padding: "1px 4px",
   borderRadius: 2,
 };
