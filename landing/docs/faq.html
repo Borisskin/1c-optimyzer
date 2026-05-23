@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — FAQ</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+<link rel="stylesheet" href="docs.css" />
+</head>
+<body>
+<div class="docs-shell">
+  <aside class="docs-side">
+    <a class="docs-brand" href="../">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/>
+        <rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/>
+        <rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/>
+        <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/>
+      </svg>
+      <span>Optimyzer Docs</span>
+    </a>
+    <h3>Начало</h3>
+    <a href="getting-started/installation.html">Установка</a>
+    <a href="getting-started/first-archive.html">Первый архив</a>
+    <h3>Возможности</h3>
+    <a href="features/ai-explainer.html">AI Explainer</a>
+    <h3>Биллинг</h3>
+    <a href="billing/plans-and-pricing.html">Тарифы и цены</a>
+    <h3>Технически</h3>
+    <a href="technical/configuring-tj.html">Настройка ТЖ</a>
+    <a href="technical/privacy-and-data.html">Privacy &amp; Data</a>
+    <h3>Прочее</h3>
+    <a class="active" href="faq.html">FAQ</a>
+  </aside>
+  <main class="docs-main">
+    <h1>FAQ</h1>
+    <p class="docs-lead">Часто задаваемые вопросы.</p>
+
+    <h2>Чем отличаетесь от ЦУП?</h2>
+    <p>
+      ЦУП — продукт от 1С для крупных корпоративных юзеров с КИП-лицензией:
+      continuous monitoring, мощные дашборды, интеграция с инфраструктурой.
+      Лицензия ~200 тыс. ₽/год + порог входа высокий (требуется уровень
+      1С:Эксперт). Optimyzer проще: standalone, без сервера, без КИП-лицензии,
+      доступен middle-разработчику без сертификата. Лидирующая фича — AI
+      Explainer, которой у ЦУП нет.
+    </p>
+
+    <h2>Нужна ли КИП-лицензия?</h2>
+    <p>Нет. Optimyzer работает с архивами ТЖ напрямую, без обращения к
+      инструментам корпоративного пакета.</p>
+
+    <h2>Подходит для production?</h2>
+    <p>
+      Для offline-расследования инцидентов — да: загружаете архив,
+      анализируете. Для continuous monitoring (постоянного мониторинга
+      продакшена 24/7) — пока нет, это в Sprint 7+. Сейчас лучше для разовых
+      проверок и для расследования «у нас вчера лагало, разберись».
+    </p>
+
+    <h2>Работает с УТ / БП / ЕРП / самопис?</h2>
+    <p>
+      Да. Архив ТЖ один и тот же для любых конфигураций — это поток событий
+      платформы 1С, а не данные конкретной конфигурации. Optimyzer не зависит
+      от конфигурации.
+    </p>
+
+    <h2>Можно использовать без интернета?</h2>
+    <p>
+      Базовый анализ — да, всё локально (DuckDB). AI-объяснения — требуют
+      интернет (запрос в Claude API). Лицензионный heartbeat — требует интернет
+      раз в 7 дней; если интернета нет 7+ дней — переходим в Free режим, но
+      анализ продолжает работать.
+    </p>
+
+    <h2>Где взять архив ТЖ?</h2>
+    <p>
+      На сервере 1С в папке <code>srvinfo/reg_NNNN/logs</code>. Если ТЖ не
+      пишется — нужно настроить <code>logcfg.xml</code>, см.
+      <a href="technical/configuring-tj.html">Настройка ТЖ</a>.
+    </p>
+
+    <h2>Сколько Free объяснений?</h2>
+    <p>
+      5 в месяц. Этого хватает чтобы попробовать продукт на одном архиве.
+      Дальше — Pro 2 990 ₽/мес безлимит, или Credits от 299 ₽.
+    </p>
+
+    <h2>Можно ли вернуть деньги?</h2>
+    <p>
+      Подписку можно отменить в любой момент в личном кабинете — авто-продление
+      выключится, доступ сохранится до конца оплаченного периода. Возврат за
+      неиспользованные дни — индивидуально через
+      <a href="mailto:support@optimyzer.pro">support@optimyzer.pro</a>.
+    </p>
+
+    <h2>Поддерживает Linux?</h2>
+    <p>Да, через AppImage. Тестировали на Ubuntu 22.04 и Fedora 39.</p>
+
+    <h2>А что насчёт «Анализ запроса»?</h2>
+    <p>
+      Раздел временно скрыт — переписываем парсер языка запросов 1С с нуля
+      для надёжной типизации. Появится в Sprint 6 после стабилизации продаж.
+      Все остальные функции работают.
+    </p>
+
+    <div class="docs-foot">
+      <a href="technical/privacy-and-data.html">← Privacy</a>
+      <a href="../">← На главную</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

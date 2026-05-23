@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — Первый архив</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg" />
+<link rel="stylesheet" href="../docs.css" />
+</head>
+<body>
+<div class="docs-shell">
+  <aside class="docs-side">
+    <a class="docs-brand" href="../../">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/>
+        <rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/>
+        <rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/>
+        <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/>
+      </svg>
+      <span>Optimyzer Docs</span>
+    </a>
+    <h3>Начало</h3>
+    <a href="installation.html">Установка</a>
+    <a class="active" href="first-archive.html">Первый архив</a>
+    <h3>Возможности</h3>
+    <a href="../features/ai-explainer.html">AI Explainer</a>
+    <h3>Биллинг</h3>
+    <a href="../billing/plans-and-pricing.html">Тарифы и цены</a>
+    <h3>Технически</h3>
+    <a href="../technical/configuring-tj.html">Настройка ТЖ</a>
+    <a href="../technical/privacy-and-data.html">Privacy &amp; Data</a>
+    <h3>Прочее</h3>
+    <a href="../faq.html">FAQ</a>
+  </aside>
+  <main class="docs-main">
+    <h1>Первый архив</h1>
+    <p class="docs-lead">
+      Как собрать архив технологического журнала 1С и открыть его в Optimyzer.
+    </p>
+
+    <h2>Откуда брать архив</h2>
+    <p>
+      Технологический журнал (ТЖ) пишется на сервере 1С (или в файловом режиме).
+      Папка обычно в:
+    </p>
+    <ul>
+      <li><strong>Windows server:</strong> <code>C:\Program Files\1cv8\srvinfo\reg_NNNN\logs\</code></li>
+      <li><strong>Linux server:</strong> <code>/opt/1cv8/srvinfo/reg_NNNN/logs/</code></li>
+      <li><strong>File-based:</strong> в папке вашей базы рядом с <code>1Cv8.1CD</code></li>
+    </ul>
+
+    <p>
+      Если ТЖ не пишется — настройте <code>logcfg.xml</code>. См.
+      <a href="../technical/configuring-tj.html">Настройка ТЖ</a>.
+    </p>
+
+    <h2>Загрузка в Optimyzer</h2>
+    <ol>
+      <li>Откройте Optimyzer</li>
+      <li>В верхней панели нажмите «Загрузить архив»</li>
+      <li>Выберите папку с <code>.log</code> файлами (можно содержащую вложенные
+        папки rphost_NNNN / rmngr_NNNN)</li>
+      <li>Дождитесь парсинга — для архива в несколько ГБ занимает 1-3 минуты</li>
+    </ol>
+
+    <h2>Что смотреть в первую очередь</h2>
+    <h3>1. Топ медленных операций</h3>
+    <p>
+      Экран «Бизнес-операции» (Ctrl+1). Сортируется по суммарной длительности.
+      Красные значения сверху — самые медленные. Кликните на строку — увидите
+      «Анатомию операции».
+    </p>
+
+    <h3>2. Анатомия операции</h3>
+    <p>
+      Детальный разбор: timeline, top SQL, исключения. Если внизу есть кнопка
+      «Объяснить через AI» — нажмите. AI прочитает все данные и опишет проблему
+      на русском.
+    </p>
+
+    <h3>3. Дедлоки</h3>
+    <p>
+      Экран «События ТЖ» (Ctrl+7), фильтр по TDEADLOCK. Кликните на дедлок —
+      откроется граф блокировок. AI объяснит цепочку участников и предложит
+      что чинить.
+    </p>
+
+    <h2>Что делать дальше</h2>
+    <ul>
+      <li>Изучить
+        <a href="../features/ai-explainer.html">как работает AI Explainer</a></li>
+      <li>Понять как настраивать ТЖ под разные сценарии:
+        <a href="../technical/configuring-tj.html">Настройка ТЖ</a></li>
+      <li>Если бесплатных AI-объяснений мало —
+        <a href="../billing/plans-and-pricing.html">переходите на Pro</a></li>
+    </ul>
+
+    <div class="docs-foot">
+      <a href="installation.html">← Установка</a>
+      <a href="../features/ai-explainer.html">AI Explainer →</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

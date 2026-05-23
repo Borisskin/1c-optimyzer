@@ -1,0 +1,123 @@
+# Nginx config для optimyzer.pro (landing) + account.optimyzer.pro (cabinet) + api.optimyzer.pro (server).
+# Скопировать в /etc/nginx/sites-available/, отредактировать пути, протестировать (`nginx -t`),
+# перезагрузить (`systemctl reload nginx`).
+#
+# SSL — Let's Encrypt:
+#   sudo certbot --nginx -d optimyzer.pro -d www.optimyzer.pro -d account.optimyzer.pro -d api.optimyzer.pro
+
+# --- 1) Landing — optimyzer.pro --------------------------------------------
+
+server {
+    listen 80;
+    server_name optimyzer.pro www.optimyzer.pro;
+    return 301 https://optimyzer.pro$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name www.optimyzer.pro;
+    ssl_certificate /etc/letsencrypt/live/optimyzer.pro/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/optimyzer.pro/privkey.pem;
+    return 301 https://optimyzer.pro$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name optimyzer.pro;
+
+    root /var/www/optimyzer/landing;
+    index index.html;
+
+    ssl_certificate /etc/letsencrypt/live/optimyzer.pro/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/optimyzer.pro/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://mc.yandex.ru; img-src 'self' data: https://mc.yandex.ru; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.optimyzer.pro https://mc.yandex.ru;" always;
+
+    # Cache statics aggressively (immutable hashed filenames)
+    location ~* \.(jpg|jpeg|png|gif|ico|webp|svg|css|js|woff|woff2|ttf)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Download → GitHub Releases
+    location = /download {
+        return 302 https://github.com/anymasoft/1c-optimyzer/releases/latest;
+    }
+    location /download/ {
+        return 302 https://github.com/anymasoft/1c-optimyzer/releases/latest;
+    }
+
+    # Docs (Phase 2.6)
+    location /docs/ {
+        try_files $uri $uri/ /docs/index.html;
+    }
+
+    location = /robots.txt { access_log off; }
+    location = /sitemap.xml { access_log off; }
+    location = /favicon.svg { access_log off; }
+
+    # Default fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# --- 2) Web cabinet — account.optimyzer.pro --------------------------------
+
+server {
+    listen 443 ssl http2;
+    server_name account.optimyzer.pro;
+
+    root /var/www/optimyzer/cabinet;
+    index index.html;
+
+    ssl_certificate /etc/letsencrypt/live/account.optimyzer.pro/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/account.optimyzer.pro/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # SPA fallback — react-router
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|woff|woff2|svg|png|jpg)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+
+# --- 3) API — api.optimyzer.pro --------------------------------------------
+
+server {
+    listen 443 ssl http2;
+    server_name api.optimyzer.pro;
+
+    ssl_certificate /etc/letsencrypt/live/api.optimyzer.pro/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.optimyzer.pro/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    client_max_body_size 2M;     # для telemetry batches
+
+    location / {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}

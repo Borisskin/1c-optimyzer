@@ -1,0 +1,174 @@
+/* Минимальные стили для docs/. Используем те же CSS variables что и landing
+   (--accent, --fg, ...) — они подключаются через ../styles.css. */
+
+@import url("../styles.css");
+
+body {
+  background: var(--bg, #fff);
+  font-family: var(--font, "Manrope", sans-serif);
+  color: var(--fg, #0f172a);
+  margin: 0;
+  line-height: 1.65;
+}
+
+.docs-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.docs-side {
+  border-right: 1px solid var(--border, #e2e8f0);
+  padding: 24px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.docs-side h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-3, #94a3b8);
+  margin: 16px 8px 6px;
+  font-weight: 700;
+}
+
+.docs-side a {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--fg-2, #475569);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.docs-side a:hover {
+  background: var(--bg-2, #f8fafc);
+}
+
+.docs-side a.active {
+  background: rgba(14, 165, 164, 0.1);
+  color: var(--accent, #0ea5a4);
+  font-weight: 600;
+}
+
+.docs-side .docs-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 0 8px;
+}
+
+.docs-side .docs-brand svg {
+  width: 28px;
+  height: 28px;
+}
+
+.docs-side .docs-brand span {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.docs-main {
+  padding: 32px 48px;
+  max-width: 760px;
+}
+
+.docs-main h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.docs-main .docs-lead {
+  font-size: 16px;
+  color: var(--fg-2, #475569);
+  margin: 0 0 24px;
+}
+
+.docs-main h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 32px 0 12px;
+}
+
+.docs-main h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 24px 0 8px;
+}
+
+.docs-main p,
+.docs-main ul,
+.docs-main ol {
+  margin: 12px 0;
+}
+
+.docs-main code {
+  font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  font-size: 13px;
+  background: var(--bg-3, #f1f5f9);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.docs-main pre {
+  background: #0f1b2d;
+  color: #e2e8f0;
+  padding: 16px 18px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.docs-main pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+.docs-main blockquote {
+  margin: 16px 0;
+  padding: 8px 16px;
+  border-left: 3px solid var(--accent, #0ea5a4);
+  background: rgba(14, 165, 164, 0.05);
+  color: var(--fg-2);
+}
+
+.docs-main a {
+  color: var(--accent, #0ea5a4);
+}
+
+.docs-foot {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.docs-foot a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .docs-shell {
+    grid-template-columns: 1fr;
+  }
+  .docs-side {
+    display: none;
+  }
+  .docs-main {
+    padding: 24px 16px;
+  }
+}

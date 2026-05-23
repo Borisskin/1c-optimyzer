@@ -29,6 +29,8 @@ import { t, format } from "@/i18n/ru";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { useTelemetryFlush } from "@/hooks/useTelemetryFlush";
 import { telemetry } from "@/utils/telemetry";
+import { WelcomeModal, useWelcomeModal } from "@/components/overlays/WelcomeModal";
+import { EmptyArchiveState } from "@/components/overlays/EmptyArchiveState";
 
 export function App() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
@@ -49,11 +51,14 @@ export function App() {
   useHeartbeat();
   // Telemetry — батчевый flush буфера событий каждые 5 минут.
   useTelemetryFlush();
+  // Welcome modal на первом запуске (Phase 2.2).
+  const welcome = useWelcomeModal();
 
-  // Один event на старт приложения. first_run флаг — пока false; полноценный
-  // detection в Phase 2.2 (onboarding flow).
+  // Один event на старт приложения. first_run флаг — берётся из welcome.open
+  // (true только в самом начале первого запуска).
   useEffect(() => {
-    telemetry.appStarted({ first_run: false });
+    telemetry.appStarted({ first_run: welcome.open });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Screen view на каждое переключение экрана.
@@ -188,11 +193,15 @@ export function App() {
       <TopBar onOpenArchive={onPickFolder} onActiveArchiveDeleted={onActiveArchiveDeleted} />
       <Sidebar />
       <main className="app__main">
-        {renderScreen({
-          screen: currentScreen,
-          archiveId: archiveReady?.archive_id ?? null,
-          onLoadArchive: onPickFolder,
-        })}
+        {!archive && !welcome.open ? (
+          <EmptyArchiveState onLoadArchive={onPickFolder} />
+        ) : (
+          renderScreen({
+            screen: currentScreen,
+            archiveId: archiveReady?.archive_id ?? null,
+            onLoadArchive: onPickFolder,
+          })
+        )}
       </main>
       <StatusBar />
 
@@ -201,6 +210,13 @@ export function App() {
       <ProgressCard />
       <SettingsDialog />
       <Toasts />
+
+      {welcome.open && (
+        <WelcomeModal
+          onComplete={welcome.hide}
+          onLoadArchive={onPickFolder}
+        />
+      )}
     </div>
   );
 }

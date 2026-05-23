@@ -1,0 +1,48 @@
+<!--
+  Шаблон для docs/* страниц. Каждая doc-страница копирует эту структуру
+  и заполняет <main class="docs-main">.
+
+  Sidebar — статический список разделов. При добавлении новой doc-страницы
+  обновлять во всех файлах (или, в будущем, через включаемый header.html
+  + микро-build-step).
+-->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — Документация</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg" />
+<link rel="stylesheet" href="docs.css" />
+</head>
+<body>
+<div class="docs-shell">
+  <aside class="docs-side">
+    <a class="docs-brand" href="../">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/>
+        <rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/>
+        <rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/>
+        <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/>
+      </svg>
+      <span>Optimyzer Docs</span>
+    </a>
+    <h3>Начало</h3>
+    <a href="getting-started/installation.html">Установка</a>
+    <a href="getting-started/first-archive.html">Первый архив</a>
+    <h3>Возможности</h3>
+    <a href="features/ai-explainer.html">AI Explainer</a>
+    <h3>Биллинг</h3>
+    <a href="billing/plans-and-pricing.html">Тарифы и цены</a>
+    <h3>Технически</h3>
+    <a href="technical/configuring-tj.html">Настройка ТЖ</a>
+    <a href="technical/privacy-and-data.html">Privacy &amp; Data</a>
+    <h3>Прочее</h3>
+    <a href="faq.html">FAQ</a>
+  </aside>
+  <main class="docs-main">
+    <!-- content -->
+  </main>
+</div>
+</body>
+</html>

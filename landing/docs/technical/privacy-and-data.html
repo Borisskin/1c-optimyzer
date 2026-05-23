@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — Privacy &amp; Data</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg" />
+<link rel="stylesheet" href="../docs.css" />
+</head>
+<body>
+<div class="docs-shell">
+  <aside class="docs-side">
+    <a class="docs-brand" href="../../">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/>
+        <rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/>
+        <rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/>
+        <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/>
+      </svg>
+      <span>Optimyzer Docs</span>
+    </a>
+    <h3>Начало</h3>
+    <a href="../getting-started/installation.html">Установка</a>
+    <a href="../getting-started/first-archive.html">Первый архив</a>
+    <h3>Возможности</h3>
+    <a href="../features/ai-explainer.html">AI Explainer</a>
+    <h3>Биллинг</h3>
+    <a href="../billing/plans-and-pricing.html">Тарифы и цены</a>
+    <h3>Технически</h3>
+    <a href="configuring-tj.html">Настройка ТЖ</a>
+    <a class="active" href="privacy-and-data.html">Privacy &amp; Data</a>
+    <h3>Прочее</h3>
+    <a href="../faq.html">FAQ</a>
+  </aside>
+  <main class="docs-main">
+    <h1>Privacy &amp; Data</h1>
+    <p class="docs-lead">
+      Что хранится локально, что отправляется в облако, что попадает в
+      Claude — без юридического тумана.
+    </p>
+
+    <h2>Локально хранятся</h2>
+    <ul>
+      <li>Загруженные архивы ТЖ — в виде DuckDB-индексов в
+        <code>%APPDATA%\Optimyzer\data</code> (Windows) или
+        <code>~/.optimyzer/data</code> (macOS/Linux)</li>
+      <li>Кеш AI-ответов — в локальной SQLite</li>
+      <li>JWT токен лицензии — в localStorage (на v2 переедет в OS keychain)</li>
+      <li>Telemetry буфер до отправки — в localStorage</li>
+    </ul>
+
+    <h2>На наш сервер (api.optimyzer.pro) уходит</h2>
+    <ul>
+      <li>Email и Yandex ID (из OAuth) — для аккаунта</li>
+      <li>Hardware fingerprint (sha256 от platform+OS+random-uuid) — для
+        идентификации устройства</li>
+      <li>Метаданные платежей и подписки</li>
+      <li>Запись о факте AI-операции: тип, timestamp, success — но НЕ содержимое</li>
+      <li>Telemetry (если включена в Settings → Аккаунт) — см. ниже</li>
+    </ul>
+
+    <h2>В Claude API уходит (только по нажатию «Объяснить через AI»)</h2>
+    <ul>
+      <li>Агрегированный контекст конкретной проблемы (тип события, суммарные
+        метрики, топ-N нормализованных SQL, lock graph)</li>
+    </ul>
+
+    <h2>В Claude НЕ уходит</h2>
+    <ul>
+      <li>Содержимое значений параметров запросов</li>
+      <li>Имена баз 1С, имена пользователей 1С</li>
+      <li>Содержимое контекстов выполнения (Context поля целиком)</li>
+      <li>Сообщения исключений с конкретными данными</li>
+      <li>Любые данные из других сессий или других архивов</li>
+    </ul>
+
+    <h2>Telemetry — что собирается</h2>
+    <p>
+      По умолчанию включена; отключается в
+      <code>Settings → Аккаунт → «Отправлять анонимную статистику»</code>.
+    </p>
+    <p>Что собирается:</p>
+    <ul>
+      <li>Размер загружаемых архивов в МБ</li>
+      <li>Количество событий после парсинга, время парсинга</li>
+      <li>Какие экраны посещаются, сколько раз нажимали AI</li>
+      <li>ОС, версия приложения, размер экрана</li>
+      <li>Конверсионные события: видел ли paywall, нажал ли upgrade</li>
+    </ul>
+
+    <p>Что НЕ собирается:</p>
+    <ul>
+      <li>Содержимое SQL-запросов</li>
+      <li>Имена баз, пользователей</li>
+      <li>AI-ответы</li>
+      <li>IP-адрес (только страна/регион в логах nginx, и то через 7 дней удаляется)</li>
+    </ul>
+
+    <p>
+      Telemetry удаляется автоматически через 90 дней. Связь с аккаунтом
+      только для Pro юзеров — Free юзеры идут с anonymous device_fingerprint.
+    </p>
+
+    <h2>Удаление данных</h2>
+    <p>
+      Запрос на полное удаление аккаунта и связанных данных — пишите на
+      <a href="mailto:hello@optimyzer.pro">hello@optimyzer.pro</a>.
+      Обработаем в течение 14 дней (по 152-ФЗ).
+    </p>
+
+    <h2>Где хранятся данные</h2>
+    <p>
+      VDS в РФ (Selectel / Beget / RuVDS — на момент написания, может
+      измениться). Backup'ы — там же. Claude API — Anthropic в США (для
+      AI-объяснений; согласие на это передаётся при первом вызове AI кнопки).
+    </p>
+
+    <div class="docs-foot">
+      <a href="configuring-tj.html">← Настройка ТЖ</a>
+      <a href="../faq.html">FAQ →</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

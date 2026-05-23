@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — Установка</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg" />
+<link rel="stylesheet" href="../docs.css" />
+</head>
+<body>
+<div class="docs-shell">
+  <aside class="docs-side">
+    <a class="docs-brand" href="../../">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/>
+        <rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/>
+        <rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/>
+        <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/>
+      </svg>
+      <span>Optimyzer Docs</span>
+    </a>
+    <h3>Начало</h3>
+    <a class="active" href="installation.html">Установка</a>
+    <a href="first-archive.html">Первый архив</a>
+    <h3>Возможности</h3>
+    <a href="../features/ai-explainer.html">AI Explainer</a>
+    <h3>Биллинг</h3>
+    <a href="../billing/plans-and-pricing.html">Тарифы и цены</a>
+    <h3>Технически</h3>
+    <a href="../technical/configuring-tj.html">Настройка ТЖ</a>
+    <a href="../technical/privacy-and-data.html">Privacy &amp; Data</a>
+    <h3>Прочее</h3>
+    <a href="../faq.html">FAQ</a>
+  </aside>
+  <main class="docs-main">
+    <h1>Установка Optimyzer</h1>
+    <p class="docs-lead">
+      Standalone-приложение, без серверов и баз 1С на стороне. Скачиваете
+      установщик — двойной клик — готово.
+    </p>
+
+    <h2>Системные требования</h2>
+    <ul>
+      <li><strong>Windows:</strong> 10 / 11 (x64), 8 ГБ RAM минимум, 16+ ГБ рекомендуется</li>
+      <li><strong>macOS:</strong> 12 Monterey+, Apple Silicon или Intel x64</li>
+      <li><strong>Linux:</strong> Ubuntu 22.04+ / Fedora 39+ / Arch, glibc 2.35+</li>
+      <li><strong>Диск:</strong> 500 МБ под установку, плюс место под анализируемые архивы</li>
+    </ul>
+
+    <h2>Скачать</h2>
+    <p>
+      Все релизы — на странице
+      <a href="https://github.com/anymasoft/1c-optimyzer/releases/latest" target="_blank">
+        GitHub Releases
+      </a>.
+      Или через прямой редирект:
+      <a href="/download">optimyzer.pro/download</a>.
+    </p>
+
+    <h2>Windows</h2>
+    <ol>
+      <li>Скачайте <code>Optimyzer_Setup_x.y.z_x64.msi</code></li>
+      <li>Запустите установщик — Windows может предупредить о неизвестном издателе (исправим
+        подписанным сертификатом в следующих релизах)</li>
+      <li>После установки — иконка в меню «Пуск»</li>
+    </ol>
+
+    <h2>macOS</h2>
+    <ol>
+      <li>Скачайте <code>Optimyzer_x.y.z_universal.dmg</code></li>
+      <li>Откройте DMG, перетащите Optimyzer в Applications</li>
+      <li>При первом запуске:
+        <code>System Settings → Privacy &amp; Security → Open Anyway</code>
+        (приложение пока не подписано Apple Developer ID)</li>
+    </ol>
+
+    <h2>Linux</h2>
+    <p>Распространяется как AppImage:</p>
+    <pre><code>chmod +x Optimyzer-x.y.z-x86_64.AppImage
+./Optimyzer-x.y.z-x86_64.AppImage</code></pre>
+    <p>
+      Для интеграции в меню — используйте
+      <a href="https://github.com/TheAssassin/AppImageLauncher" target="_blank">
+        AppImageLauncher
+      </a>.
+    </p>
+
+    <h2>Первый запуск</h2>
+    <p>
+      При первом старте Optimyzer покажет welcome-окно и подскажет загрузить
+      архив. Подробнее — <a href="first-archive.html">Первый архив</a>.
+    </p>
+
+    <div class="docs-foot">
+      <a href="../">← К документации</a>
+      <a href="first-archive.html">Первый архив →</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

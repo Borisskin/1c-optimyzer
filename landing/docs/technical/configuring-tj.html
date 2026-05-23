@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — Настройка ТЖ</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg" />
+<link rel="stylesheet" href="../docs.css" />
+</head>
+<body>
+<div class="docs-shell">
+  <aside class="docs-side">
+    <a class="docs-brand" href="../../">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/>
+        <rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/>
+        <rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/>
+        <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/>
+      </svg>
+      <span>Optimyzer Docs</span>
+    </a>
+    <h3>Начало</h3>
+    <a href="../getting-started/installation.html">Установка</a>
+    <a href="../getting-started/first-archive.html">Первый архив</a>
+    <h3>Возможности</h3>
+    <a href="../features/ai-explainer.html">AI Explainer</a>
+    <h3>Биллинг</h3>
+    <a href="../billing/plans-and-pricing.html">Тарифы и цены</a>
+    <h3>Технически</h3>
+    <a class="active" href="configuring-tj.html">Настройка ТЖ</a>
+    <a href="privacy-and-data.html">Privacy &amp; Data</a>
+    <h3>Прочее</h3>
+    <a href="../faq.html">FAQ</a>
+  </aside>
+  <main class="docs-main">
+    <h1>Настройка технологического журнала</h1>
+    <p class="docs-lead">
+      Чтобы Optimyzer мог что-то проанализировать — в 1С должен писаться ТЖ.
+      Здесь — рабочие конфиги для типовых сценариев.
+    </p>
+
+    <h2>Где лежит logcfg.xml</h2>
+    <ul>
+      <li><strong>Windows:</strong>
+        <code>C:\Program Files\1cv8\conf\logcfg.xml</code> или
+        <code>%APPDATA%\1C\1cv8\logcfg.xml</code></li>
+      <li><strong>Linux:</strong>
+        <code>/opt/1cv8/conf/logcfg.xml</code> или
+        <code>~/.1cv8/1C/1cv8/logcfg.xml</code></li>
+    </ul>
+
+    <p>
+      После изменения файла перезапустите сервер 1С (или просто закройте/откройте
+      клиент в файловом режиме). Новый файл подхватывается автоматически.
+    </p>
+
+    <h2>Базовый конфиг для расследования проблем</h2>
+    <p>Пишем медленные запросы, дедлоки, исключения. Сразу до 50 МБ ротации:</p>
+    <pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://v8.1c.ru/v8/tech-log"&gt;
+  &lt;log location="C:\1c-tj-logs" history="48"&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="DBMSSQL"/&gt;
+      &lt;ge property="duration" value="1000000"/&gt;  &lt;!-- >= 1 секунда --&gt;
+    &lt;/event&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="EXCP"/&gt;
+    &lt;/event&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="TDEADLOCK"/&gt;
+    &lt;/event&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="TLOCK"/&gt;
+      &lt;ge property="WaitConnections" value="1"/&gt;
+    &lt;/event&gt;
+    &lt;property name="all"/&gt;
+  &lt;/log&gt;
+&lt;/config&gt;</code></pre>
+
+    <h2>Сценарий: разбор медленных операций</h2>
+    <p>Шире: пишем CALL, SCALL, DBMSSQL, EXCP, и detailed контексты:</p>
+    <pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://v8.1c.ru/v8/tech-log"&gt;
+  &lt;log location="C:\1c-tj-logs" history="24"&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="CALL"/&gt;
+      &lt;ge property="duration" value="3000000"/&gt;
+    &lt;/event&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="SCALL"/&gt;
+      &lt;ge property="duration" value="3000000"/&gt;
+    &lt;/event&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="DBMSSQL"/&gt;
+      &lt;ge property="duration" value="500000"/&gt;
+    &lt;/event&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="EXCP"/&gt;
+    &lt;/event&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="EXCPCNTX"/&gt;
+    &lt;/event&gt;
+    &lt;property name="all"/&gt;
+  &lt;/log&gt;
+&lt;/config&gt;</code></pre>
+
+    <h2>Сценарий: охота за дедлоками</h2>
+    <p>Минималистично — только блокировки:</p>
+    <pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://v8.1c.ru/v8/tech-log"&gt;
+  &lt;log location="C:\1c-tj-locks" history="72"&gt;
+    &lt;event&gt;&lt;eq property="name" value="TDEADLOCK"/&gt;&lt;/event&gt;
+    &lt;event&gt;&lt;eq property="name" value="TLOCK"/&gt;&lt;/event&gt;
+    &lt;event&gt;&lt;eq property="name" value="TTIMEOUT"/&gt;&lt;/event&gt;
+    &lt;property name="all"/&gt;
+  &lt;/log&gt;
+&lt;/config&gt;</code></pre>
+
+    <h2>Production-конфиг для continuous monitoring</h2>
+    <blockquote>
+      Optimyzer пока работает offline (импорт архивов). Continuous monitoring
+      будет в Sprint 7+ — следите за новостями.
+    </blockquote>
+    <p>Если уже хочется писать постоянно — конфиг ниже минимизирует объём:</p>
+    <pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config xmlns="http://v8.1c.ru/v8/tech-log"&gt;
+  &lt;log location="D:\1c-tj-prod" history="168"&gt;  &lt;!-- 7 дней --&gt;
+    &lt;event&gt;
+      &lt;eq property="name" value="DBMSSQL"/&gt;
+      &lt;ge property="duration" value="3000000"/&gt;  &lt;!-- 3 секунды --&gt;
+    &lt;/event&gt;
+    &lt;event&gt;&lt;eq property="name" value="TDEADLOCK"/&gt;&lt;/event&gt;
+    &lt;event&gt;&lt;eq property="name" value="EXCP"/&gt;&lt;/event&gt;
+    &lt;property name="all"/&gt;
+  &lt;/log&gt;
+&lt;/config&gt;</code></pre>
+
+    <h2>Сколько весит ТЖ</h2>
+    <ul>
+      <li>Базовый конфиг: ~100-500 МБ/сутки на средней нагрузке</li>
+      <li>Полный (всё подряд): несколько ГБ/час — НЕ рекомендуется</li>
+    </ul>
+
+    <p>
+      Архив за неделю обычно 10-50 ГБ — это нормально для Optimyzer.
+    </p>
+
+    <div class="docs-foot">
+      <a href="../billing/plans-and-pricing.html">← Тарифы</a>
+      <a href="privacy-and-data.html">Privacy &amp; Data →</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

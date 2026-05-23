@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — AI Explainer</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg" />
+<link rel="stylesheet" href="../docs.css" />
+</head>
+<body>
+<div class="docs-shell">
+  <aside class="docs-side">
+    <a class="docs-brand" href="../../">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/>
+        <rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/>
+        <rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/>
+        <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/>
+      </svg>
+      <span>Optimyzer Docs</span>
+    </a>
+    <h3>Начало</h3>
+    <a href="../getting-started/installation.html">Установка</a>
+    <a href="../getting-started/first-archive.html">Первый архив</a>
+    <h3>Возможности</h3>
+    <a class="active" href="ai-explainer.html">AI Explainer</a>
+    <h3>Биллинг</h3>
+    <a href="../billing/plans-and-pricing.html">Тарифы и цены</a>
+    <h3>Технически</h3>
+    <a href="../technical/configuring-tj.html">Настройка ТЖ</a>
+    <a href="../technical/privacy-and-data.html">Privacy &amp; Data</a>
+    <h3>Прочее</h3>
+    <a href="../faq.html">FAQ</a>
+  </aside>
+  <main class="docs-main">
+    <h1>AI Explainer</h1>
+    <p class="docs-lead">
+      Главная фишка Optimyzer — AI читает данные конкретной проблемы и
+      объясняет на русском: что произошло, почему, что чинить.
+    </p>
+
+    <h2>Когда AI вызывается</h2>
+    <ul>
+      <li>На экране «Анатомия операции» — кнопка «Объяснить через AI»</li>
+      <li>На экране «Анатомия дедлока» — автоматически, или вручную</li>
+      <li>На экране «Медленные запросы» — раскрытие строки</li>
+    </ul>
+
+    <h2>Что передаётся в Claude</h2>
+    <p>
+      В Claude API уходит <strong>только агрегированный контекст конкретной
+      проблемы</strong>:
+    </p>
+    <ul>
+      <li>Тип события (CALL, EXCP, TDEADLOCK)</li>
+      <li>Суммарные метрики: duration, ms, EXCP count</li>
+      <li>Топ-N SQL-запросов (нормализованных, без значений параметров)</li>
+      <li>Stack trace / lock graph для дедлоков</li>
+    </ul>
+
+    <h2>Что НЕ передаётся</h2>
+    <ul>
+      <li>Содержимое значений параметров запросов</li>
+      <li>Имена баз 1С, имена пользователей</li>
+      <li>Полное содержимое контекстов (Context поля)</li>
+      <li>Содержимое EXCP messages с конкретными данными</li>
+      <li>Любые данные из других сессий / архивов</li>
+    </ul>
+
+    <h2>Кеш ответов</h2>
+    <p>
+      AI-ответы сохраняются локально в <code>data/explainer_cache.db</code>.
+      Если открыть ту же анатомию снова — ответ покажется мгновенно из кеша,
+      без обращения к Claude и без списания квоты/кредитов.
+    </p>
+
+    <h2>Лимиты</h2>
+    <ul>
+      <li><strong>Free:</strong> 5 AI-объяснений в месяц. После — paywall с
+        предложением Pro/Credits.</li>
+      <li><strong>Pro:</strong> безлимит до soft cap 1000/мес. После — warning
+        в личном кабинете, но операции продолжают работать.</li>
+      <li><strong>Credits:</strong> 1 credit = 1 операция. Кеш всё равно
+        работает — повторный запрос бесплатно.</li>
+    </ul>
+
+    <h2>Качество ответов</h2>
+    <p>
+      Используется Claude 4.7 (Sonnet) с системным промптом «эксперт по 1С».
+      Ответы:
+    </p>
+    <ul>
+      <li>На русском языке</li>
+      <li>Со ссылками на конкретные строки данных</li>
+      <li>С предложениями «что сделать» (изменить запрос, поднять памяти кеша
+        конфигурации, добавить индекс и т.п.)</li>
+    </ul>
+    <p>
+      AI не идеален и может галлюцинировать. Всегда сверяйтесь с фактическими
+      данными в Анатомии — числа всегда корректны (их собирает не AI, а наш парсер).
+    </p>
+
+    <div class="docs-foot">
+      <a href="../getting-started/first-archive.html">← Первый архив</a>
+      <a href="../billing/plans-and-pricing.html">Тарифы и цены →</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>
