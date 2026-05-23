@@ -20,6 +20,12 @@
   background: var(--o-panel);
   box-shadow: var(--o-shadow-pop);
   animation: slide-in-right 0.18s ease-out;
+  cursor: pointer;
+  transition: opacity 0.12s, transform 0.12s;
+}
+.toast:hover {
+  opacity: 0.75;
+  transform: translateX(-2px);
 }
 
 .tone_ok   { border-color: var(--o-ok);   background: var(--o-ok-bg);   color: var(--o-ok); }
