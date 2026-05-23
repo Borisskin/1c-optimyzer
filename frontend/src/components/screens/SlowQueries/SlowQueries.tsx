@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
@@ -32,6 +33,20 @@ export function SlowQueriesScreen({ archiveId }: Props) {
     defaultSortKey: "total_duration_ms",
     defaultSortDir: "desc",
   });
+
+  // Sprint 5 hotfix #2 (расширение): expand-by-click для длинного запроса
+  // вместо hover-tooltip. Hover не позволял ни скопировать, ни нормально
+  // прочитать SQL длиной 1+ КБ. По клику на строку — раскрывается inline-
+  // блок с полным selectable-текстом. Тот же паттерн что в Anatomy/Top SQL.
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const toggleRow = (ri: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(ri)) next.delete(ri);
+      else next.add(ri);
+      return next;
+    });
+  };
 
   return (
     <ViewShell
@@ -89,19 +104,42 @@ export function SlowQueriesScreen({ archiveId }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {table.rows.map((row, ri) => (
-                  <tr key={ri}>
-                    <td className={vshellStyles.mono}>{ri + 1}</td>
-                    <td title={String(row[idx["query"]] ?? "")}>
-                      {truncate(String(row[idx["query"]] ?? ""), 80)}
-                    </td>
-                    <td className={vshellStyles.mono}>{fmt(row[idx["calls"]])}</td>
-                    <td className={vshellStyles.mono}>{fmtMs(row[idx["total_duration_ms"]])}</td>
-                    <td className={vshellStyles.mono}>{fmtMs(row[idx["avg_duration_ms"]])}</td>
-                    <td className={vshellStyles.mono}>{fmtMs(row[idx["max_duration_ms"]])}</td>
-                    <td className={vshellStyles.mono}>{fmt(row[idx["total_rows_read"]])}</td>
-                  </tr>
-                ))}
+                {table.rows.map((row, ri) => {
+                  const queryFull = String(row[idx["query"]] ?? "");
+                  const isExpandable = queryFull.length > 80;
+                  const isExpanded = expanded.has(ri);
+                  return (
+                    <Fragment key={ri}>
+                      <tr
+                        onClick={isExpandable ? () => toggleRow(ri) : undefined}
+                        style={{ cursor: isExpandable ? "pointer" : "default" }}
+                        title={isExpandable ? (isExpanded ? "Клик — свернуть" : "Клик — раскрыть полный запрос") : undefined}
+                      >
+                        <td className={vshellStyles.mono}>{ri + 1}</td>
+                        <td>
+                          {isExpandable && (
+                            <span style={expandToggleStyle} aria-hidden>
+                              {isExpanded ? "▼" : "▶"}{" "}
+                            </span>
+                          )}
+                          {isExpandable ? queryFull.slice(0, 80) + "…" : queryFull}
+                        </td>
+                        <td className={vshellStyles.mono}>{fmt(row[idx["calls"]])}</td>
+                        <td className={vshellStyles.mono}>{fmtMs(row[idx["total_duration_ms"]])}</td>
+                        <td className={vshellStyles.mono}>{fmtMs(row[idx["avg_duration_ms"]])}</td>
+                        <td className={vshellStyles.mono}>{fmtMs(row[idx["max_duration_ms"]])}</td>
+                        <td className={vshellStyles.mono}>{fmt(row[idx["total_rows_read"]])}</td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} style={expandedCellStyle}>
+                            <pre style={expandedPreStyle}>{queryFull}</pre>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -126,7 +164,26 @@ function fmtMs(v: unknown): string {
   return v.toFixed(1);
 }
 
-function truncate(s: string, n: number): string {
-  if (s.length <= n) return s;
-  return s.slice(0, n) + "…";
-}
+const expandToggleStyle: CSSProperties = {
+  color: "var(--o-text-3)",
+  fontSize: 10,
+  userSelect: "none",
+};
+
+const expandedCellStyle: CSSProperties = {
+  background: "var(--o-subtle)",
+  padding: 0,
+};
+
+const expandedPreStyle: CSSProperties = {
+  margin: 0,
+  padding: "10px 12px",
+  fontFamily: "var(--o-font-mono)",
+  fontSize: 12,
+  lineHeight: 1.45,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  color: "var(--o-text-1)",
+  userSelect: "text",
+  cursor: "text",
+};
