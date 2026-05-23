@@ -16,6 +16,19 @@ from typing import Any
 
 from optimyzer_backend.sql.executor import SQLExecutor
 
+# В 1С Tech Journal EXCPCNTX и Context имеют поле Duration равное длительности
+# *родительского контекста* (от начала операции до момента события), а не
+# длительности самого события. Если их SUM/AVG/MAX суммировать вместе со
+# SCALL/CALL/DBMSSQL/EXCP — получается многократный double-count (для архива
+# с 75 EXCPCNTX × 3.7 ч avg на одну операцию это даёт Σ=290 ч при
+# wall-clock 5 ч). Эти типы исключаются из агрегатов по длительности; в
+# total_events и в breakdown по event_type они остаются (это не баг, а
+# реальные события). См. ADR об этом в Sprint-6.
+_NON_CUMULATIVE_DURATION_EXPR = (
+    "CASE WHEN event_type NOT IN ('EXCPCNTX', 'Context') "
+    "THEN COALESCE(duration_us, 0) END"
+)
+
 
 def _execute(archive_id: str, sql: str, params: list[Any], max_rows: int = 10_000) -> dict[str, Any]:
     with SQLExecutor(archive_id) as ex:
@@ -49,13 +62,13 @@ def get_operation_anatomy(
     operation — нормализованный context (см. Phase A normalize_context).
     """
     # Summary
-    summary_sql = """
+    summary_sql = f"""
         SELECT
             COUNT(*) AS total_events,
-            SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
-            AVG(COALESCE(duration_us, 0)) / 1000.0 AS avg_duration_ms,
-            MAX(COALESCE(duration_us, 0)) / 1000.0 AS max_duration_ms,
-            MIN(NULLIF(COALESCE(duration_us, 0), 0)) / 1000.0 AS min_duration_ms,
+            SUM({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS total_duration_ms,
+            AVG({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS avg_duration_ms,
+            MAX({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS max_duration_ms,
+            MIN(NULLIF({_NON_CUMULATIVE_DURATION_EXPR}, 0)) / 1000.0 AS min_duration_ms,
             COUNT(DISTINCT session_id) AS unique_sessions,
             COUNT(DISTINCT process_pid) AS unique_processes,
             STRING_AGG(DISTINCT process_role, ', ') AS process_roles,
@@ -63,7 +76,13 @@ def get_operation_anatomy(
             SUM(CASE WHEN event_type IN ('TLOCK', 'TDEADLOCK') THEN 1 ELSE 0 END) AS lock_count,
             SUM(CASE WHEN event_type = 'DBMSSQL' THEN 1 ELSE 0 END) AS sql_count,
             MIN(ts) AS first_seen,
-            MAX(ts) AS last_seen
+            MAX(ts) AS last_seen,
+            -- wall_clock_ms = реальная разница (last - first) в календарном
+            -- времени. Отличается от total_duration_ms тем, что не учитывает
+            -- параллельность сессий (это просто диапазон). Полезно как
+            -- sanity check для пользователя.
+            (EXTRACT(EPOCH FROM MAX(ts)) - EXTRACT(EPOCH FROM MIN(ts))) * 1000.0
+                AS wall_clock_ms
         FROM events
         WHERE context_normalized = ?
     """
@@ -180,19 +199,21 @@ def get_session_anatomy(
 ) -> dict[str, Any]:
     """Анатомия одной сессии — все её events в порядке + breakdown."""
     # Header summary
-    summary_sql = """
+    summary_sql = f"""
         SELECT
             COUNT(*) AS total_events,
             STRING_AGG(DISTINCT user_name, ', ') AS users,
             STRING_AGG(DISTINCT process_role, ', ') AS process_roles,
             STRING_AGG(DISTINCT CAST(process_pid AS VARCHAR), ', ') AS process_pids,
             COUNT(DISTINCT context_normalized) AS distinct_operations,
-            SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
+            SUM({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS total_duration_ms,
             SUM(CASE WHEN event_type = 'EXCP' THEN 1 ELSE 0 END) AS exception_count,
             SUM(CASE WHEN event_type IN ('TLOCK', 'TDEADLOCK') THEN 1 ELSE 0 END) AS lock_count,
             SUM(CASE WHEN event_type = 'DBMSSQL' THEN 1 ELSE 0 END) AS sql_count,
             MIN(ts) AS first_seen,
-            MAX(ts) AS last_seen
+            MAX(ts) AS last_seen,
+            (EXTRACT(EPOCH FROM MAX(ts)) - EXTRACT(EPOCH FROM MIN(ts))) * 1000.0
+                AS wall_clock_ms
         FROM events
         WHERE session_id = ?
     """

@@ -240,6 +240,7 @@ export interface OperationAnatomyResult {
     sql_count?: number;
     first_seen?: string | null;
     last_seen?: string | null;
+    wall_clock_ms?: number;
   };
   timeline: SubTable;
   breakdown: Array<{
@@ -350,6 +351,7 @@ export interface SessionAnatomyResult {
     sql_count?: number;
     first_seen?: string | null;
     last_seen?: string | null;
+    wall_clock_ms?: number;
   };
   timeline: SubTable;
   breakdown: Array<{

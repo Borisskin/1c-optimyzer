@@ -174,7 +174,13 @@ export function AnatomyScreen({ archiveId }: Props) {
             </div>
             <div style={metricsGrid}>
               <Metric label="Событий" value={fmt(s.total_events)} />
+              {/* Σ длительность = сумма durations всех событий БЕЗ EXCPCNTX
+                  и Context (они cumulative и дают double-count). Это
+                  "CPU/work time" — может быть больше wall-clock из-за
+                  параллельных сессий. По часам = реальный календарный
+                  промежуток (last_seen - first_seen). */}
               <Metric label="Σ длительность" value={fmtMs(s.total_duration_ms)} />
+              <Metric label="По часам" value={fmtWallClock(s.wall_clock_ms)} />
               <Metric label="avg" value={fmtMs(s.avg_duration_ms)} />
               <Metric label="max" value={fmtMs(s.max_duration_ms)} />
               <Metric label="Сессий" value={fmt(s.unique_sessions)} />
@@ -463,6 +469,19 @@ function fmtMs(v: number | undefined | null): string {
   if (v == null) return "—";
   if (v >= 1000) return (v / 1000).toFixed(2) + " с";
   return v.toFixed(1) + " мс";
+}
+
+// Отдельный formatter для wall-clock — у него range от секунд до часов,
+// поэтому делаем "5ч 7м" / "12м 30с" / "45с" вместо "18407 с".
+function fmtWallClock(v: number | undefined | null): string {
+  if (v == null || v <= 0) return "—";
+  const total = Math.floor(v / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}ч ${m}м`;
+  if (m > 0) return `${m}м ${s}с`;
+  return `${s}с`;
 }
 
 function fmtTs(v: string | null | undefined): string {

@@ -15,6 +15,16 @@ from typing import Any
 
 from optimyzer_backend.sql.executor import SQLExecutionError, SQLExecutor
 
+# EXCPCNTX и Context в 1С Tech Journal содержат cumulative Duration
+# (длительность родительского контекста, не самого события). SUM их со
+# SCALL/CALL/DBMSSQL/EXCP даёт многократный double-count в total_duration_ms.
+# Исключаем из агрегатов длительности; counts остаются. Та же константа в
+# anatomy.py (single source менять обе сразу). См. fix(metrics) commit.
+_NON_CUMULATIVE_DURATION_EXPR = (
+    "CASE WHEN event_type NOT IN ('EXCPCNTX', 'Context') "
+    "THEN COALESCE(duration_us, 0) END"
+)
+
 
 @dataclass(frozen=True)
 class ViewFilters:
@@ -192,9 +202,9 @@ def process_roles(archive_id: str, filters: ViewFilters) -> dict[str, Any]:
         SELECT
             process_role,
             COUNT(*) AS events_count,
-            SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
+            SUM({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS total_duration_ms,
             COUNT(DISTINCT process_pid) AS unique_processes,
-            AVG(COALESCE(duration_us, 0)) / 1000.0 AS avg_duration_ms
+            AVG({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS avg_duration_ms
         FROM events
         {f"WHERE {where}" if where else ""}
         GROUP BY process_role
@@ -394,9 +404,9 @@ def top_business_operations(
         SELECT
             context_normalized AS operation,
             COUNT(*) AS calls,
-            SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
-            AVG(COALESCE(duration_us, 0)) / 1000.0 AS avg_duration_ms,
-            MAX(COALESCE(duration_us, 0)) / 1000.0 AS max_duration_ms,
+            SUM({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS total_duration_ms,
+            AVG({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS avg_duration_ms,
+            MAX({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0 AS max_duration_ms,
             SUM(CASE WHEN event_type = 'DBMSSQL' THEN COALESCE(duration_us, 0) ELSE 0 END) / 1000.0 AS sql_duration_ms,
             SUM(CASE WHEN event_type IN ('TLOCK', 'TDEADLOCK') THEN 1 ELSE 0 END) AS lock_events,
             SUM(CASE WHEN event_type = 'EXCP' THEN 1 ELSE 0 END) AS exception_events,
@@ -433,8 +443,8 @@ def activity_heatmap(
 
     metric_expr = {
         "count": "COUNT(*)",
-        "total_duration_ms": "SUM(COALESCE(duration_us, 0)) / 1000.0",
-        "peak_duration_ms": "MAX(COALESCE(duration_us, 0)) / 1000.0",
+        "total_duration_ms": f"SUM({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0",
+        "peak_duration_ms": f"MAX({_NON_CUMULATIVE_DURATION_EXPR}) / 1000.0",
         "error_count": "SUM(CASE WHEN event_type IN ('EXCP', 'TDEADLOCK') THEN 1 ELSE 0 END)",
     }.get(metric, "COUNT(*)")
 
