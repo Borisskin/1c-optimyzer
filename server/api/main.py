@@ -12,12 +12,14 @@ from slowapi.util import get_remote_address
 
 from api import __version__
 from api.routers import (
+    admin,
     auth,
     credits,
     dashboard,
     devices,
     license as license_router,
     subscriptions,
+    telemetry,
     usage,
     webhooks,
 )
@@ -62,6 +64,8 @@ def create_app() -> FastAPI:
     app.include_router(usage.router)
     app.include_router(dashboard.router)
     app.include_router(license_router.router)
+    app.include_router(telemetry.router)
+    app.include_router(admin.router)
     app.include_router(webhooks.router)
 
     @app.get("/health", tags=["meta"])

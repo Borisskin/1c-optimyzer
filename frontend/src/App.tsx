@@ -27,6 +27,8 @@ import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
+import { useTelemetryFlush } from "@/hooks/useTelemetryFlush";
+import { telemetry } from "@/utils/telemetry";
 
 export function App() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
@@ -45,6 +47,19 @@ export function App() {
   // Heartbeat в cloud — синхронизация подписки/квот каждые 24ч. Запускается
   // только если юзер активирован (есть accessToken в accountStore).
   useHeartbeat();
+  // Telemetry — батчевый flush буфера событий каждые 5 минут.
+  useTelemetryFlush();
+
+  // Один event на старт приложения. first_run флаг — пока false; полноценный
+  // detection в Phase 2.2 (onboarding flow).
+  useEffect(() => {
+    telemetry.appStarted({ first_run: false });
+  }, []);
+
+  // Screen view на каждое переключение экрана.
+  useEffect(() => {
+    telemetry.screenView(currentScreen);
+  }, [currentScreen]);
 
   const onActiveArchiveDeleted = useCallback(() => {
     setArchive(null);
