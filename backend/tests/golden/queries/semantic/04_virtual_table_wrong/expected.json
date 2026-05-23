@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "virtual_table_not_supported", "severity": "critical"}],
+  "requires_configuration": true,
+  "notes": "СрезПоследних на регистре накопления — недопустимо (это для регистров сведений)"
+}

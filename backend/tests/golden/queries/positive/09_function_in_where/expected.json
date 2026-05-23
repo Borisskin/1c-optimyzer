@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "function_in_where", "severity": "warning"}],
+  "requires_configuration": false,
+  "notes": "Функция от индексированного поля в ГДЕ — индекс не используется"
+}

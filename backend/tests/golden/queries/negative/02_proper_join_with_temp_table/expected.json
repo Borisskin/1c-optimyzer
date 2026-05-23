@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "requires_configuration": false,
+  "notes": "Каноническая правка subquery-in-join: вынос в ВТ + индексация + соединение"
+}

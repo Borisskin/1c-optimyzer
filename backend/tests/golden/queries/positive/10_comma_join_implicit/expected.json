@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "comma_join_implicit", "severity": "critical"}],
+  "requires_configuration": false,
+  "notes": "Неявное декартово соединение через запятую — критичный антипаттерн"
+}

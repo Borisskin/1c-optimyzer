@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "union_without_all", "severity": "warning"}],
+  "requires_configuration": false,
+  "notes": "ОБЪЕДИНИТЬ без ВСЕ делает дедупликацию (sort + distinct) — обычно ВСЕ дешевле"
+}

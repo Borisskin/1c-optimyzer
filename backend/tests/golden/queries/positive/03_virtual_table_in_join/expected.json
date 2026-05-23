@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "virtual_table_in_join", "severity": "warning"}],
+  "requires_configuration": false,
+  "notes": "Виртуальная таблица регистра внутри JOIN — переписать через временную таблицу"
+}

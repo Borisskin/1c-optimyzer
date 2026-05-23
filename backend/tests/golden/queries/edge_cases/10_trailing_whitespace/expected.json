@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "requires_configuration": false,
+  "notes": "Trailing/leading whitespace + пустые строки — анализатор не падает, координаты корректны"
+}

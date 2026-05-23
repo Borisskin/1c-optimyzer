@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "select_distinct", "severity": "info"}],
+  "requires_configuration": false,
+  "notes": "ВЫБРАТЬ РАЗЛИЧНЫЕ часто избыточно — проверьте, нет ли возможности использовать СГРУППИРОВАТЬ"
+}

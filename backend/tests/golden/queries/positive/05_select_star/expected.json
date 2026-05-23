@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "select_star", "severity": "info"}],
+  "requires_configuration": false,
+  "notes": "SELECT * нежелателен — лучше явный список полей"
+}

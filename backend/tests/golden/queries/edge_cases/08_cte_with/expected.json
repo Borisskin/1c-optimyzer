@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "requires_configuration": false,
+  "notes": "ПОМЕСТИТЬ + JOIN — типичный паттерн, который НЕ должен срабатывать в subquery_in_join"
+}

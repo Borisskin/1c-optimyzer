@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "subquery_in_join", "severity": "warning"}],
+  "requires_configuration": false,
+  "notes": "Подзапрос внутри ВНУТРЕННЕЕ СОЕДИНЕНИЕ — антипаттерн, нужно вынести во временную таблицу"
+}

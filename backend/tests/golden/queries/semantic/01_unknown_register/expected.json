@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "object_not_exists", "severity": "critical"}],
+  "requires_configuration": true,
+  "notes": "Несуществующий регистр накопления — object_not_exists срабатывает"
+}

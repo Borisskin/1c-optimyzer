@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "vyrazit_in_where", "severity": "warning"}],
+  "requires_configuration": false,
+  "notes": "ВЫРАЗИТЬ в условии ГДЕ убивает использование индекса по полю"
+}

@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "or_in_where", "severity": "info"}],
+  "requires_configuration": false,
+  "notes": "ИЛИ в ГДЕ обычно ломает использование индекса; заменить на UNION ALL или В (...)"
+}

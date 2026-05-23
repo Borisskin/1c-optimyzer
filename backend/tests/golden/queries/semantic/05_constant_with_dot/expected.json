@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "constant_used_with_dot", "severity": "critical"}],
+  "requires_configuration": true,
+  "notes": "У константы нет вложенных полей — constant_used_with_dot срабатывает"
+}

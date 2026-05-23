@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "requires_configuration": false,
+  "notes": "Английские ключевые слова — допустимы в SDBL; анализатор не должен ругаться"
+}

@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "in_with_subquery", "severity": "warning"}],
+  "requires_configuration": false,
+  "notes": "В (подзапрос) лучше заменить на ВНУТРЕННЕЕ СОЕДИНЕНИЕ с временной таблицей"
+}

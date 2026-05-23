@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "requires_configuration": false,
+  "notes": "10 временных таблиц подряд — анализатор не должен падать. temp_table_without_index может срабатывать, но не блокирует"
+}

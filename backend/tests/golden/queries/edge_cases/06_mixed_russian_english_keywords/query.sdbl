@@ -1,0 +1,7 @@
+SELECT
+    Ref,
+    Description
+FROM
+    Catalog.Контрагенты
+WHERE
+    Code = &Code

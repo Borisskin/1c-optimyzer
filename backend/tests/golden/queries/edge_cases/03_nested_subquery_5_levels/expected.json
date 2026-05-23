@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "select_star", "severity": "info"}],
+  "requires_configuration": false,
+  "notes": "5 уровней вложенных подзапросов с * — select_star сработает (несколько раз), но анализатор не зависает"
+}

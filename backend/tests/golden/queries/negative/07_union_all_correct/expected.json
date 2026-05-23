@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "requires_configuration": false,
+  "notes": "ОБЪЕДИНИТЬ ВСЕ — без дедупликации, дешёвый вариант"
+}

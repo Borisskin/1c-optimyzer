@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "enum_value_not_exists", "severity": "critical"}],
+  "requires_configuration": true,
+  "notes": "Несуществующее значение перечисления — enum_value_not_exists срабатывает"
+}

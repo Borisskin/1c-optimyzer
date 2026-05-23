@@ -1,0 +1,5 @@
+{
+  "findings": [{"rule_id": "attribute_not_exists_in_from_alias", "severity": "critical"}],
+  "requires_configuration": true,
+  "notes": "Несуществующий реквизит у Справочник.Контрагенты — attribute_not_exists_in_from_alias срабатывает"
+}

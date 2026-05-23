@@ -1,0 +1,5 @@
+{
+  "findings": [],
+  "requires_configuration": false,
+  "notes": "Inline комментарии между строками — корректно обрабатываются"
+}
