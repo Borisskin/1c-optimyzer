@@ -80,6 +80,11 @@ export function App() {
           useAppStore.getState().setScreen(target);
         }
       }
+      // Ctrl+Q — Query Analyzer (главная Pro-фича, мнемоника Q = Query).
+      if (meta && !e.shiftKey && (e.key === "q" || e.key === "Q")) {
+        e.preventDefault();
+        useAppStore.getState().setScreen("query-analyzer");
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
