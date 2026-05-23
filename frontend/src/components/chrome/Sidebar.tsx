@@ -2,7 +2,7 @@ import { Icon } from "@/components/icons/Icon";
 import { useAppStore } from "@/store/appStore";
 import { useDevMode } from "@/hooks/useDevMode";
 import { t } from "@/i18n/ru";
-import { GROUPS, NAV_ITEMS } from "./nav";
+import { DRILLDOWN_PARENT, GROUPS, NAV_ITEMS } from "./nav";
 import styles from "./Sidebar.module.css";
 
 export function Sidebar() {
@@ -12,6 +12,11 @@ export function Sidebar() {
   const setScreen = useAppStore((s) => s.setScreen);
   const pushToast = useAppStore((s) => s.pushToast);
   const devMode = useDevMode();
+
+  // Для drill-down экранов (Anatomy / DeadlockAnatomy) подсвечиваем
+  // родительский пункт в Sidebar: юзер концептуально остался внутри
+  // «Бизнес-операций» / «Блокировок», просто смотрит детали одного элемента.
+  const highlightedScreen = DRILLDOWN_PARENT[current] ?? current;
 
   return (
     <aside className={styles.sidebar}>
@@ -42,7 +47,7 @@ export function Sidebar() {
                 <div className={styles.group_div} />
               )}
               {items.map((n) => {
-                const active = current === n.id;
+                const active = highlightedScreen === n.id;
                 const disabled = !n.enabled;
                 return (
                   <button

@@ -57,6 +57,19 @@ export const NAV_ITEMS: NavItem[] = [
   // { id: "mobile",     label: t.sidebar.items.mobile,      icon: "Phone",      group: "manage",  enabled: false, tooltip: "Доступно в будущих обновлениях" },
 ];
 
+/**
+ * Drill-down экраны, у которых нет своего пункта в Sidebar, но юзер
+ * концептуально остался «внутри» родительского раздела.
+ *
+ * Sidebar использует это для подсветки: когда current === "anatomy",
+ * визуально активным остаётся пункт «Бизнес-операции», потому что
+ * Anatomy = детали одной операции из списка.
+ */
+export const DRILLDOWN_PARENT: Partial<Record<ScreenId, ScreenId>> = {
+  "anatomy": "operations",
+  "deadlock-anatomy": "locks",
+};
+
 export const GROUPS: { name: string; key: NavItem["group"] }[] = [
   { name: t.sidebar.groups.analyze, key: "analyze" },
   { name: t.sidebar.groups.config,  key: "config" },
