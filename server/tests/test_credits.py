@@ -87,7 +87,10 @@ def test_balance_endpoint_zero(client, db_session):
     assert resp.json()["operations_remaining"] == 0
 
 
-def test_purchase_creates_payment_stub(client, db_session):
+def test_purchase_creates_payment_with_stub_yookassa(client, db_session):
+    """В тесте YooKassa не настроен (см. conftest), поэтому create_payment
+    возвращает stub confirmation_url. Тест проверяет что эндпоинт корректно
+    создаёт Payment-запись и возвращает URL."""
     user = make_user(db_session)
     resp = client.post(
         "/v1/credits/purchase",
@@ -99,3 +102,4 @@ def test_purchase_creates_payment_stub(client, db_session):
     assert body["package"] == "mini"
     assert body["amount_kopecks"] == 29900
     assert body["confirmation_url"].startswith("https://")
+    assert body["payment_id"]

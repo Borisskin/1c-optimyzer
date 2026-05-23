@@ -1,18 +1,14 @@
-"""/v1/credits/* — баланс и история. Purchase создаёт заглушечный Payment
-(полноценная YooKassa integration — в Phase 1.4)."""
+"""/v1/credits/* — баланс, история, purchase."""
 
 from __future__ import annotations
 
-import secrets
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from api.db import get_db
 from api.deps import get_current_user
-from models.credits import PACKAGE_CONFIG
-from models.payment import Payment, PaymentPurpose, PaymentStatus
 from models.user import User
 from schemas.credits import (
     CreditsBalanceResponse,
@@ -22,7 +18,7 @@ from schemas.credits import (
     CreditsPurchaseRequest,
     CreditsPurchaseResponse,
 )
-from services import credits_service
+from services import credits_service, payment_processor
 
 router = APIRouter(prefix="/v1/credits", tags=["credits"])
 
@@ -88,29 +84,19 @@ def purchase(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> CreditsPurchaseResponse:
-    """Создаёт Payment запись и (в Phase 1.4) реальный YooKassa payment.
-
-    Сейчас — stub: возвращает фейковый confirmation_url для тестов фронта.
-    """
-    cfg = PACKAGE_CONFIG[request.package]
-    idempotency_key = secrets.token_urlsafe(24)
-    payment = Payment(
-        user_id=user.id,
-        idempotency_key=idempotency_key,
-        purpose=PaymentPurpose.CREDITS,
-        package_or_plan=request.package.value,
-        amount_kopecks=cfg["price_kopecks"],
-        currency="RUB",
-        status=PaymentStatus.PENDING,
-        # Заглушка confirmation_url — заменяется в Phase 1.4 на yookassa.amount
-        confirmation_url=f"https://yookassa.example/checkout/{idempotency_key}",
-    )
-    db.add(payment)
-    db.commit()
-    db.refresh(payment)
+    """Создать YooKassa payment + Payment запись. Возвращает confirmation_url
+    куда фронт редиректит юзера для оплаты."""
+    try:
+        payment = payment_processor.create_credits_payment(db, user, request.package)
+    except Exception as exc:  # noqa: BLE001
+        # YooKassa unavailable / credentials missing — даём осмысленную ошибку.
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            f"Payment service unavailable: {exc}",
+        ) from exc
     return CreditsPurchaseResponse(
         payment_id=payment.id,
         confirmation_url=payment.confirmation_url or "",
-        amount_kopecks=cfg["price_kopecks"],
+        amount_kopecks=payment.amount_kopecks,
         package=request.package,
     )

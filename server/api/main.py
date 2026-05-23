@@ -11,7 +11,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from api import __version__
-from api.routers import auth, credits, dashboard, devices, subscriptions, usage
+from api.routers import auth, credits, dashboard, devices, subscriptions, usage, webhooks
 from api.settings import settings
 
 logger = logging.getLogger("optimyzer.server")
@@ -52,10 +52,28 @@ def create_app() -> FastAPI:
     app.include_router(devices.router)
     app.include_router(usage.router)
     app.include_router(dashboard.router)
+    app.include_router(webhooks.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:
         return {"status": "ok", "version": __version__, "env": settings.env}
+
+    @app.on_event("startup")
+    def _start_scheduler() -> None:
+        # В тестах ENV=development и scheduler нам не нужен — он мешает.
+        # В проде явно включаем через env var ENABLE_SCHEDULER=1 (см. settings).
+        # Сейчас оставляем выключенным по умолчанию — включим в Phase 1.6 + deploy.
+        if settings.env != "production":
+            return
+        from services.scheduler import start
+        start()
+
+    @app.on_event("shutdown")
+    def _stop_scheduler() -> None:
+        if settings.env != "production":
+            return
+        from services.scheduler import stop
+        stop()
 
     return app
 
