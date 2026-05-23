@@ -177,9 +177,24 @@
   transition: width 0.3s ease;
 }
 
+/* Sprint 5 hotfix: results pane как flex column.
+   .results_toolbar (TableFilter) — sticky top:0, фиксированной высоты.
+   .table_wrap занимает оставшееся место, имеет свой scroll внутри. Это
+   даёт что и TableFilter, и thead остаются видны при скролле длинной
+   таблицы результатов. */
+.results_toolbar {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: flex-end;
+  background: var(--o-panel);
+  border-bottom: 1px solid var(--o-border-2);
+}
+
 .table_wrap {
   flex: 1;
   overflow: auto;
+  min-height: 0;
 }
 
 .table {

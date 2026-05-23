@@ -280,8 +280,12 @@ function ResultsTable({ result }: { result: SQLExecuteResult }) {
   const rows = result.rows ?? [];
   const table = useTableState({ rows, columns });
   return (
-    <div className={styles.table_wrap}>
-      <div style={{ padding: "6px 12px", display: "flex", justifyContent: "flex-end" }}>
+    <>
+      {/* Sprint 5 hotfix: тулбар с TableFilter вынесен наружу .table_wrap.
+          Раньше при скролле результатов фильтр уезжал вверх вместе со
+          строками. Теперь thead sticky внутри .table_wrap, а тулбар
+          flex-shrink:0 в родительском flex-контейнере results pane. */}
+      <div className={styles.results_toolbar}>
         <TableFilter
           value={table.filter}
           onChange={table.setFilter}
@@ -289,7 +293,8 @@ function ResultsTable({ result }: { result: SQLExecuteResult }) {
           visible={table.visibleRows}
         />
       </div>
-      <table className={styles.table}>
+      <div className={styles.table_wrap}>
+        <table className={styles.table}>
         <thead>
           <tr>
             {columns.map((c) => (
@@ -315,7 +320,8 @@ function ResultsTable({ result }: { result: SQLExecuteResult }) {
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 

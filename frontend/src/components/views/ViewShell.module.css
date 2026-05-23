@@ -25,8 +25,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
   gap: 12px;
+  /* Sticky — фильтры и заголовок панели всегда видны при скролле таблицы.
+     z-index 3 выше чем у thead (2), чтобы при перекрытии panel_head
+     перекрывал заголовок колонок. Padding снизу даёт визуальный отступ
+     перед thead; margin negative компенсирует чтобы panel_head «прилип»
+     к верху panel, без 16px дырки от panel padding-top. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--o-panel);
+  padding: 4px 0 12px;
+  margin: -4px 0 0;
 }
 
 .panel_title {
@@ -61,8 +71,12 @@
   padding: 8px 10px;
   border-bottom: 1px solid var(--o-border);
   text-align: left;
+  /* Sticky — header колонок прилипает к панель_head (которая сама sticky top:0).
+     top:44px = высота panel_head (24px content + 12px padding-bottom + 8px buffer).
+     Если panel_head в screen'е выше — th может частично перекрыться, но
+     z-index:2 panel_head > z-index:1 thead обеспечит правильный порядок. */
   position: sticky;
-  top: 0;
+  top: 44px;
   background: var(--o-panel);
   z-index: 2;
 }
