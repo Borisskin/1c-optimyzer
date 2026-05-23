@@ -51,8 +51,14 @@
   font-family: var(--o-font-mono);
 }
 
+/* НЕ ставим overflow-x: auto — это создаёт scroll context (имплицитно
+   overflow-y: auto по CSS Overflow Module Level 3), и тогда sticky <th>
+   прилипает к верху .table_wrap (зависает посреди таблицы), а не к верху
+   .body. Без overflow таблица растягивает .body — если ширина > viewport,
+   .body скроллится горизонтально (PageHeader/FilterBar остаются на месте,
+   двигается только содержимое body). Sticky panel_head (top:0) и thead
+   (top:44px) при этом работают единым стеком относительно .body. */
 .table_wrap {
-  overflow-x: auto;
   margin-top: 8px;
 }
 
