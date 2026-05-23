@@ -7,6 +7,7 @@ import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
+import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -49,6 +50,8 @@ export function OperationsScreen({ archiveId }: Props) {
     setScreen("anatomy");
   };
 
+  const { panelHeadRef, panelStyle } = useStickyTableHead<HTMLDivElement>();
+
   return (
     <ViewShell
       breadcrumbs={["Анализ", "Бизнес-операции"]}
@@ -62,8 +65,8 @@ export function OperationsScreen({ archiveId }: Props) {
         />
       }
     >
-      <div className={vshellStyles.panel}>
-        <div className={vshellStyles.panel_head}>
+      <div className={vshellStyles.panel} style={panelStyle}>
+        <div ref={panelHeadRef} className={vshellStyles.panel_head}>
           <LimitSelector
             value={limit}
             onChange={setLimit}

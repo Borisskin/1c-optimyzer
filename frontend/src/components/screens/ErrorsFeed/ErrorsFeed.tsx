@@ -4,6 +4,7 @@ import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { EventTypeFilter } from "@/components/tables/EventTypeFilter";
@@ -91,6 +92,8 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
         : "все типы"
       : [...selectedTypes].join(" / ");
 
+  const { panelHeadRef, panelStyle } = useStickyTableHead<HTMLDivElement>();
+
   return (
     <ViewShell
       breadcrumbs={["Анализ", "События ТЖ"]}
@@ -104,8 +107,8 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
         />
       }
     >
-      <div className={vshellStyles.panel}>
-        <div className={vshellStyles.panel_head}>
+      <div className={vshellStyles.panel} style={panelStyle}>
+        <div ref={panelHeadRef} className={vshellStyles.panel_head}>
           <LimitSelector
             value={limit}
             onChange={setLimit}

@@ -5,6 +5,7 @@ import { ViewShell } from "@/components/views/ViewShell";
 import { ExplainerCard } from "@/components/explainer/ExplainerCard";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
+import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { useAppStore } from "@/store/appStore";
 import { formatSql } from "@/utils/sqlFormat";
 import vshellStyles from "@/components/views/ViewShell.module.css";
@@ -277,9 +278,11 @@ function SubTableRender({
     });
   };
 
+  const { panelHeadRef, panelStyle } = useStickyTableHead<HTMLDivElement>();
+
   return (
-    <>
-      <div className={vshellStyles.panel_head}>
+    <div style={panelStyle}>
+      <div ref={panelHeadRef} className={vshellStyles.panel_head}>
         {title && <div className={vshellStyles.panel_title}>{title}</div>}
         {st.rows.length > 0 && (
           <TableFilter
@@ -344,7 +347,7 @@ function SubTableRender({
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -399,10 +402,11 @@ function BreakdownTable({
     [breakdown, totalDurationMs],
   );
   const table = useTableState({ rows, columns, defaultSortKey: "total_duration_ms", defaultSortDir: "desc" });
+  const { panelHeadRef, panelStyle } = useStickyTableHead<HTMLDivElement>();
 
   return (
-    <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-      <div className={vshellStyles.panel_head}>
+    <div className={vshellStyles.panel} style={{ marginTop: 12, ...panelStyle }}>
+      <div ref={panelHeadRef} className={vshellStyles.panel_head}>
         <div className={vshellStyles.panel_title}>Распределение по типам событий</div>
         {breakdown.length > 0 && (
           <TableFilter

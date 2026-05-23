@@ -4,6 +4,7 @@ import { backend } from "@/api/backend";
 import { ExportMenu } from "@/components/exports/ExportMenu";
 import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
+import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
@@ -49,6 +50,8 @@ export function SlowQueriesScreen({ archiveId }: Props) {
     });
   };
 
+  const { panelHeadRef, panelStyle } = useStickyTableHead<HTMLDivElement>();
+
   return (
     <ViewShell
       breadcrumbs={["Анализ", "Медленные запросы"]}
@@ -62,8 +65,8 @@ export function SlowQueriesScreen({ archiveId }: Props) {
         />
       }
     >
-      <div className={vshellStyles.panel}>
-        <div className={vshellStyles.panel_head}>
+      <div className={vshellStyles.panel} style={panelStyle}>
+        <div ref={panelHeadRef} className={vshellStyles.panel_head}>
           <LimitSelector
             value={limit}
             onChange={setLimit}

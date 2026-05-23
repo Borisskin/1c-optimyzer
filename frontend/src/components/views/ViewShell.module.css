@@ -26,13 +26,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* НЕ sticky. Раньше было sticky top:0 + thead sticky top:44px, но в
-     ErrorsFeed panel_head по высоте больше 44px (LimitSelector +
-     event-type filter + context filter + поиск в одну строку), и thead
-     приклеивался ВНУТРИ panel_head — данные скроллились "сквозь" thead.
-     Решение: обычный заголовок в потоке (сергей-feedback "ОБЫЧНЫЕ
-     ЗАГОЛОВКИ"). При прокрутке всё уезжает вместе. */
-  padding-bottom: 12px;
+  /* Excel-style sticky: панель всегда сверху при скролле строк, фон
+     непрозрачный (#ffffff), без щели между panel_head и thead.
+     Щель раньше была из-за фиксированного top:44px у thead — реальная
+     высота panel_head отличалась, между ними проступали скроллящиеся
+     строки. Теперь useStickyTableHead через ResizeObserver измеряет
+     высоту и кладёт её в CSS-переменную --sticky-head-h на .panel —
+     thead читает её ниже. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--o-panel);
+  padding-bottom: 8px;
 }
 
 .panel_title {
@@ -49,15 +54,19 @@
 
 /* Без overflow — таблица растягивает .body. Если ширина > viewport,
    .body скроллится горизонтально (PageHeader/FilterBar остаются на
-   месте, двигается только содержимое body). Sticky thead убран — см.
-   panel_head выше про reasoning. */
+   месте, двигается только содержимое body). */
 .table_wrap {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .table {
   width: 100%;
-  border-collapse: collapse;
+  /* separate + box-shadow (а не border-collapse:collapse + border-bottom)
+     потому что border у sticky <th> в Chrome не "приклеивается" к ячейке
+     при скролле — рисуется box-shadow внутри, который двигается со
+     sticky-элементом без артефактов. */
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 11.5px;
 }
 
@@ -68,9 +77,16 @@
   letter-spacing: 0.04em;
   font-size: 10.5px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--o-border);
   text-align: left;
+  /* Sticky — прилипает к низу panel_head. --sticky-head-h ставит хук
+     useStickyTableHead на родителе .panel; fallback 44px на первый кадр
+     до измерения. */
+  position: sticky;
+  top: var(--sticky-head-h, 44px);
   background: var(--o-panel);
+  z-index: 2;
+  /* Box-shadow заменяет border-bottom — sticky-safe (см. .table выше). */
+  box-shadow: inset 0 -1px 0 var(--o-border);
 }
 
 .table td {
