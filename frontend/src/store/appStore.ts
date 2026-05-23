@@ -120,7 +120,11 @@ interface AppStore {
 let _toastCounter = 0;
 
 export const useAppStore = create<AppStore>((set) => ({
-  currentScreen: "sql",
+  // Стартовый экран при первом запуске — «Бизнес-операции» (Sales build):
+  // юзер сразу видит топ-проблем архива без необходимости куда-то кликать.
+  // Раньше стартовый был «sql» — открывался пустой SQL-терминал, что давало
+  // ложное впечатление «это инструмент для тех кто пишет SQL руками».
+  currentScreen: "operations",
   setScreen: (s) => set({ currentScreen: s }),
 
   sidebarOpen: false,
