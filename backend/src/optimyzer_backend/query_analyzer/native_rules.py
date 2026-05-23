@@ -39,12 +39,19 @@ _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 class NativeRule:
     id: str
     severity: str  # "critical" | "warning" | "info"
-    category: str  # "performance" | "correctness" | "style"
+    category: str  # "performance" | "correctness" | "style" | "semantic"
     patterns: list[re.Pattern[str]] = field(default_factory=list)
     title: str = ""
     body: str = ""
     tags: list[str] = field(default_factory=list)
     source_file: str = ""
+    # Sprint 5 — semantic rules: список требований к контексту.
+    # Если содержит "configuration_metadata" — rule запустится только если
+    # подключён ConfigurationMetadataStore.
+    requires: list[str] = field(default_factory=list)
+    # Sprint 5 — имя функции-чекера в semantic_checks.SEMANTIC_CHECKS.
+    # None → обычное regex-правило (Sprint 4 поведение).
+    check_name: str | None = None
 
 
 @dataclass
@@ -133,6 +140,12 @@ def _parse_rule_file(path: Path) -> NativeRule | None:
     tags_raw = frontmatter.get("tags") or []
     tags = [str(t) for t in tags_raw] if isinstance(tags_raw, list) else []
 
+    requires_raw = frontmatter.get("requires") or []
+    requires = [str(r) for r in requires_raw] if isinstance(requires_raw, list) else []
+
+    check_name_raw = frontmatter.get("check_name")
+    check_name = str(check_name_raw) if check_name_raw else None
+
     return NativeRule(
         id=str(rule_id),
         severity=str(frontmatter.get("severity", "warning")),
@@ -142,11 +155,22 @@ def _parse_rule_file(path: Path) -> NativeRule | None:
         body=body,
         tags=tags,
         source_file=str(path),
+        requires=requires,
+        check_name=check_name,
     )
 
 
-def analyze(query_text: str, rules: list[NativeRule]) -> list[Finding]:
+def analyze(
+    query_text: str,
+    rules: list[NativeRule],
+    config_store: "object | None" = None,  # ConfigurationMetadataStore | None
+) -> list[Finding]:
     """Прогоняет query_text через каждое правило, возвращает findings.
+
+    Sprint 5: rule с requires=[configuration_metadata] запускается только
+    если передан config_store И он is_indexed(). Иначе — silent skip
+    (не false positive, не warning). Rule с category=="semantic" вызывает
+    semantic check вместо regex matching.
 
     Дедупликация одного и того же rule на одинаковом range — на стороне
     aggregator, а не здесь.
@@ -155,7 +179,30 @@ def analyze(query_text: str, rules: list[NativeRule]) -> list[Finding]:
     if not query_text:
         return findings
 
+    config_available = config_store is not None and getattr(
+        config_store, "is_indexed", lambda: False
+    )()
+
+    # Импорт здесь — чтобы избежать circular import (semantic_checks
+    # может импортировать analyze для подвыборки нативных rules).
+    from optimyzer_backend.query_analyzer.semantic_checks import (
+        run_semantic_check,
+    )
+
     for rule in rules:
+        # Skip rules чьи requires не выполнены (Sprint 5: silent skip)
+        if "configuration_metadata" in rule.requires and not config_available:
+            continue
+
+        if rule.category == "semantic":
+            if rule.check_name is None:
+                continue  # некорректное rule, пропускаем
+            findings.extend(
+                run_semantic_check(query_text, rule, config_store)
+            )
+            continue
+
+        # Обычные regex rules (Sprint 4 поведение)
         for pattern in rule.patterns:
             for m in pattern.finditer(query_text):
                 ls, cs = _offset_to_line_col(query_text, m.start())

@@ -137,6 +137,15 @@ def _parse_scalar(value: str) -> Any:
         return True
     if s.lower() in ("false", "no"):
         return False
+    # Inline list [a, b, c] — Sprint 5: парсим как list[scalar].
+    # Поддерживает строки (с/без кавычек), числа, bool.
+    if s.startswith("[") and s.endswith("]"):
+        inner = s[1:-1].strip()
+        if not inner:
+            return []
+        # Простой split по запятым (не учитывает вложенные [] — для нас этого достаточно).
+        items = [item.strip() for item in inner.split(",")]
+        return [_parse_scalar(item) for item in items if item]
     # Quoted string
     if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
         return s[1:-1]
