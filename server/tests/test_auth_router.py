@@ -38,7 +38,7 @@ def test_yandex_callback_full_flow(client):
     )
 
     resp = client.get(
-        "/v1/auth/yandex/callback",
+        "/success",
         params={"code": "the-code", "state": state},
         follow_redirects=False,
     )
@@ -52,7 +52,7 @@ def test_yandex_callback_full_flow(client):
 def test_yandex_callback_rejects_state_mismatch(client):
     client.get("/v1/auth/yandex/login")  # sets state cookie
     resp = client.get(
-        "/v1/auth/yandex/callback",
+        "/success",
         params={"code": "x", "state": "bogus"},
         follow_redirects=False,
     )
@@ -92,7 +92,7 @@ def test_full_login_me_logout_flow(client):
         ),
     )
     cb = client.get(
-        "/v1/auth/yandex/callback",
+        "/success",
         params={"code": "c", "state": state},
         follow_redirects=False,
     )

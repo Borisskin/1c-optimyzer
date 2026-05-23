@@ -55,7 +55,10 @@ class Settings(BaseSettings):
     # --- Yandex OAuth ---
     yandex_client_id: str = ""
     yandex_client_secret: str = ""
-    yandex_redirect_uri: str = "http://127.0.0.1:5173/oauth/callback"
+    # Должно СОВПАДАТЬ с тем что зарегистрировано в oauth.yandex.ru/client.
+    # У Сергея — http://localhost/success (порт 80; см. routers/auth.py
+    # OAUTH_LANDING_PATH = "/success" + nginx/Apache proxy).
+    yandex_redirect_uri: str = "http://localhost/success"
     yandex_oauth_authorize_url: str = "https://oauth.yandex.ru/authorize"
     yandex_oauth_token_url: str = "https://oauth.yandex.ru/token"
     yandex_user_info_url: str = "https://login.yandex.ru/info"

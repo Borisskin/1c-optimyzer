@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
 
     # Роутеры.
     app.include_router(auth.router)
+    app.include_router(auth.oauth_landing_router)  # /success — Yandex OAuth callback
     app.include_router(subscriptions.router)
     app.include_router(credits.router)
     app.include_router(devices.router)

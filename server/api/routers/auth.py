@@ -30,6 +30,15 @@ from services.yandex_oauth import (
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
+# Отдельный router без префикса — для OAuth landing-page'ей которые Yandex
+# редиректит на «голый» путь (`http://localhost/success`), а не на API endpoint.
+oauth_landing_router = APIRouter(tags=["auth"])
+
+# Путь должен СОВПАДАТЬ с redirect_uri в .env и в настройках Yandex OAuth app.
+# У Сергея: http://localhost/success → этот хэндлер (через Apache/nginx proxy
+# на 127.0.0.1:8001/success).
+OAUTH_LANDING_PATH = "/success"
+
 
 # --- Cookies helpers ---
 
@@ -85,9 +94,9 @@ def yandex_login(response: Response) -> YandexLoginResponse:
     return YandexLoginResponse(authorize_url=authorize_url, state=state)
 
 
-@router.get(
-    "/yandex/callback",
-    summary="Callback от Yandex — обмен code на token, выпуск JWT, set-cookie",
+@oauth_landing_router.get(
+    OAUTH_LANDING_PATH,
+    summary="Yandex OAuth callback landing — обмен code на token, set-cookie, redirect в cabinet",
 )
 async def yandex_callback(
     request: Request,
@@ -97,7 +106,13 @@ async def yandex_callback(
     error: str | None = None,
     cookie_state: Annotated[str | None, Cookie(alias=STATE_COOKIE)] = None,
 ) -> Response:
-    """Принимает redirect от oauth.yandex.ru, возвращает редирект на cabinet."""
+    """Принимает redirect от oauth.yandex.ru на `/success`, возвращает редирект на cabinet.
+
+    Yandex отправляет юзера на YANDEX_REDIRECT_URI (`http://localhost/success` в
+    дев-сетапе Сергея) с параметрами `?code=...&state=...`. Apache/nginx на :80
+    проксирует на наш FastAPI :8001, мы тут обменяем code на token, выпустим
+    JWT, поставим cookies, и редирект в cabinet.
+    """
     if error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Yandex denied: {error}")
     if not code:
