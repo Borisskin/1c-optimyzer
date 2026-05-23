@@ -10,6 +10,8 @@ import { TableFilter } from "@/components/tables/TableFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import { formatSql } from "@/utils/sqlFormat";
+import { isOpaqueSql } from "@/utils/sqlOpaque";
+import { OpaqueSqlHint } from "@/components/primitives/OpaqueSqlHint";
 import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -100,7 +102,7 @@ export function SlowQueriesScreen({ archiveId }: Props) {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th {...table.headerProps("query")}>Запрос (нормализованный)</th>
+                  <th {...table.headerProps("query")}>Запрос</th>
                   <th {...table.headerProps("calls")}>Calls</th>
                   <th {...table.headerProps("total_duration_ms")}>Σ ms</th>
                   <th {...table.headerProps("avg_duration_ms")}>avg ms</th>
@@ -113,6 +115,7 @@ export function SlowQueriesScreen({ archiveId }: Props) {
                   const queryFull = String(row[idx["query"]] ?? "");
                   const isExpandable = queryFull.length > 80;
                   const isExpanded = expanded.has(ri);
+                  const opaque = isOpaqueSql(queryFull);
                   return (
                     <Fragment key={ri}>
                       <tr
@@ -123,6 +126,7 @@ export function SlowQueriesScreen({ archiveId }: Props) {
                         <td className={vshellStyles.mono}>{ri + 1}</td>
                         <td>
                           {isExpandable ? queryFull.slice(0, 80) + "…" : queryFull}
+                          {opaque && <OpaqueSqlHint />}
                         </td>
                         <td className={vshellStyles.mono}>{fmt(row[idx["calls"]])}</td>
                         <td className={vshellStyles.mono}>{fmtMs(row[idx["total_duration_ms"]])}</td>

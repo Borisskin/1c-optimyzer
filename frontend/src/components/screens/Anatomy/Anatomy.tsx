@@ -8,6 +8,8 @@ import { TableFilter } from "@/components/tables/TableFilter";
 import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { useAppStore } from "@/store/appStore";
 import { formatSql } from "@/utils/sqlFormat";
+import { isOpaqueSql } from "@/utils/sqlOpaque";
+import { OpaqueSqlHint } from "@/components/primitives/OpaqueSqlHint";
 import { EmptyArchiveHint } from "@/components/views/EmptyArchiveHint";
 import vshellStyles from "@/components/views/ViewShell.module.css";
 
@@ -325,9 +327,14 @@ function SubTableRender({
                         isTruncCell && raw.length > 100
                           ? raw.slice(0, 100) + "…"
                           : raw;
+                      // Hint показываем только в колонке query когда это
+                      // непрозрачная обёртка sp_executesql без значений.
+                      const showOpaqueHint =
+                        isTruncCell && truncateCol === "query" && isOpaqueSql(raw);
                       return (
                         <td key={ci} className={vshellStyles.mono}>
                           {display}
+                          {showOpaqueHint && <OpaqueSqlHint />}
                         </td>
                       );
                     })}
