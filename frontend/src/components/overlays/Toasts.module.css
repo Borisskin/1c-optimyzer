@@ -22,10 +22,36 @@
   animation: slide-in-right 0.18s ease-out;
   cursor: pointer;
   transition: opacity 0.12s, transform 0.12s;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 .toast:hover {
   opacity: 0.75;
   transform: translateX(-2px);
+}
+
+.toast_text {
+  flex: 1;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+/* Err-тосты не автодизмиссятся — показываем явный «×» справа, чтобы
+   юзер сразу видел что это закрываемая ошибка, а не silent-warning. */
+.toast_dismiss_hint {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  opacity: 0.6;
+  margin-top: 1px;
+}
+.toast:hover .toast_dismiss_hint {
+  opacity: 1;
 }
 
 .tone_ok   { border-color: var(--o-ok);   background: var(--o-ok-bg);   color: var(--o-ok); }
