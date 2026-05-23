@@ -109,6 +109,7 @@ def view_errors_feed(
     filters: dict[str, Any] | None = None,
     limit: int = 500,
     event_types: list[str] | None = None,
+    context_presence: str | None = None,
 ) -> dict[str, Any]:
     return _wrap(
         archive_id,
@@ -117,6 +118,7 @@ def view_errors_feed(
             _filters_from_params(filters),
             limit=limit,
             event_types=event_types,
+            context_presence=context_presence,
         ),
     )
 

@@ -117,11 +117,6 @@ export function SlowQueriesScreen({ archiveId }: Props) {
                       >
                         <td className={vshellStyles.mono}>{ri + 1}</td>
                         <td>
-                          {isExpandable && (
-                            <span style={expandToggleStyle} aria-hidden>
-                              {isExpanded ? "▼" : "▶"}{" "}
-                            </span>
-                          )}
                           {isExpandable ? queryFull.slice(0, 80) + "…" : queryFull}
                         </td>
                         <td className={vshellStyles.mono}>{fmt(row[idx["calls"]])}</td>
@@ -163,12 +158,6 @@ function fmtMs(v: unknown): string {
   if (v >= 1000) return (v / 1000).toFixed(2) + " с";
   return v.toFixed(1);
 }
-
-const expandToggleStyle: CSSProperties = {
-  color: "var(--o-text-3)",
-  fontSize: 10,
-  userSelect: "none",
-};
 
 const expandedCellStyle: CSSProperties = {
   background: "var(--o-subtle)",

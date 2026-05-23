@@ -274,6 +274,7 @@ def errors_feed(
     *,
     limit: int = 500,
     event_types: list[str] | None = None,
+    context_presence: str | None = None,
 ) -> dict[str, Any]:
     """Лента всех событий ТЖ, последние сначала.
 
@@ -282,6 +283,13 @@ def errors_feed(
     в архиве из 100K событий) может полностью выпасть из top-N по `ts DESC`,
     если он расположен в начале архива по времени. Server-side фильтр
     гарантирует, что 1-я TLOCK строка попадёт в результат.
+
+    `context_presence` — фильтр по наличию контекста: "with" (только с
+    непустым context), "without" (только без context), None/"any" (без
+    фильтра). Тоже server-side по той же причине: при limit=500 первые
+    500 событий могут быть SCALL/CALL без контекста (служебные), а
+    DBMSSQL с контекстом идут позже по ts DESC — без server-side фильтра
+    «есть» вернёт пусто.
 
     Возвращаемое поле `event_types` (counts по архиву) считается БЕЗ применения
     `event_types`-фильтра — чтобы UI мог переключать выбор без потери видимых
@@ -295,6 +303,16 @@ def errors_feed(
         clause = f"event_type IN ({placeholders})"
         rows_where = f"{base_where} AND {clause}" if base_where else clause
         rows_params.extend(event_types)
+    if context_presence == "with":
+        # TRIM(context) — чтобы строки " " или "\n" не засчитывались как
+        # «есть». Frontend ContextFilter использует ту же семантику.
+        clause = "context IS NOT NULL AND TRIM(context) <> ''"
+        rows_where = f"{rows_where} AND {clause}" if rows_where else clause
+    elif context_presence == "without":
+        # OR ниже по приоритету чем AND — скобки обязательны если выше
+        # уже есть AND-условия (event_type IN (...)).
+        clause = "(context IS NULL OR TRIM(context) = '')"
+        rows_where = f"{rows_where} AND {clause}" if rows_where else clause
 
     sql = f"""
         SELECT

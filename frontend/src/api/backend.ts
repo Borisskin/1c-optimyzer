@@ -499,12 +499,14 @@ export const backend = {
     filters?: ViewFiltersDto,
     limit = 500,
     event_types?: string[],
+    context_presence?: "with" | "without",
   ) =>
     rpc<ViewResult>("view_errors_feed", {
       archive_id,
       filters,
       limit,
       ...(event_types && event_types.length > 0 ? { event_types } : {}),
+      ...(context_presence ? { context_presence } : {}),
     }),
   viewActivityHeatmap: (archive_id: string, filters?: ViewFiltersDto, metric = "count") =>
     rpc<ViewResult>("view_activity_heatmap", { archive_id, filters, metric }),

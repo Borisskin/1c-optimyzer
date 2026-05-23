@@ -26,12 +26,23 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
   // тип (например, 1 TLOCK в архиве из 100K) может полностью выпасть из top-N
   // по ts DESC, если расположен в начале архива. Передаём selectedTypes в RPC.
   const selectedTypesArr = useMemo(() => [...selectedTypes], [selectedTypes]);
+  // Фильтр по наличию context — тоже server-side. Без этого «есть» при
+  // limit=500 часто давал пусто: первые 500 ts DESC — обычно SCALL/CALL
+  // без контекста, а DBMSSQL с контекстом сидит дальше по архиву.
+  const contextPresenceParam: "with" | "without" | undefined =
+    contextPresence === "any" ? undefined : contextPresence;
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewErrorsFeed(archiveId, filtersToDto(filters), limit, selectedTypesArr)
+        ? backend.viewErrorsFeed(
+            archiveId,
+            filtersToDto(filters),
+            limit,
+            selectedTypesArr,
+            contextPresenceParam,
+          )
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, filters, limit, selectedTypesArr.join("|")],
+    [archiveId, filters, limit, selectedTypesArr.join("|"), contextPresenceParam],
   );
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
@@ -54,30 +65,20 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
       });
   }, [data?.event_types]);
 
-  // Sprint 5 hotfix: фильтр по наличию context — client-side, потому
-  // что server-side rows уже отдаёт всё что нужно. ContextPresenceFilter
-  // дополняет существующий TableFilter (substring search) — оба работают
-  // вместе. Делаем над raw rows ПЕРЕД useTableState, чтобы счётчик
-  // visible/total в TableFilter был корректным относительно «отфильтрованного
-  // по контексту» подмножества.
+  // Индекс колонки context — нужен только для условного показа ContextFilter
+  // (если бэкенд по какой-то причине не вернул колонку — фильтр скрываем).
+  // Сама фильтрация теперь server-side (см. contextPresenceParam выше).
   const ctxIdx = useMemo(() => {
     const cols = data?.columns ?? [];
     return cols.findIndex((c) => c.name === "context");
   }, [data?.columns]);
 
-  const filteredByContext = useMemo(() => {
-    const rows = data?.rows ?? [];
-    if (contextPresence === "any" || ctxIdx < 0) return rows;
-    return rows.filter((row) => {
-      const v = row[ctxIdx];
-      const hasContext = v !== null && v !== undefined && String(v).trim().length > 0;
-      return contextPresence === "with" ? hasContext : !hasContext;
-    });
-  }, [data?.rows, contextPresence, ctxIdx]);
-
-  // useTableState — substring filter + sort внутри уже-context-filtered rows
+  // useTableState — substring filter + sort внутри уже отфильтрованных бэком
+  // строк. Client-side фильтр по контексту убран (был у первых 500 загруженных
+  // строк, что давало пусто на real-data — DBMSSQL с контекстом могут быть
+  // за пределами top-500 по ts DESC).
   const table = useTableState({
-    rows: filteredByContext,
+    rows: data?.rows ?? [],
     columns: data?.columns ?? [],
     defaultSortKey: "ts",
     defaultSortDir: "desc",
@@ -210,20 +211,22 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
         )}
         {archiveId && !loading && !error && (!data?.rows || data.rows.length === 0) && (
           <div className={vshellStyles.empty}>
-            {selectedTypes.size > 0
-              ? `Нет событий выбранных типов (${[...selectedTypes].join(", ")})`
-              : "Нет событий в архиве"}
+            {contextPresence === "with"
+              ? "В архиве нет ни одного события с заполненным контекстом" +
+                (selectedTypes.size > 0 ? ` (среди типов: ${[...selectedTypes].join(", ")})` : "")
+              : contextPresence === "without"
+                ? "В архиве нет ни одного события без контекста" +
+                  (selectedTypes.size > 0 ? ` (среди типов: ${[...selectedTypes].join(", ")})` : "")
+                : selectedTypes.size > 0
+                  ? `Нет событий выбранных типов (${[...selectedTypes].join(", ")})`
+                  : "Нет событий в архиве"}
           </div>
         )}
         {archiveId && !loading && !error && (data?.rows?.length ?? 0) > 0 && table.rows.length === 0 && (
           <div className={vshellStyles.empty}>
             {table.filter
               ? `Фильтр «${table.filter}» не дал совпадений`
-              : contextPresence === "with"
-                ? "Среди загруженных событий нет ни одного с контекстом"
-                : contextPresence === "without"
-                  ? "Среди загруженных событий нет ни одного без контекста"
-                  : "Нет совпадений"}
+              : "Нет совпадений"}
           </div>
         )}
       </div>
