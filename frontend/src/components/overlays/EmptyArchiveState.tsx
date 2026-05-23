@@ -1,4 +1,5 @@
 import { t } from "@/i18n/ru";
+import { docsUrl } from "@/api/cloud";
 
 interface Props {
   onLoadArchive: () => void;
@@ -24,7 +25,7 @@ export function EmptyArchiveState({ onLoadArchive }: Props) {
             {t.onboarding.empty.loadBtn}
           </button>
           <a
-            href="https://optimyzer.pro/docs/technical/configuring-tj.html"
+            href={docsUrl("/technical/configuring-tj.html")}
             target="_blank"
             rel="noreferrer noopener"
             style={secondaryBtnStyle}

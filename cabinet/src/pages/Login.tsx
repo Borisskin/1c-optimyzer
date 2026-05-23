@@ -79,7 +79,14 @@ export function Login() {
 
         <p className="login__footnote">
           Нажимая «Войти через Yandex», вы соглашаетесь с{" "}
-          <a href="https://optimyzer.pro/docs/billing/payment-methods" target="_blank" rel="noreferrer">
+          <a
+            href={
+              (import.meta.env.VITE_LANDING_URL || "http://localhost:8000") +
+              "/docs/billing/payment-methods"
+            }
+            target="_blank"
+            rel="noreferrer"
+          >
             условиями использования
           </a>
           .

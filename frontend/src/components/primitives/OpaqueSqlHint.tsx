@@ -5,13 +5,12 @@
  */
 
 import type { CSSProperties } from "react";
-
-const DOCS_URL = "https://optimyzer.pro/docs/technical/configuring-tj.html";
+import { docsUrl } from "@/api/cloud";
 
 export function OpaqueSqlHint() {
   return (
     <a
-      href={DOCS_URL}
+      href={docsUrl("/technical/configuring-tj.html")}
       target="_blank"
       rel="noreferrer noopener"
       title="Параметры запроса не записаны в ТЖ платформой 1С (JDBC PreparedStatement). Кликни — как настроить logcfg.xml."

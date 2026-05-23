@@ -225,9 +225,19 @@ export function cabinetUrl(path = "/"): string {
   return `${base}${path}`;
 }
 
-export function pricingUrl(): string {
+function landingBase(): string {
+  // Локальный fallback — landing на :8000 (см. QUICKSTART.md §5).
+  // В проде задаётся через VITE_LANDING_URL=https://optimyzer.pro при build.
   const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
     ?.VITE_LANDING_URL;
-  const base = (env && env.replace(/\/+$/, "")) || "https://optimyzer.pro";
-  return `${base}/#pricing`;
+  return (env && env.replace(/\/+$/, "")) || "http://localhost:8000";
+}
+
+export function pricingUrl(): string {
+  return `${landingBase()}/#pricing`;
+}
+
+/** Ссылка на статью в docs/ лендинга — например docsUrl("/technical/configuring-tj.html"). */
+export function docsUrl(path: string): string {
+  return `${landingBase()}/docs${path.startsWith("/") ? path : "/" + path}`;
 }
