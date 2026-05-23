@@ -1,5 +1,12 @@
 import { create } from "zustand";
-import type { ArchiveState, ProgressEvent, QueryResult, StorageStats, ViewFiltersDto } from "@/api/backend";
+import type {
+  ArchiveState,
+  ConfigurationStatusResult,
+  ProgressEvent,
+  QueryResult,
+  StorageStats,
+  ViewFiltersDto,
+} from "@/api/backend";
 
 export type ScreenId =
   | "sql"
@@ -101,6 +108,10 @@ interface AppStore {
   selectedDeadlockEventId: number | null;
   setSelectedDeadlockEventId: (id: number | null) => void;
 
+  // Sprint 5 — configuration metadata state (XML-выгрузка 1С)
+  configurationStatus: ConfigurationStatusResult | null;
+  setConfigurationStatus: (s: ConfigurationStatusResult | null) => void;
+
   toasts: ToastMessage[];
   pushToast: (text: string, tone?: ToastMessage["tone"]) => void;
   dismissToast: (id: number) => void;
@@ -140,6 +151,9 @@ export const useAppStore = create<AppStore>((set) => ({
   setSelectedOperation: (op) => set({ selectedOperation: op }),
   selectedDeadlockEventId: null,
   setSelectedDeadlockEventId: (id) => set({ selectedDeadlockEventId: id }),
+
+  configurationStatus: null,
+  setConfigurationStatus: (s) => set({ configurationStatus: s }),
 
   toasts: [],
   pushToast: (text, tone = "info") =>

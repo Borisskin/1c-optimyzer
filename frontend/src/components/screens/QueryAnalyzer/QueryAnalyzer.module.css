@@ -28,6 +28,13 @@
   max-width: 720px;
 }
 
+.headerRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .statusBlock {
   display: flex;
   flex-direction: column;

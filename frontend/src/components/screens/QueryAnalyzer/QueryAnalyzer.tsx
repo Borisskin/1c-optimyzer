@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { backend, type QAAnalyzeResult, type QAFinding, type QARewriteResult, type QAStatus } from "@/api/backend";
 import { t, format } from "@/i18n/ru";
+import { useAppStore } from "@/store/appStore";
 import { QueryEditor, type QueryEditorHandle } from "./QueryEditor";
 import { FindingsList } from "./FindingsList";
 import { RewriteDiff } from "./RewriteDiff";
+import { ConfigurationBadge } from "./ConfigurationBadge";
+import { ConfigurationDialog } from "./ConfigurationDialog";
 import styles from "./QueryAnalyzer.module.css";
 
 export function QueryAnalyzerScreen() {
@@ -15,11 +18,23 @@ export function QueryAnalyzerScreen() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFinding, setSelectedFinding] = useState<QAFinding | null>(null);
   const [status, setStatus] = useState<QAStatus | null>(null);
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const editorRef = useRef<QueryEditorHandle | null>(null);
+  const configStatus = useAppStore((s) => s.configurationStatus);
 
-  useEffect(() => {
+  const refreshAnalyzerStatus = useCallback(() => {
     backend.queryAnalyzerStatus().then(setStatus).catch(() => setStatus(null));
   }, []);
+
+  useEffect(() => {
+    refreshAnalyzerStatus();
+  }, [refreshAnalyzerStatus]);
+
+  // Перезагружаем status анализатора когда меняется подключение конфигурации
+  // (configuration_connected живёт в QAStatus, нужен для display).
+  useEffect(() => {
+    refreshAnalyzerStatus();
+  }, [configStatus, refreshAnalyzerStatus]);
 
   const onFindingSelect = useCallback((f: QAFinding) => {
     setSelectedFinding(f);
@@ -80,22 +95,22 @@ export function QueryAnalyzerScreen() {
           <h1 className={styles.title}>{t.queryAnalyzer.pageTitle}</h1>
           <div className={styles.subtitle}>{t.queryAnalyzer.description}</div>
         </div>
-        {status && (
-          <div className={styles.statusBlock}>
-            <div className={styles.statusLine}>
-              {format(t.queryAnalyzer.rulesLoaded, { count: status.native_rules_count })}
-            </div>
-            {!aiEnabled && (
-              <div className={styles.statusWarn}>
-                {t.queryAnalyzer.rewriteAiNotConfigured}
+        <div className={styles.headerRight}>
+          <ConfigurationBadge onClick={() => setConfigDialogOpen(true)} />
+          {status && (
+            <div className={styles.statusBlock}>
+              <div className={styles.statusLine}>
+                {format(t.queryAnalyzer.rulesLoaded, { count: status.native_rules_count })}
               </div>
-            )}
-          </div>
-        )}
+              {!aiEnabled && (
+                <div className={styles.statusWarn}>
+                  {t.queryAnalyzer.rewriteAiNotConfigured}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* BSL LS pivot banner — рассказываем юзеру что Sprint 4 native-only */}
-      <div className={styles.banner}>{t.queryAnalyzer.bslLsBanner}</div>
 
       <div className={styles.body}>
         <div className={styles.editorCol}>
@@ -158,6 +173,11 @@ export function QueryAnalyzerScreen() {
           onClose={() => setRewriteResult(null)}
         />
       )}
+
+      <ConfigurationDialog
+        open={configDialogOpen}
+        onClose={() => setConfigDialogOpen(false)}
+      />
     </div>
   );
 }

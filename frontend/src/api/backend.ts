@@ -399,10 +399,47 @@ export interface QARewriteResult {
 export interface QAStatus {
   ok: boolean;
   native_rules_count: number;
+  /** Sprint 5: количество загруженных semantic rules. */
+  semantic_rules_count?: number;
   bsl_ls_available: boolean;
   ai_enabled: boolean;
   model: string | null;
   cache_entries: number;
+  /** Sprint 5: подключена ли XML-выгрузка конфигурации. */
+  configuration_connected?: boolean;
+}
+
+/* ---------------- Sprint 5 — Configuration metadata ---------------- */
+
+/** Описание конфигурации (имя, синоним, поставщик, версия). */
+export interface ConfigurationInfo {
+  name: string;
+  synonym_ru: string;
+  vendor: string;
+  version: string;
+}
+
+/** Ответ configuration.connect / configuration.reindex. */
+export interface ConfigurationConnectResult {
+  ok: boolean;
+  error?: string;
+  status?: "indexed" | "already_indexed";
+  object_count?: number;
+  by_kind?: Record<string, number>;
+  configuration?: ConfigurationInfo;
+  indexed_at?: string;
+  source_path?: string;
+}
+
+/** Ответ configuration.status — два варианта (connected / not connected). */
+export interface ConfigurationStatusResult {
+  ok: boolean;
+  connected: boolean;
+  source_path?: string;
+  indexed_at?: string;
+  object_count?: number;
+  by_kind?: Record<string, number>;
+  configuration?: ConfigurationInfo;
 }
 
 export interface SavedQuery {
@@ -535,6 +572,13 @@ export const backend = {
     force_refresh = false,
   ) => rpc<QARewriteResult>("query_analyzer.rewrite", { query_text, findings, force_refresh }),
   queryAnalyzerStatus: () => rpc<QAStatus>("query_analyzer.status"),
+
+  // Sprint 5 — Configuration metadata
+  configurationConnect: (path: string) =>
+    rpc<ConfigurationConnectResult>("configuration.connect", { path }),
+  configurationStatus: () => rpc<ConfigurationStatusResult>("configuration.status"),
+  configurationDisconnect: () => rpc<{ ok: boolean }>("configuration.disconnect"),
+  configurationReindex: () => rpc<ConfigurationConnectResult>("configuration.reindex"),
   queryAnalyzerReloadRules: () =>
     rpc<{ ok: boolean; rules_count: number }>("query_analyzer.reload_rules"),
 
