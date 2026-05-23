@@ -407,3 +407,107 @@ Universal STOP RULES (копируются дословно в каждый prom
 
 **Consequences.** + Каждый engine оптимизирован под свою задачу. + Нет coupling — изменения в Sprint 5+ explainer не ломают query analyzer. + Меньше surface area для bugs. − Минорное дублирование boilerplate (frontmatter parsing, rule loading).
 
+---
+
+## ADR-029 — Configuration metadata persistence в отдельном SQLite файле
+
+**Status:** Accepted (Sprint 5 Phase A)
+
+**Context.** Sprint 5 индексирует XML выгрузку конфигурации 1С — справочники, документы, регистры, реквизиты, измерения. Объём данных: типовая БП 3.0 = 1647 объектов, ~5-10 МБ в SQLite. Нужно где-то хранить так, чтобы (а) индекс не пересчитывался при каждом запуске tool, (б) не путалось с другими persistent данными, (в) можно было удалить без последствий для остального tool'а.
+
+**Решение.** Отдельный SQLite файл `backend/data/config_metadata.db`, **не** объединять с существующим `backend/data/explainer_cache.db` (Sprint 4 query rewriter cache).
+
+Структура схемы:
+- `objects (full_name PK, kind_ru, name, synonym_ru, register_type)`
+- `attributes (object_full_name FK, attribute_kind, section_name, name, type_repr, ord)` — атрибуты + измерения + ресурсы + ts-атрибуты в одной таблице, разделение по `attribute_kind`
+- `tabular_sections (object_full_name FK, name, ord)`
+- `enum_values (object_full_name FK, value_name, ord)`
+- `meta (key PK, value)` — `source_hash` для invalidation, `source_path`, `indexed_at`, `config_name/synonym/vendor/version`, `schema_version`
+
+Hash-based invalidation: при `index_configuration(path)` вычисляется sha256 от (имя + размер + mtime) всех `.xml` файлов в папке. Если хеш совпадает с `meta.source_hash` — return `already_indexed`. Иначе truncate всех таблиц и пере-парсинг.
+
+**Обоснование разделения от `explainer_cache.db`:**
+- Разная семантика: cache есть всегда (даже без подключённой конфигурации), а configuration_metadata подключается опционально.
+- Разные жизненные циклы: cache очищается через UI кнопку «Очистить кеш AI», конфигурация — через `configuration.disconnect`.
+- Разные владельцы: cache принадлежит explainer/, configuration_metadata — новый пакет.
+- Безопасность: пользователь может удалить файл конфигурации не боясь потерять кеш AI ответов.
+
+**Consequences.** + Изоляция доменов. + Можно удалять config_metadata.db не теряя AI cache. + Sprint 6+ может расширить схему (например, добавить таблицы для модулей и SDBL литералов) не трогая explainer. − Два отдельных SQLite файла вместо одного (минорный disk overhead). − В CI / production надо помнить про оба файла при backup.
+
+---
+
+## ADR-030 — Парсинг XML выгрузки только через стандартную Python библиотеку
+
+**Status:** Accepted (Sprint 5 Phase A)
+
+**Context.** Phase 0 discovery показал что формат XML выгрузки 1С — стандартный, с фиксированным набором namespace'ов (`http://v8.1c.ru/8.3/MDClasses`, `http://v8.1c.ru/8.1/data/core`, и т.п.) и единообразной структурой `MetaDataObject/<тип>/Properties` + `ChildObjects`. Возникает вопрос: использовать ли `lxml` / `xmltodict` / другие внешние библиотеки, или хватит `xml.etree.ElementTree`.
+
+**Решение.** Использовать **только `xml.etree.ElementTree`** из стандартной библиотеки Python. Никаких `lxml`, `xmltodict`, `defusedxml` или других зависимостей.
+
+**Обоснование:**
+1. **Меньше зависимостей в installer** — `lxml` тянет libxml2, на Windows может быть проблема с сборкой.
+2. **Скорость достаточна** — на real БП 3.0 (1647 объектов, ~5286 XML файлов) парсинг с ET занимает 10 секунд. Это в 3 раза меньше требования DoD #28 (< 30s).
+3. **Стандартная библиотека стабильна** — ET API не меняется между версиями Python, нет deprecation сюрпризов.
+4. **Безопасность XXE** — выгрузка 1С это **trusted local file** (пришла из Конфигуратора пользователя), а не network input. XXE-атаки не релевантны.
+
+Trade-off: `ET.parse` менее удобен (нужно работать с namespaced tags через `{ns}tag`). Решено через helper `_localname(tag)` который возвращает local name без namespace.
+
+**Consequences.** + Нулевые внешние зависимости. + Гарантированная совместимость с любым Python 3.10+. + Простая сборка. − Чуть более verbose код (но это локализовано в `parser.py`).
+
+---
+
+## ADR-031 — Semantic rules как extension существующего native_rules engine
+
+**Status:** Accepted (Sprint 5 Phase B)
+
+**Context.** Sprint 4 создал `query_analyzer/native_rules.py` с regex-based matcher и `NativeRule` dataclass. Sprint 5 добавляет семантическую валидацию — проверку запроса против структуры конфигурации через `ConfigurationMetadataStore`. Возникает вопрос: делать новый отдельный engine (`SemanticRule` класс + `analyze_semantic`), или расширить existing native engine.
+
+**Решение.** Расширить existing engine. К `NativeRule` добавлены два опциональных поля:
+- `requires: list[str] = []` — список требований к контексту. `["configuration_metadata"]` означает что rule запускается только при подключённом store.
+- `check_name: str | None = None` — имя функции-чекера в `SEMANTIC_CHECKS` registry. `None` → обычное regex-правило (Sprint 4 поведение).
+
+В `analyze(query_text, rules, config_store=None)`:
+- Если rule.requires содержит `"configuration_metadata"` и `config_store=None` или `not is_indexed()` → **silent skip** (не false positive, не warning).
+- Если rule.category == "semantic" → вызывается `run_semantic_check(query_text, rule, store)` который диспатчит в `SEMANTIC_CHECKS[rule.check_name]`.
+- Остальные rules работают как раньше (Sprint 4).
+
+**Обоснование extension vs replacement:**
+1. **Одна точка вызова** — `aggregator.QueryAnalyzer.analyze()` не разрастается на два пути.
+2. **Загрузка через тот же loader** — `load_native_rules()` уже умеет парсить frontmatter с любыми полями (`requires`, `check_name` просто пробрасываются).
+3. **Дедупликация работает одинаково** — `_merge_and_dedupe` не отличает источник.
+4. **Sprint 4 поведение полностью сохранено** — обратной несовместимости нет, все 13 синтаксических rules работают как раньше.
+
+**Silent skip rationale.** Альтернатива была — показывать warning «Не могу проверить, подключите конфигурацию» на каждом запросе если store=None. Решено отказаться: это раздражает пользователя при каждом «Анализировать», навязывает фичу. Вместо этого глобальный badge статуса в UI — discoverable без noise.
+
+**Consequences.** + Минимальное расширение existing code. + Sprint 4 rules не сломаны. + Один engine, один loader, один dispatcher — меньше surface для bugs. + Sprint 6+ может добавить новые categories (например, "performance_semantic") тем же механизмом. − `NativeRule` теперь не строго "native" — имя класса немного misleading, но менять его было бы breaking change.
+
+---
+
+## ADR-032 — Golden test suite формат: plain files (.sdbl + .expected.json)
+
+**Status:** Accepted (Sprint 5 Phase E)
+
+**Context.** Sprint 5 закладывает regression baseline через 30+ эталонных запросов. Нужен формат хранения cases. Варианты:
+1. Pytest classes с inline-строками SDBL и assertions.
+2. Pickle / shelve / другой бинарный формат.
+3. Plain text files: `query.sdbl` + `expected.json` в отдельных папках на каждый case.
+
+**Решение.** Вариант 3 — plain files. Каждый case в отдельной папке вида `tests/golden/queries/{category}/NN_short_name/`:
+- `query.sdbl` — UTF-8 текст реального SDBL запроса
+- `expected.json` — `{"findings": [...], "requires_configuration": bool, "notes": str}`
+
+Runner `test_golden_suite.py` собирает все папки через `_collect_golden_cases()` и параметризует pytest:
+```python
+@pytest.mark.parametrize("category, name, query_file, expected_file", _collect_golden_cases())
+def test_golden_case(...): ...
+```
+
+**Обоснование:**
+1. **Читаемость** — любой человек (даже не разработчик) может открыть `query.sdbl` и сразу понять что тестируется. Pickle / shelve этого не дают.
+2. **Git diff читаемый** — добавление нового case = два новых файла, изменение запроса = понятный textual diff. Pickle блобы не имеют meaningful diff.
+3. **Простота расширения** — добавить case = создать папку. Не нужно править Python код, не нужно понимать pytest fixtures.
+4. **Cross-tool** — кейсы можно открыть в любом IDE / редакторе, использовать grep, копировать в issue tracker.
+5. **Категории как папки** — `positive/`, `negative/`, `edge_cases/`, `semantic/`, `real_world/` (зарезервировано под Sprint 6). Pytest легко фильтрует через id substring.
+
+**Consequences.** + Низкий порог входа для добавления regression case. + Git history meaningful. + Можно поделиться отдельным case (просто папкой). − Чуть больше файлов в репо (70 файлов для 35 cases). − Pytest `_collect_golden_cases()` бежит по файловой системе при каждом collection — но это <50ms на 35 кейсов.
+

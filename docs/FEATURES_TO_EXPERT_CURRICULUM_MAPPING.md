@@ -446,3 +446,34 @@
 
 **Backend tests:** 272 (Sprint 3.5) → 332 (+60 для Query Analyzer + 5 real-data). All passing кроме одного flaky Sprint 3 AI live test (упал по таймауту 15 сек на Claude API call, не регрессия Sprint 4).
 
+---
+
+## Sprint 5 closure update (2026-05-23)
+
+**Что фактически сделано в Sprint 5:**
+
+- ✅ Phase 0 — Discovery формата XML выгрузки конфигурации 1С на real БП 3.0 (1647 объектов) → [CONFIGURATION_XML_FORMAT_STUDY.md](CONFIGURATION_XML_FORMAT_STUDY.md). STOP RULE не сработал (формат стабилен).
+- ✅ Phase A — Backend `configuration_metadata/` пакет: `parser.py` (xml.etree.ElementTree, без lxml — ADR-030) + `store.py` (SQLite индекс в `data/config_metadata.db`, ADR-029) + `api.py` (singleton + env override). 41 unit test.
+- ✅ Phase B — Semantic rules engine как extension `native_rules` (ADR-031): `sdbl_tokenizer.py` (regex extractor), `semantic_checks.py` (9 чекеров в registry), 8 markdown rules в `semantic_rules/`. Silent skip когда config не подключён. 39 unit test.
+- ✅ Phase C — RPC методы `configuration.connect/status/disconnect/reindex` + автоинтеграция в `query_analyzer.analyze`. 20 integration tests.
+- ✅ Phase D — Frontend: `ConfigurationBadge` в шапке Query Analyzer + `ConfigurationDialog` (модал с Tauri folder picker / Reindex / Disconnect) + Zustand store + i18n. TypeScript check clean.
+- ✅ Phase E — Golden test suite (DoD #17/#18 ✓): 30 basic cases (10 positive + 10 negative + 10 edge) + 5 semantic. Параметризованный pytest runner (ADR-032).
+- ❌ Phase F — Real-world запросы из DBMSSQL.Context → **СКИПНУТО** по решению Сергея. Переезжает в Sprint 6 (автоматический поиск SDBL через MCP BSL Atlas вместо manual extraction).
+- ✅ Phase G — Real-data acceptance gates на real БП 3.0: DoD #28 (10.09s < 30s ✓, 1647 ≥ 100 ✓), #29 (object_not_exists на «ТоварыНаСкладах» из УТ), #30 (golden suite ≥ 30 cases), #31 (persistence после restart). DoD #32 — placeholder skip (Sprint 6).
+- ✅ Phase H — ADR-029..032 + CONNECTING_CONFIGURATION.md user guide + обновления FEATURES + CCH parity + SPRINT_5_REPORT + OPUS_HANDOVER_SPRINT_5.
+
+### Прирост покрытия методики 1С:Эксперт (Sprint 4 → Sprint 5):
+
+| Раздел курса | Sprint 4 | Sprint 5 | Δ | Чем покрыли |
+|---|---|---|---|---|
+| **2.13.5 Семантическая валидация запросов** 🆕 (нет аналога в курсе ЦУП) | 0% | **80%** | +80% | 8 semantic rules + ConfigurationMetadataStore |
+| Раздел 7 (Индексы) | 60% | **65%** | +5% | semantic rule `register_dimension_or_field_missing` указывает на «фильтр не по измерению» — это и есть use-case индекса |
+| Раздел 11.3.5 (Разрез пользователи и сеансы) | 30% | **30%** | 0% | Sprint 6 candidate (требует найти модуль по Context, что делает Sprint 6 placeholder API) |
+
+**Общее покрытие:** ~40% (Sprint 4) → **~45%** (Sprint 5), плюс одна **уникальная категория** (2.13.5) которой нет ни у одного конкурента в РФ.
+
+**Backend tests:** 332 (Sprint 4) → **487 passing** (+155 для Sprint 5: 41 metadata + 39 semantic + 20 RPC + 38 golden + 10 acceptance + 7 shared baseline rebalance). 21 skipped (env-gated real-data tests, AI live tests). **DoD #25 (≥420) ✓**.
+
+**Frontend tests:** TypeScript check clean. Manual smoke на real БП 3.0 — отдельной testing instruction в SPRINT_5_REPORT.
+
+
