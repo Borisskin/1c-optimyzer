@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimyzer — Личный кабинет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* ========================================================
+     CABINET LAYOUT
+     ======================================================== */
+
+  body { background: var(--bg-2); }
+
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- SIDEBAR ---------- */
+
+  aside.side {
+    background: var(--bg);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  @media (max-width: 900px) {
+    aside.side {
+      position: fixed; inset: 0 auto 0 0;
+      width: 280px;
+      z-index: 60;
+      transform: translateX(-100%);
+      transition: transform 200ms ease-out;
+      box-shadow: var(--shadow-lg);
+    }
+    aside.side.open { transform: none; }
+  }
+
+  .side-brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 4px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .me {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .me-ava {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: grid; place-items: center;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .me-name { font-weight: 600; font-size: var(--t-sm); line-height: 1.2; }
+  .me-mail { font-size: 12px; color: var(--fg-3); line-height: 1.3; }
+
+  nav.nav-list { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  nav.nav-list a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: var(--t-sm);
+    font-weight: 500;
+    color: var(--fg-2);
+    transition: background 120ms, color 120ms;
+    position: relative;
+  }
+  nav.nav-list a:hover { background: var(--bg-3); color: var(--fg); }
+  nav.nav-list a.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  nav.nav-list a.active::before {
+    content: "";
+    position: absolute;
+    left: -16px; top: 8px; bottom: 8px;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+  }
+  nav.nav-list svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .side-foot {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .side-foot a, .side-foot button {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    font-size: var(--t-sm);
+    color: var(--fg-2);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    text-align: left;
+    width: 100%;
+  }
+  .side-foot a:hover, .side-foot button:hover { background: var(--bg-3); color: var(--fg); }
+
+  /* ---------- MAIN ---------- */
+
+  main.main {
+    padding: 32px 40px 64px;
+    min-width: 0;
+  }
+  @media (max-width: 900px) {
+    main.main { padding: 24px 16px 48px; }
+  }
+
+  .page-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .page-head h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.015em; margin: 0; }
+
+  .menu-toggle {
+    display: none;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 8px;
+    border-radius: 8px;
+  }
+  @media (max-width: 900px) { .menu-toggle { display: inline-flex; } }
+
+  /* ---------- Hero / status card ---------- */
+
+  .status-card {
+    background: linear-gradient(135deg, #E5F7F7 0%, #ECF8F8 100%);
+    border: 1px solid #B8E6E5;
+    border-radius: var(--r-card-lg);
+    padding: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    position: relative;
+    overflow: hidden;
+  }
+  .status-card::after {
+    content: "";
+    position: absolute;
+    right: -80px; top: -80px;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(14,165,164,.12), transparent 60%);
+    pointer-events: none;
+  }
+  .status-card .pill { background: var(--accent); color: #fff; }
+  .status-card h2 { font-size: 24px; font-weight: 700; margin: 12px 0 6px; }
+  .status-card p { margin: 0; color: var(--fg-2); }
+
+  /* ---------- Metric trio ---------- */
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+  @media (max-width: 800px) { .metric-grid { grid-template-columns: 1fr; } }
+
+  .metric {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-sm);
+    padding: 24px;
+  }
+  .metric-label { font-size: var(--t-sm); color: var(--fg-2); margin-bottom: 12px; font-weight: 500; }
+  .metric-value {
+    font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1; margin-bottom: 12px;
+  }
+  .metric-value .of { color: var(--fg-3); font-size: 18px; font-weight: 500; }
+
+  .bar {
+    height: 6px; border-radius: 999px;
+    background: var(--bg-3);
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .bar-fill {
+    height: 100%; background: var(--accent);
+    border-radius: 999px;
+    transition: width 600ms ease-out;
+  }
+  .bar-fill.warn { background: var(--warning); }
+  .bar-fill.err { background: var(--error); }
+
+  .metric-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: var(--t-sm); color: var(--fg-3);
+    gap: 8px;
+  }
+  .metric-foot a { color: var(--accent); font-weight: 600; }
+  .metric-foot a:hover { color: var(--accent-hover); }
+
+  /* ---------- Two col split ---------- */
+
+  .split {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-sm);
+    padding: 24px;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; gap: 8px;
+  }
+  .panel-head h3 { font-size: 18px; font-weight: 600; margin: 0; }
+
+  /* ---------- Activity list ---------- */
+
+  .act-row {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--t-sm);
+  }
+  .act-row:last-child { border-bottom: none; }
+  .act-date { color: var(--fg-3); font-family: var(--font-mono); }
+  .act-desc { color: var(--fg); }
+  .act-desc .mono { color: var(--fg-2); font-size: 13px; }
+  .act-meta { color: var(--fg-3); font-size: 13px; text-align: right; white-space: nowrap; }
+  .act-meta strong { color: var(--accent); font-weight: 600; }
+
+  /* ---------- Useful links ---------- */
+
+  .links-list { display: flex; flex-direction: column; gap: 4px; }
+  .links-list a {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: var(--t-sm);
+    font-weight: 500;
+    color: var(--fg);
+    transition: background 120ms;
+  }
+  .links-list a:hover { background: var(--bg-2); }
+  .links-list a svg { color: var(--fg-3); }
+  .links-list a:hover svg { color: var(--accent); }
+
+  /* ---------- Tables ---------- */
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--t-sm);
+  }
+  .table th, .table td {
+    text-align: left;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table th {
+    font-size: var(--t-caption);
+    color: var(--fg-3);
+    font-weight: 600;
+    background: var(--bg-2);
+  }
+  .table th:first-child { border-top-left-radius: 8px; }
+  .table th:last-child  { border-top-right-radius: 8px; }
+  .table tr:last-child td { border-bottom: none; }
+  .table .mono { font-size: 13px; }
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-sm);
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .table a.dl { color: var(--accent); font-weight: 600; }
+
+  /* ---------- Sub status row (subscription page) ---------- */
+
+  .sub-status {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-lg);
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) auto;
+    gap: 32px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 1100px) { .sub-status { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .sub-status { grid-template-columns: 1fr; } }
+  .sub-status .field-label { font-size: var(--t-caption); color: var(--fg-3); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
+  .sub-status .field-value { font-size: var(--t-body); color: var(--fg); font-weight: 600; }
+
+  /* ---------- Toggle ---------- */
+
+  .toggle {
+    display: inline-flex;
+    width: 36px; height: 20px;
+    background: var(--bg-3);
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    transition: background 150ms;
+  }
+  .toggle::after {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.15);
+    transition: left 150ms ease-out;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle.on::after { left: 18px; }
+
+  /* ---------- Danger zone ---------- */
+
+  .danger {
+    border: 1px solid #FECACA;
+    background: #FEF2F2;
+    border-radius: var(--r-card-sm);
+    padding: 20px 24px;
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .danger h4 { font-size: var(--t-body); font-weight: 600; color: #991B1B; margin: 0 0 4px; }
+  .danger p { font-size: var(--t-sm); color: #7F1D1D; margin: 0; max-width: 56ch; }
+
+  /* ---------- Device cards ---------- */
+
+  .device-list { display: grid; gap: 12px; }
+  .device {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-sm);
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    gap: 20px;
+    align-items: center;
+  }
+  @media (max-width: 600px) { .device { grid-template-columns: 1fr; gap: 12px; } }
+  .device-icon {
+    width: 48px; height: 48px;
+    background: var(--bg-2);
+    border-radius: 12px;
+    display: grid; place-items: center;
+    color: var(--accent);
+  }
+  .device-name { font-weight: 600; font-size: var(--t-body); }
+  .device-meta { font-size: 13px; color: var(--fg-3); margin-top: 4px; }
+  .device-meta .mono { color: var(--fg-2); }
+  .device-meta .now { color: var(--success); font-weight: 600; }
+
+  .info-banner {
+    background: var(--accent-light);
+    border: 1px solid #B8E6E5;
+    border-radius: var(--r-card-sm);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--t-sm);
+    color: var(--fg);
+  }
+  .info-banner svg { color: var(--accent); flex-shrink: 0; }
+
+  /* ---------- Usage charts ---------- */
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-sm);
+    padding: 24px;
+  }
+  .chart-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 20px;
+  }
+  .chart-head h3 { font-size: 16px; font-weight: 600; margin: 0; }
+  .chart-head .total { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+  .chart-head .total .delta { color: var(--success); font-size: 13px; font-weight: 600; margin-left: 8px; }
+
+  /* Line chart */
+  .linechart { width: 100%; height: 180px; }
+  .linechart .grid line { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 4; }
+  .linechart .area { fill: rgba(14,165,164,.12); }
+  .linechart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .linechart .dot { fill: var(--accent); }
+  .linechart .axis { font-family: var(--font-mono); font-size: 10px; fill: var(--fg-3); }
+
+  /* Bar chart */
+  .barchart { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; align-items: end; height: 160px; }
+  .barchart .bar {
+    background: linear-gradient(to top, var(--accent), #4ECDCC);
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    position: relative;
+  }
+  .barchart .bar:hover { background: var(--accent-hover); }
+  .bar-labels { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; font-size: 10px; color: var(--fg-3); margin-top: 6px; font-family: var(--font-mono); text-align: center; }
+
+  /* Donut */
+  .donut-wrap {
+    display: flex; align-items: center; gap: 24px;
+  }
+  .donut-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; font-size: var(--t-sm); }
+  .donut-legend .row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .donut-legend .sw {
+    width: 10px; height: 10px; border-radius: 3px;
+    display: inline-block; margin-right: 8px; vertical-align: middle;
+  }
+  .donut-legend strong { font-weight: 700; }
+
+  /* ---------- Settings form ---------- */
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 24px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: start;
+  }
+  .form-row:last-of-type { border-bottom: none; }
+  @media (max-width: 700px) { .form-row { grid-template-columns: 1fr; gap: 8px; } }
+
+  .form-row label { font-weight: 600; font-size: var(--t-body); }
+  .form-row .hint { color: var(--fg-3); font-size: 13px; margin-top: 4px; font-weight: 400; display: block; }
+
+  .input, .select-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-input);
+    font-family: inherit;
+    font-size: var(--t-body);
+    color: var(--fg);
+    background: var(--bg);
+    transition: border-color 150ms, box-shadow 150ms;
+  }
+  .input:focus, .select-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+  .input.readonly { background: var(--bg-2); color: var(--fg-2); }
+
+  .checkrow {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0;
+    font-size: var(--t-body);
+    cursor: pointer;
+  }
+  .checkrow input[type=checkbox] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* ---------- Login page ---------- */
+
+  .login-shell {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background:
+      radial-gradient(800px 400px at 50% 0%, rgba(14,165,164,.08), transparent 60%),
+      var(--bg-2);
+  }
+  .login-card {
+    max-width: 440px; width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-card-lg);
+    padding: 40px 36px;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+  }
+  .login-card .brand { margin-bottom: 32px; }
+  .login-card h1 { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+  .login-card .sub { color: var(--fg-2); font-size: var(--t-body); margin: 0 0 28px; }
+  .yandex-btn {
+    background: #FFCC00;
+    color: #000;
+    border: none;
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: var(--r-btn);
+    font-weight: 600;
+    font-size: var(--t-body);
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: background 150ms, box-shadow 150ms;
+  }
+  .yandex-btn:hover { background: #FFD633; box-shadow: var(--shadow-md); }
+  .yandex-btn .ya {
+    width: 22px; height: 22px;
+    background: #000; color: #FFCC00;
+    border-radius: 4px;
+    display: grid; place-items: center;
+    font-weight: 800;
+    font-size: 14px;
+    font-family: var(--font-sans);
+  }
+  .login-card .fine {
+    margin-top: 20px; color: var(--fg-3);
+    font-size: 13px; max-width: 36ch; margin-inline: auto;
+    line-height: 1.5;
+  }
+
+  /* ---------- View switching ---------- */
+
+  .view { display: none; }
+  .view.active { display: block; animation: fade 250ms ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Login-only toggle ---------- */
+  body.logged-out .app { display: none; }
+  body.logged-out .login-shell { display: grid; }
+  body:not(.logged-out) .login-shell { display: none; }
+
+  /* Mode switcher (top-right pill, demo only) */
+  .demo-mode {
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 80;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    padding: 4px;
+    display: flex;
+    box-shadow: var(--shadow-sm);
+    font-size: 12px;
+  }
+  .demo-mode button {
+    border: none;
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+    color: var(--fg-2);
+    cursor: pointer;
+  }
+  .demo-mode button.on { background: var(--accent); color: #fff; }
+
+  /* spacing helpers */
+  .mt-6 { margin-top: 24px; }
+  .mt-8 { margin-top: 32px; }
+  .mb-4 { margin-bottom: 16px; }
+</style>
+</head>
+<body data-screen-label="Account">
+
+<!-- Demo mode switch -->
+<div class="demo-mode" aria-label="Demo mode switch">
+  <button id="mode-logged" class="on">Logged in</button>
+  <button id="mode-login">Login screen</button>
+</div>
+
+<!-- ===================== LOGIN ===================== -->
+<div class="login-shell">
+  <div class="login-card" data-screen-label="00 Login">
+    <a href="#" class="brand">
+      <span class="brand-mark">O</span>
+      <span class="brand-text"><span class="o-accent">O</span>ptimyzer</span>
+    </a>
+    <h1>Личный кабинет Optimyzer</h1>
+    <p class="sub">Управление подпиской, кредитами, устройствами и историей платежей.</p>
+
+    <button class="yandex-btn" onclick="document.body.classList.remove('logged-out'); document.getElementById('mode-logged').classList.add('on'); document.getElementById('mode-login').classList.remove('on');">
+      <span class="ya">Я</span>
+      Войти через Yandex
+    </button>
+
+    <p class="fine">Используется Yandex ID для безопасной аутентификации. Никакого пароля.</p>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side" id="sidebar">
+    <div class="side-brand">
+      <a href="index.html" class="brand">
+        <span class="brand-mark">O</span>
+        <span class="brand-text"><span class="o-accent">O</span>ptimyzer</span>
+      </a>
+    </div>
+
+    <div class="me">
+      <div class="me-ava">СК</div>
+      <div>
+        <div class="me-name">Сергей Кравцов</div>
+        <div class="me-mail">s.kravtsov@yandex.ru</div>
+      </div>
+    </div>
+
+    <nav class="nav-list" id="nav">
+      <a href="#overview" data-view="overview" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Обзор
+      </a>
+      <a href="#subscription" data-view="subscription">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        Подписка
+      </a>
+      <a href="#credits" data-view="credits">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9 11h6M9 14h6"/></svg>
+        Credits
+      </a>
+      <a href="#devices" data-view="devices">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Устройства
+      </a>
+      <a href="#payments" data-view="payments">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16l4-2 4 2 4-2 4 2V8z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+        История платежей
+      </a>
+      <a href="#usage" data-view="usage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Использование
+      </a>
+      <a href="#settings" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Настройки
+      </a>
+    </nav>
+
+    <div class="side-foot">
+      <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Поддержка</a>
+      <button onclick="document.body.classList.add('logged-out'); document.getElementById('mode-login').classList.add('on'); document.getElementById('mode-logged').classList.remove('on');">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Выйти
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+
+    <!-- ===== OVERVIEW ===== -->
+    <section class="view active" id="view-overview" data-screen-label="Cabinet · 01 Overview">
+      <div class="page-head">
+        <h1>Привет, Сергей</h1>
+        <button class="menu-toggle" id="menu-btn" aria-label="Меню">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="status-card">
+        <div>
+          <span class="pill">PRO</span>
+          <h2>Подписка активна</h2>
+          <p>До 25 июня 2026 · автопродление включено</p>
+        </div>
+        <a class="btn btn-ghost" href="#subscription" data-view-link>Управлять подпиской</a>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="metric-label">AI-объяснений в этом месяце</div>
+          <div class="metric-value">247 <span class="of">/ 1000</span></div>
+          <div class="bar"><div class="bar-fill" style="width: 24.7%"></div></div>
+          <div class="metric-foot">
+            <span>Soft cap для защиты от abuse</span>
+            <span class="dim">обновится 1 июня</span>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Кредитов осталось</div>
+          <div class="metric-value">50 <span class="of">операций</span></div>
+          <div class="bar"><div class="bar-fill warn" style="width: 50%"></div></div>
+          <div class="metric-foot">
+            <span>истекают 23 июня 2026</span>
+            <a href="#credits" data-view-link>Купить ещё →</a>
+          </div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Активных устройств</div>
+          <div class="metric-value">2 <span class="of">/ 5</span></div>
+          <div class="bar"><div class="bar-fill" style="width: 40%"></div></div>
+          <div class="metric-foot">
+            <span>Windows ноутбук, рабочая станция</span>
+            <a href="#devices" data-view-link>Управление →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Последние сессии</h3>
+            <a href="#usage" data-view-link class="small" style="color: var(--accent); font-weight:600;">Все сессии →</a>
+          </div>
+          <div class="act-row">
+            <span class="act-date">23 мая</span>
+            <div class="act-desc">Анализ архива <span class="mono">1.66 ГБ</span> · StandardDocumentsPosting</div>
+            <span class="act-meta">27 мин · <strong>12 AI</strong></span>
+          </div>
+          <div class="act-row">
+            <span class="act-date">22 мая</span>
+            <div class="act-desc">Анализ архива <span class="mono">8.4 ГБ</span> · ERP клиент</div>
+            <span class="act-meta">1ч 14м · <strong>34 AI</strong></span>
+          </div>
+          <div class="act-row">
+            <span class="act-date">20 мая</span>
+            <div class="act-desc">Расследование дедлоков · <span class="mono">МоделированиеТЖ</span></div>
+            <span class="act-meta">42 мин · <strong>8 AI</strong></span>
+          </div>
+          <div class="act-row">
+            <span class="act-date">18 мая</span>
+            <div class="act-desc">Сравнение архивов до/после оптимизации</div>
+            <span class="act-meta">23 мин · <strong>6 AI</strong></span>
+          </div>
+          <div class="act-row">
+            <span class="act-date">15 мая</span>
+            <div class="act-desc">SQL Console — top медленных запросов</div>
+            <span class="act-meta">11 мин · <strong>2 AI</strong></span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Полезное</h3></div>
+          <div class="links-list">
+            <a href="#"><span>Документация</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></a>
+            <a href="#"><span>Что нового в v0.5.0</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></a>
+            <a href="#"><span>Контакт поддержки</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></a>
+            <a href="#"><span>GitHub репозиторий</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></a>
+            <a href="#"><span>Telegram-канал релизов</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SUBSCRIPTION ===== -->
+    <section class="view" id="view-subscription" data-screen-label="Cabinet · 02 Subscription">
+      <div class="page-head"><h1>Подписка</h1></div>
+
+      <div class="sub-status">
+        <div>
+          <div class="field-label">Тариф</div>
+          <div class="field-value"><span class="pill pill-solid">PRO</span></div>
+        </div>
+        <div>
+          <div class="field-label">Активна до</div>
+          <div class="field-value">25 июня 2026</div>
+        </div>
+        <div>
+          <div class="field-label">Автопродление</div>
+          <div class="field-value">
+            <span class="toggle on" onclick="this.classList.toggle('on')"></span>
+            <span class="small muted" style="margin-left:8px;">включено</span>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Способ оплаты</div>
+          <div class="field-value mono" style="font-size:14px;">МИР •••• 7842</div>
+          <a href="#" class="small" style="color: var(--accent); font-weight:600;">Изменить →</a>
+        </div>
+        <div>
+          <a class="btn btn-secondary btn-sm">Купить год</a>
+        </div>
+      </div>
+
+      <div class="info-banner">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Цена 2 990 ₽/мес зафиксирована за вами как за пользователем раннего доступа. Она не вырастет, пока подписка активна.
+      </div>
+
+      <h3 class="h4" style="margin: 24px 0 12px;">История подписки</h3>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Дата</th><th>Период</th><th>Сумма</th><th>Чек</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">25 мая 2026</td><td>25.05 – 25.06.2026</td><td>2 990 ₽</td><td><a class="dl" href="#">Скачать PDF</a></td></tr>
+            <tr><td class="mono">25 апр 2026</td><td>25.04 – 25.05.2026</td><td>2 990 ₽</td><td><a class="dl" href="#">Скачать PDF</a></td></tr>
+            <tr><td class="mono">25 мар 2026</td><td>25.03 – 25.04.2026</td><td>2 990 ₽</td><td><a class="dl" href="#">Скачать PDF</a></td></tr>
+            <tr><td class="mono">25 фев 2026</td><td>25.02 – 25.03.2026</td><td>2 990 ₽</td><td><a class="dl" href="#">Скачать PDF</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="danger">
+        <div>
+          <h4>Отменить подписку</h4>
+          <p>После отмены доступ останется до конца оплаченного периода. Вы можете возобновить в любое время.</p>
+        </div>
+        <button class="btn btn-danger-ghost">Отменить подписку</button>
+      </div>
+    </section>
+
+    <!-- ===== CREDITS ===== -->
+    <section class="view" id="view-credits" data-screen-label="Cabinet · 03 Credits">
+      <div class="page-head"><h1>Credits</h1></div>
+
+      <div class="panel" style="display:grid; grid-template-columns: 1fr 1fr; gap:32px; align-items:center;">
+        <div>
+          <div class="metric-label">Текущий баланс</div>
+          <div class="metric-value" style="font-size: 48px;">50 <span class="of">операций</span></div>
+          <p class="small muted">Истекают 23 июня 2026 · следующее списание при использовании AI Explainer</p>
+        </div>
+        <div>
+          <div class="metric-label">До истечения</div>
+          <div class="bar" style="height: 10px;"><div class="bar-fill warn" style="width: 30%"></div></div>
+          <div class="metric-foot" style="margin-top: 8px;">
+            <span>9 дней осталось</span>
+            <span>30 дней цикла</span>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="h4" style="margin: 32px 0 16px;">Купить дополнительные кредиты</h3>
+      <div class="metric-grid">
+        <div class="metric" style="text-align:left;">
+          <div class="metric-label">Mini</div>
+          <div class="metric-value">299 ₽</div>
+          <p class="body" style="margin:0 0 4px;"><strong>30</strong> AI-операций</p>
+          <p class="small muted" style="margin:0 0 16px;">срок жизни: 1 месяц</p>
+          <a class="btn btn-ghost btn-sm btn-block">Купить</a>
+        </div>
+        <div class="metric" style="text-align:left;">
+          <div class="metric-label">Standard</div>
+          <div class="metric-value">990 ₽</div>
+          <p class="body" style="margin:0 0 4px;"><strong>100</strong> AI-операций</p>
+          <p class="small muted" style="margin:0 0 16px;">срок жизни: 1 месяц</p>
+          <a class="btn btn-primary btn-sm btn-block">Купить</a>
+        </div>
+        <div class="metric" style="text-align:left;">
+          <div class="metric-label">Bulk</div>
+          <div class="metric-value">2 490 ₽</div>
+          <p class="body" style="margin:0 0 4px;"><strong>300</strong> AI-операций</p>
+          <p class="small muted" style="margin:0 0 16px;">срок жизни: 1 месяц</p>
+          <a class="btn btn-ghost btn-sm btn-block">Купить</a>
+        </div>
+      </div>
+
+      <h3 class="h4" style="margin: 32px 0 12px;">История покупок Credits</h3>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Дата</th><th>Пакет</th><th>Операций</th><th>Сумма</th><th>Чек</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">23 мая 2026</td><td>Standard</td><td>100</td><td>990 ₽</td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">2 мая 2026</td><td>Mini</td><td>30</td><td>299 ₽</td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">14 апр 2026</td><td>Standard</td><td>100</td><td>990 ₽</td><td><a class="dl" href="#">PDF</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== DEVICES ===== -->
+    <section class="view" id="view-devices" data-screen-label="Cabinet · 04 Devices">
+      <div class="page-head"><h1>Устройства</h1></div>
+
+      <div class="info-banner">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Активно 2 устройства из 5 разрешённых. Можно использовать на разных компьютерах одним аккаунтом.
+      </div>
+
+      <div class="device-list">
+        <div class="device">
+          <div class="device-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div>
+            <div class="device-name">MacBook Pro Сергея</div>
+            <div class="device-meta">
+              <span class="mono">macOS 14.2 · v0.5.0</span> · <span class="now">● онлайн сейчас</span> · Россия, Москва · <span class="mono">95.×××.×××.42</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm">Деактивировать</button>
+        </div>
+        <div class="device">
+          <div class="device-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div>
+            <div class="device-name">DESKTOP-WORK-1С</div>
+            <div class="device-meta">
+              <span class="mono">Windows 11 · v0.5.0</span> · 2 часа назад · Россия, Москва · <span class="mono">82.×××.×××.118</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm">Деактивировать</button>
+        </div>
+        <div class="device" style="opacity:.55;">
+          <div class="device-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="12" rx="2"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+          </div>
+          <div>
+            <div class="device-name">Linux Workstation</div>
+            <div class="device-meta">
+              <span class="mono">Ubuntu 24.04 · v0.4.8</span> · 14 дней назад · Россия, Москва
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm">Реактивировать</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PAYMENTS ===== -->
+    <section class="view" id="view-payments" data-screen-label="Cabinet · 05 Payments">
+      <div class="page-head"><h1>История платежей</h1></div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Дата</th><th>Тип</th><th>Описание</th><th>Сумма</th><th>Статус</th><th>Чек</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="mono">25 мая 2026</td><td><span class="pill pill-neutral">Подписка</span></td><td>Pro · 25.05 – 25.06.2026</td><td>2 990 ₽</td><td><span class="pill pill-success">Оплачено</span></td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">23 мая 2026</td><td><span class="pill pill-neutral">Credits</span></td><td>Standard · 100 операций</td><td>990 ₽</td><td><span class="pill pill-success">Оплачено</span></td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">2 мая 2026</td><td><span class="pill pill-neutral">Credits</span></td><td>Mini · 30 операций</td><td>299 ₽</td><td><span class="pill pill-success">Оплачено</span></td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">25 апр 2026</td><td><span class="pill pill-neutral">Подписка</span></td><td>Pro · 25.04 – 25.05.2026</td><td>2 990 ₽</td><td><span class="pill pill-success">Оплачено</span></td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">14 апр 2026</td><td><span class="pill pill-neutral">Credits</span></td><td>Standard · 100 операций</td><td>990 ₽</td><td><span class="pill pill-success">Оплачено</span></td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">25 мар 2026</td><td><span class="pill pill-neutral">Подписка</span></td><td>Pro · 25.03 – 25.04.2026</td><td>2 990 ₽</td><td><span class="pill pill-success">Оплачено</span></td><td><a class="dl" href="#">PDF</a></td></tr>
+            <tr><td class="mono">25 фев 2026</td><td><span class="pill pill-neutral">Подписка</span></td><td>Pro · 25.02 – 25.03.2026</td><td>2 990 ₽</td><td><span class="pill pill-success">Оплачено</span></td><td><a class="dl" href="#">PDF</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== USAGE ===== -->
+    <section class="view" id="view-usage" data-screen-label="Cabinet · 06 Usage">
+      <div class="page-head"><h1>Использование</h1></div>
+
+      <div class="chart-grid">
+        <!-- AI per day -->
+        <div class="chart-card">
+          <div class="chart-head">
+            <h3>AI-объяснений в день</h3>
+            <div class="total">247 <span class="delta">↑ 18% к прошлому месяцу</span></div>
+          </div>
+          <svg class="linechart" viewBox="0 0 600 180" preserveAspectRatio="none" aria-hidden="true">
+            <g class="grid">
+              <line x1="0" y1="30" x2="600" y2="30"/>
+              <line x1="0" y1="70" x2="600" y2="70"/>
+              <line x1="0" y1="110" x2="600" y2="110"/>
+              <line x1="0" y1="150" x2="600" y2="150"/>
+            </g>
+            <!-- area + line generated -->
+            <path class="area" d="M0,140 L20,130 L40,135 L60,115 L80,108 L100,90 L120,98 L140,75 L160,82 L180,70 L200,55 L220,60 L240,48 L260,52 L280,40 L300,46 L320,38 L340,30 L360,40 L380,36 L400,28 L420,42 L440,46 L460,30 L480,34 L500,25 L520,30 L540,28 L560,35 L580,28 L600,22 L600,180 L0,180 Z"/>
+            <path class="line" d="M0,140 L20,130 L40,135 L60,115 L80,108 L100,90 L120,98 L140,75 L160,82 L180,70 L200,55 L220,60 L240,48 L260,52 L280,40 L300,46 L320,38 L340,30 L360,40 L380,36 L400,28 L420,42 L440,46 L460,30 L480,34 L500,25 L520,30 L540,28 L560,35 L580,28 L600,22"/>
+            <circle class="dot" cx="600" cy="22" r="4"/>
+          </svg>
+          <div style="display:flex; justify-content:space-between; margin-top:4px; font-family: var(--font-mono); font-size: 10px; color: var(--fg-3);">
+            <span>23 апр</span><span>1 мая</span><span>10 мая</span><span>20 мая</span><span>сегодня</span>
+          </div>
+        </div>
+
+        <!-- Donut: distribution -->
+        <div class="chart-card">
+          <div class="chart-head">
+            <h3>Распределение AI-операций</h3>
+          </div>
+          <div class="donut-wrap">
+            <svg width="140" height="140" viewBox="0 0 42 42" aria-hidden="true">
+              <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#F1F5F7" stroke-width="6"/>
+              <!-- 4 segments: 48, 28, 16, 8 -->
+              <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#0EA5A4" stroke-width="6"
+                      stroke-dasharray="48 52" stroke-dashoffset="25"/>
+              <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#5EEAD4" stroke-width="6"
+                      stroke-dasharray="28 72" stroke-dashoffset="-23"/>
+              <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#0F1B2D" stroke-width="6"
+                      stroke-dasharray="16 84" stroke-dashoffset="-51"/>
+              <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#8898AC" stroke-width="6"
+                      stroke-dasharray="8 92" stroke-dashoffset="-67"/>
+              <text x="21" y="20" text-anchor="middle" font-size="6" font-weight="700" fill="#0F1B2D">247</text>
+              <text x="21" y="26" text-anchor="middle" font-size="3" fill="#8898AC">всего</text>
+            </svg>
+            <div class="donut-legend">
+              <div class="row"><span><span class="sw" style="background:#0EA5A4;"></span>Анатомия операции</span><strong>118</strong></div>
+              <div class="row"><span><span class="sw" style="background:#5EEAD4;"></span>Анатомия дедлока</span><strong>69</strong></div>
+              <div class="row"><span><span class="sw" style="background:#0F1B2D;"></span>Slow Queries</span><strong>40</strong></div>
+              <div class="row"><span><span class="sw" style="background:#8898AC;"></span>Прочее</span><strong>20</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bar chart: archive sizes -->
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>Размеры последних обработанных архивов</h3>
+        </div>
+        <div class="barchart">
+          <div class="bar" style="height: 22%;" title="0.4 ГБ"></div>
+          <div class="bar" style="height: 38%;" title="0.7 ГБ"></div>
+          <div class="bar" style="height: 92%;" title="1.66 ГБ"></div>
+          <div class="bar" style="height: 64%;" title="1.2 ГБ"></div>
+          <div class="bar" style="height: 28%;" title="0.5 ГБ"></div>
+          <div class="bar" style="height: 100%;" title="1.8 ГБ"></div>
+          <div class="bar" style="height: 18%;" title="0.3 ГБ"></div>
+          <div class="bar" style="height: 70%;" title="1.3 ГБ"></div>
+          <div class="bar" style="height: 54%;" title="1.0 ГБ"></div>
+          <div class="bar" style="height: 88%;" title="1.6 ГБ"></div>
+        </div>
+        <div class="bar-labels">
+          <span>15.05</span><span>16.05</span><span>17.05</span><span>18.05</span><span>19.05</span><span>20.05</span><span>21.05</span><span>22.05</span><span>23.05</span><span>сег.</span>
+        </div>
+      </div>
+
+      <h3 class="h4" style="margin: 32px 0 12px;">Последние сессии</h3>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Дата</th><th>Архив</th><th>Размер</th><th>Сессия</th><th>AI-операций</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">23 мая 14:08</td><td>1c-tj-prod-2026-05-21.zip</td><td>1.66 ГБ</td><td>27 мин</td><td>12</td></tr>
+            <tr><td class="mono">22 мая 19:42</td><td>erp-client-2026-05-22.tar.gz</td><td>8.4 ГБ</td><td>1ч 14м</td><td>34</td></tr>
+            <tr><td class="mono">20 мая 11:20</td><td>deadlock-investigation.zip</td><td>2.1 ГБ</td><td>42 мин</td><td>8</td></tr>
+            <tr><td class="mono">18 мая 09:55</td><td>before-after-comparison.zip</td><td>3.7 ГБ</td><td>23 мин</td><td>6</td></tr>
+            <tr><td class="mono">15 мая 16:33</td><td>slow-sql-investigation.zip</td><td>0.9 ГБ</td><td>11 мин</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== SETTINGS ===== -->
+    <section class="view" id="view-settings" data-screen-label="Cabinet · 07 Settings">
+      <div class="page-head"><h1>Настройки</h1></div>
+
+      <div class="panel">
+        <h3 class="h4" style="margin: 0 0 8px;">Профиль</h3>
+        <p class="small muted" style="margin: 0 0 16px;">Данные подтягиваются из Yandex ID. Чтобы изменить — обновите профиль в Yandex.</p>
+
+        <div class="form-row">
+          <label>Имя пользователя <span class="hint">из Yandex profile</span></label>
+          <input class="input readonly" readonly value="Сергей Кравцов" />
+        </div>
+        <div class="form-row">
+          <label>Email <span class="hint">из Yandex profile</span></label>
+          <input class="input readonly" readonly value="s.kravtsov@yandex.ru" />
+        </div>
+        <div class="form-row">
+          <label>Часовой пояс</label>
+          <select class="select-input">
+            <option>(UTC+03:00) Москва, Санкт-Петербург</option>
+            <option>(UTC+04:00) Самара</option>
+            <option>(UTC+05:00) Екатеринбург</option>
+            <option>(UTC+07:00) Новосибирск</option>
+            <option>(UTC+10:00) Владивосток</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Язык интерфейса</label>
+          <select class="select-input">
+            <option>Русский</option>
+            <option disabled>English (скоро)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top: 24px;">
+        <h3 class="h4" style="margin: 0 0 16px;">Email-уведомления</h3>
+        <label class="checkrow"><input type="checkbox" checked /> Уведомлять о новых версиях</label>
+        <label class="checkrow"><input type="checkbox" checked /> Уведомлять о приближении к лимиту AI</label>
+        <label class="checkrow"><input type="checkbox" /> Уведомлять о напоминании продления</label>
+        <label class="checkrow"><input type="checkbox" /> Получать ежемесячный отчёт об использовании</label>
+      </div>
+
+      <div class="panel" style="margin-top: 24px;">
+        <h3 class="h4" style="margin: 0 0 8px;">Telegram-уведомления</h3>
+        <p class="small muted" style="margin: 0 0 16px;">Подключите @optimyzer_bot для пуш-уведомлений о завершении парсинга больших архивов и достижении лимитов.</p>
+        <a class="btn btn-secondary btn-sm">Подключить Telegram</a>
+      </div>
+
+      <div class="danger">
+        <div>
+          <h4>Удалить аккаунт</h4>
+          <p>Удалит все данные, отменит подписку, деактивирует все устройства. Необратимо.</p>
+        </div>
+        <button class="btn btn-danger-ghost">Удалить аккаунт</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  /* ===== View routing ===== */
+  const nav = document.getElementById('nav');
+  const links = nav.querySelectorAll('a[data-view]');
+  const views = document.querySelectorAll('.view');
+  const sidebar = document.getElementById('sidebar');
+
+  function show(viewName) {
+    links.forEach(a => a.classList.toggle('active', a.dataset.view === viewName));
+    views.forEach(v => v.classList.toggle('active', v.id === 'view-' + viewName));
+    if (history.replaceState) history.replaceState(null, '', '#' + viewName);
+    sidebar.classList.remove('open');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  nav.addEventListener('click', e => {
+    const a = e.target.closest('a[data-view]');
+    if (!a) return;
+    e.preventDefault();
+    show(a.dataset.view);
+  });
+  document.body.addEventListener('click', e => {
+    const a = e.target.closest('a[data-view-link]');
+    if (!a) return;
+    e.preventDefault();
+    const v = a.getAttribute('href').replace('#', '');
+    show(v);
+  });
+  // Initial route from hash
+  const initial = (location.hash || '#overview').replace('#', '');
+  if (document.getElementById('view-' + initial)) show(initial);
+
+  /* ===== Mobile menu ===== */
+  const menuBtn = document.getElementById('menu-btn');
+  if (menuBtn) menuBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+  /* ===== Demo mode switch ===== */
+  document.getElementById('mode-logged').addEventListener('click', () => {
+    document.body.classList.remove('logged-out');
+    document.getElementById('mode-logged').classList.add('on');
+    document.getElementById('mode-login').classList.remove('on');
+  });
+  document.getElementById('mode-login').addEventListener('click', () => {
+    document.body.classList.add('logged-out');
+    document.getElementById('mode-login').classList.add('on');
+    document.getElementById('mode-logged').classList.remove('on');
+  });
+</script>
+
+</body>
+</html>
