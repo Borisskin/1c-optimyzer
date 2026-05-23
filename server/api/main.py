@@ -11,7 +11,16 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from api import __version__
-from api.routers import auth, credits, dashboard, devices, subscriptions, usage, webhooks
+from api.routers import (
+    auth,
+    credits,
+    dashboard,
+    devices,
+    license as license_router,
+    subscriptions,
+    usage,
+    webhooks,
+)
 from api.settings import settings
 
 logger = logging.getLogger("optimyzer.server")
@@ -52,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(devices.router)
     app.include_router(usage.router)
     app.include_router(dashboard.router)
+    app.include_router(license_router.router)
     app.include_router(webhooks.router)
 
     @app.get("/health", tags=["meta"])

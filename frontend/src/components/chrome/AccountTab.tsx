@@ -1,0 +1,261 @@
+import { useState } from "react";
+import { useAccountStore } from "@/store/accountStore";
+import { useAppStore } from "@/store/appStore";
+import { t } from "@/i18n/ru";
+import { cabinetUrl, cloud, CloudError, pricingUrl } from "@/api/cloud";
+import { computeFingerprint, detectDeviceName, detectPlatform } from "@/utils/fingerprint";
+import styles from "./AccountTab.module.css";
+
+/**
+ * Вкладка «Аккаунт» в SettingsDialog.
+ *
+ * Два состояния:
+ *   • Free (не активирован) — бейдж Free, прогресс месячной квоты,
+ *     кнопка «Перейти на Pro» + collapsible «Уже купили? введите ключ».
+ *   • Pro (активирован) — карточка профиля, статус, поля метрик,
+ *     кнопка «Открыть личный кабинет».
+ */
+export function AccountTab() {
+  const profile = useAccountStore((s) => s.profile);
+  const subscription = useAccountStore((s) => s.subscription);
+  const cache = useAccountStore((s) => s.cache);
+  const isProActive = useAccountStore((s) => s.isProActive());
+  const isOfflineTooLong = useAccountStore((s) => s.isOfflineTooLong());
+  const signOut = useAccountStore((s) => s.signOut);
+
+  if (profile && isProActive) {
+    return (
+      <ProState
+        email={profile.email}
+        displayName={profile.displayName}
+        endsAt={subscription?.endsAt ?? ""}
+        creditsRemaining={cache.creditsRemaining}
+        offline={isOfflineTooLong}
+        onSignOut={signOut}
+      />
+    );
+  }
+
+  return (
+    <FreeState
+      degraded={!!(subscription && !isProActive)}
+      offline={isOfflineTooLong}
+    />
+  );
+}
+
+// ---------- Free state ----------
+
+function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean }) {
+  const activate = useAccountStore((s) => s.activate);
+  const pushToast = useAppStore((s) => s.pushToast);
+  const cache = useAccountStore((s) => s.cache);
+
+  const [keyInputOpen, setKeyInputOpen] = useState(false);
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const quotaTotal = 5;
+  const remaining = Math.max(cache.aiQuotaRemaining === -1 ? quotaTotal : cache.aiQuotaRemaining, 0);
+  const used = Math.max(quotaTotal - remaining, 0);
+  const pct = Math.min((used / quotaTotal) * 100, 100);
+
+  async function handleActivate() {
+    setBusy(true);
+    setError(null);
+    try {
+      const fp = await computeFingerprint();
+      const platform = detectPlatform();
+      const resp = await cloud.activate({
+        key: key.trim(),
+        fingerprint: fp,
+        deviceName: detectDeviceName(),
+        platform,
+        appVersion: t.app.version,
+      });
+      activate({
+        accessToken: resp.access_token,
+        deviceId: resp.device.id,
+        profile: {
+          userId: resp.user.id,
+          email: resp.user.email,
+          displayName: resp.user.display_name,
+        },
+        subscription: {
+          plan: resp.subscription.plan,
+          endsAt: resp.subscription.ends_at,
+          proActive: resp.subscription.pro_active,
+        },
+      });
+      pushToast(t.account.activatedToast, "ok");
+      setKey("");
+      setKeyInputOpen(false);
+    } catch (err) {
+      const ce = err as CloudError;
+      const msg =
+        ce.reason === "not_found"
+          ? t.account.errors.keyNotFound
+          : ce.reason === "conflict"
+            ? t.account.errors.deviceLimit
+            : ce.reason === "unauthorized"
+              ? t.account.errors.subInactive
+              : ce.reason === "network"
+                ? t.account.errors.network
+                : ce.message || t.account.errors.generic;
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={styles.tab}>
+      <div className={styles.heroFree}>
+        <div className={styles.badgeRow}>
+          <span className={styles.badgeFree}>FREE · {t.app.version}</span>
+          {degraded && (
+            <span className={styles.badgeWarn}>{t.account.offlineDegraded}</span>
+          )}
+          {offline && !degraded && (
+            <span className={styles.badgeMuted}>{t.account.offlineWarn}</span>
+          )}
+        </div>
+        <p className={styles.heroLead}>{t.account.freeDescription}</p>
+
+        <div className={styles.progressWrap}>
+          <div className={styles.progressLabel}>
+            {t.account.quotaLabel} <strong>{used}</strong> / {quotaTotal}
+          </div>
+          <div className={styles.progressTrack}>
+            <div className={styles.progressBar} style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+
+        <div className={styles.heroActions}>
+          <a
+            href={pricingUrl()}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={styles.btnPrimary}
+          >
+            {t.account.upgradeToPro}
+          </a>
+          <button
+            type="button"
+            className={styles.btnLink}
+            onClick={() => setKeyInputOpen((v) => !v)}
+          >
+            {keyInputOpen ? t.account.hideKeyInput : t.account.alreadyBought}
+          </button>
+        </div>
+      </div>
+
+      {keyInputOpen && (
+        <div className={styles.keySection}>
+          <label className={styles.keyLabel} htmlFor="optimyzer-key">
+            {t.account.keyLabel}
+          </label>
+          <div className={styles.keyRow}>
+            <input
+              id="optimyzer-key"
+              className={styles.keyInput}
+              type="text"
+              placeholder="OPTM-XXXX-XXXX-XXXX-XXXX"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={busy}
+            />
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={handleActivate}
+              disabled={busy || key.trim().length < 10}
+            >
+              {busy ? t.account.activating : t.account.activate}
+            </button>
+          </div>
+          {error && <div className={styles.error}>{error}</div>}
+          <p className={styles.keyHint}>{t.account.keyHint}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Pro state ----------
+
+function ProState({
+  email,
+  displayName,
+  endsAt,
+  creditsRemaining,
+  offline,
+  onSignOut,
+}: {
+  email: string;
+  displayName: string | null;
+  endsAt: string;
+  creditsRemaining: number;
+  offline: boolean;
+  onSignOut: () => void;
+}) {
+  const formatted = endsAt
+    ? new Date(endsAt).toLocaleDateString("ru-RU", { year: "numeric", month: "long", day: "numeric" })
+    : "—";
+
+  return (
+    <div className={styles.tab}>
+      <div className={styles.heroPro}>
+        <div className={styles.profileRow}>
+          <div className={styles.avatar}>{(displayName || email).charAt(0).toUpperCase()}</div>
+          <div className={styles.profileText}>
+            <div className={styles.profileName}>{displayName || email}</div>
+            <div className={styles.profileEmail}>{email}</div>
+          </div>
+          <span className={styles.badgePro}>PRO</span>
+        </div>
+
+        {offline && (
+          <div className={styles.warnBanner}>{t.account.offlineWarn}</div>
+        )}
+
+        <dl className={styles.fields}>
+          <dt>{t.account.fields.plan}</dt>
+          <dd>Pro · 2 990 ₽/мес</dd>
+          <dt>{t.account.fields.endsAt}</dt>
+          <dd>{formatted}</dd>
+          <dt>{t.account.fields.credits}</dt>
+          <dd>{creditsRemaining}</dd>
+          <dt>{t.account.fields.status}</dt>
+          <dd>{offline ? t.account.fields.statusOffline : t.account.fields.statusActive}</dd>
+        </dl>
+
+        <div className={styles.heroActions}>
+          <a
+            href={cabinetUrl()}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={styles.btnPrimary}
+          >
+            {t.account.openCabinet}
+          </a>
+          <a
+            href={cabinetUrl("/credits")}
+            target="_blank"
+            rel="noreferrer noopener"
+            className={styles.btnSecondary}
+          >
+            {t.account.buyCredits}
+          </a>
+        </div>
+
+        <button type="button" className={styles.btnLinkDanger} onClick={onSignOut}>
+          {t.account.signOut}
+        </button>
+      </div>
+    </div>
+  );
+}

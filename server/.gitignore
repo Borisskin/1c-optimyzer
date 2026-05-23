@@ -1,0 +1,6 @@
+# Локальные артефакты server/ — не коммитим
+.coverage
+htmlcov/
+optimyzer.db
+optimyzer.db-journal
+.pytest_cache/

@@ -40,7 +40,13 @@ def test_device_token_carries_device_id():
 
 def test_tampered_signature_rejected():
     token = create_access_token(user_id="u")
-    tampered = token[:-1] + ("0" if token[-1] != "0" else "1")
+    # Меняем bytes в середине signature — гарантированно invalid.
+    parts = token.split(".")
+    sig = parts[2]
+    # Заменим первый char signature на любой другой (HS256 — 256 bit signature,
+    # base64url decode'нется в 32 байта; первый char точно participatuet).
+    tampered_sig = ("A" if sig[0] != "A" else "B") + sig[1:]
+    tampered = ".".join([parts[0], parts[1], tampered_sig])
     with pytest.raises(InvalidTokenError):
         decode_token(tampered)
 

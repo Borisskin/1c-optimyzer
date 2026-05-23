@@ -2,6 +2,9 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { backend, type AiExplanationResult, type RuleClassifyResult } from "@/api/backend";
+import { cloud, CloudError } from "@/api/cloud";
+import { useAccountStore } from "@/store/accountStore";
+import { PaywallModal } from "@/components/overlays/PaywallModal";
 
 interface Props {
   archiveId: string;
@@ -33,6 +36,13 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   const [ai, setAi] = useState<AiExplanationResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiRequested, setAiRequested] = useState(false);
+  const [paywall, setPaywall] = useState<{
+    open: boolean;
+    reason: string | null;
+    freeRemaining: number | null;
+  }>({ open: false, reason: null, freeRemaining: null });
+
+  const accessToken = useAccountStore((s) => s.accessToken);
 
   useEffect(() => {
     if (!archiveId || !targetId) return;
@@ -76,17 +86,79 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
     };
   }, [archiveId, anatomyKind, targetId, JSON.stringify(features)]);
 
-  const onRequestAi = useCallback(() => {
+  const onRequestAi = useCallback(async () => {
     if (aiLoading || aiRequested) return;
+
+    // Soft cap check — только если юзер активирован (есть accessToken). Иначе
+    // dev/local-only режим: соблюдение лимитов невозможно, разрешаем.
+    if (accessToken) {
+      try {
+        const check = await cloud.checkUsage(accessToken);
+        if (!check.allowed) {
+          setPaywall({
+            open: true,
+            reason: check.reason,
+            freeRemaining: check.free_quota_remaining,
+          });
+          return;
+        }
+      } catch (err) {
+        // Cloud недоступен — не блокируем юзера (graceful degradation).
+        // Просто логируем и продолжаем.
+        console.warn("Soft cap check failed:", (err as CloudError).message);
+      }
+    }
+
     setAiRequested(true);
     setAiLoading(true);
     setAi(null);
-    backend
-      .explainerAi(archiveId, anatomyKind, targetId, anatomyData, null, null)
-      .then((res) => setAi(res))
-      .catch(() => setAi({ ok: false, error: "AI call failed" }))
-      .finally(() => setAiLoading(false));
-  }, [archiveId, anatomyKind, targetId, anatomyData, aiLoading, aiRequested]);
+
+    let aiResult: AiExplanationResult | null = null;
+    let success = false;
+    try {
+      aiResult = await backend.explainerAi(
+        archiveId,
+        anatomyKind,
+        targetId,
+        anatomyData,
+        null,
+        null,
+      );
+      success = !!aiResult?.ok;
+      setAi(aiResult);
+    } catch {
+      setAi({ ok: false, error: "AI call failed" });
+    } finally {
+      setAiLoading(false);
+    }
+
+    // Best-effort report в cloud. Не блокирует UI.
+    if (accessToken) {
+      const opType =
+        anatomyKind === "deadlock"
+          ? "ai_deadlock_explanation"
+          : "ai_explanation";
+      void cloud
+        .trackUsage(accessToken, {
+          operationType: opType,
+          archiveHash: null,
+          success,
+          aiTokensInput: aiResult?.tokens_in ?? undefined,
+          aiTokensOutput: aiResult?.tokens_out ?? undefined,
+        })
+        .catch((err) => {
+          console.warn("Usage tracking failed:", (err as CloudError).message);
+        });
+    }
+  }, [
+    accessToken,
+    aiLoading,
+    aiRequested,
+    archiveId,
+    anatomyKind,
+    targetId,
+    anatomyData,
+  ]);
 
   const hasRuleBody = Boolean(rule?.matched && rule.body);
   const hasAiText = Boolean(ai?.ok && ai.text);
@@ -97,11 +169,19 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   // только тонкая inline-кнопка, никакой большой панели.
   if (!hasContent && !aiLoading && !aiRequested && !aiError) {
     return (
-      <button type="button" style={compactBtnStyle} onClick={onRequestAi}>
-        <Icon name="Brain" size={13} color="var(--o-accent)" />
-        <span>Объяснить через AI</span>
-        <Icon name="ArrowRight" size={11} color="var(--o-accent)" />
-      </button>
+      <>
+        <button type="button" style={compactBtnStyle} onClick={onRequestAi}>
+          <Icon name="Brain" size={13} color="var(--o-accent)" />
+          <span>Объяснить через AI</span>
+          <Icon name="ArrowRight" size={11} color="var(--o-accent)" />
+        </button>
+        <PaywallModal
+          open={paywall.open}
+          reason={paywall.reason}
+          freeQuotaRemaining={paywall.freeRemaining}
+          onClose={() => setPaywall({ open: false, reason: null, freeRemaining: null })}
+        />
+      </>
     );
   }
 
@@ -157,6 +237,13 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
           {ai!.enabled === false && " (ANTHROPIC_API_KEY не задан в .env)"}
         </div>
       )}
+
+      <PaywallModal
+        open={paywall.open}
+        reason={paywall.reason}
+        freeQuotaRemaining={paywall.freeRemaining}
+        onClose={() => setPaywall({ open: false, reason: null, freeRemaining: null })}
+      />
     </div>
   );
 }

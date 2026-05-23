@@ -26,6 +26,7 @@ import { DevToolsScreen } from "@/components/screens/DevTools/DevTools";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
+import { useHeartbeat } from "@/hooks/useHeartbeat";
 
 export function App() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
@@ -40,6 +41,10 @@ export function App() {
   const setLastResult = useAppStore((s) => s.setLastResult);
   const setProgressCardMinimized = useAppStore((s) => s.setProgressCardMinimized);
   const pushToast = useAppStore((s) => s.pushToast);
+
+  // Heartbeat в cloud — синхронизация подписки/квот каждые 24ч. Запускается
+  // только если юзер активирован (есть accessToken в accountStore).
+  useHeartbeat();
 
   const onActiveArchiveDeleted = useCallback(() => {
     setArchive(null);
