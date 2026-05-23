@@ -6,11 +6,11 @@ import { OAuthCallback } from "@/pages/OAuthCallback";
 import { Overview } from "@/pages/Overview";
 import { Subscription } from "@/pages/Subscription";
 import { Credits } from "@/pages/Credits";
-import { Devices } from "@/pages/Devices";
 import { Payments } from "@/pages/Payments";
-import { Usage } from "@/pages/Usage";
 import { Settings } from "@/pages/Settings";
 import { DesktopActivate } from "@/pages/DesktopActivate";
+// Devices/Usage пока не показываем — нечего отображать в pre-launch.
+// Файлы pages/Devices.tsx и pages/Usage.tsx оставлены для будущего.
 
 export function App() {
   return (
@@ -28,10 +28,11 @@ export function App() {
         <Route path="/desktop-activate" element={<DesktopActivate />} />
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/credits" element={<Credits />} />
-        <Route path="/devices" element={<Devices />} />
         <Route path="/payments" element={<Payments />} />
-        <Route path="/usage" element={<Usage />} />
         <Route path="/settings" element={<Settings />} />
+        {/* Dead routes — редиректим на главную чтобы старые ссылки не вели в 404 */}
+        <Route path="/devices" element={<Navigate to="/" replace />} />
+        <Route path="/usage" element={<Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

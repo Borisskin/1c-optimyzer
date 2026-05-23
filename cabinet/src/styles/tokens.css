@@ -1,6 +1,58 @@
 /* Дизайн-токены — синхронизированы с DESIGN_CONCEPT/styles.css
    (Pulse palette: teal accent + slate neutrals). */
 
+/* Самохостинг Manrope/JetBrains Mono — Google Fonts в России работает
+   нестабильно. Файлы в cabinet/public/fonts/. */
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/manrope-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/manrope-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/manrope-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/manrope-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/manrope-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
+}
+
 :root {
   /* Accent (teal — Pulse logo) */
   --accent: #0ea5a4;

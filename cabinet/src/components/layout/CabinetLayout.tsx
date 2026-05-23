@@ -34,14 +34,8 @@ export function CabinetLayout() {
           <NavLink to="/credits" className={navLinkClass}>
             Кредиты
           </NavLink>
-          <NavLink to="/devices" className={navLinkClass}>
-            Устройства
-          </NavLink>
           <NavLink to="/payments" className={navLinkClass}>
             Платежи
-          </NavLink>
-          <NavLink to="/usage" className={navLinkClass}>
-            Использование
           </NavLink>
           <NavLink to="/settings" className={navLinkClass}>
             Настройки

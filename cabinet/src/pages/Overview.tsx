@@ -53,35 +53,64 @@ export function Overview() {
             <Link to="/credits">Купить ещё →</Link>
           </div>
         </div>
-        <div className="metric">
-          <div className="metric__label">Устройств</div>
-          <div className="metric__value">
-            {data.devices_active}
-            <span style={{ fontSize: 14, color: "var(--fg-3)", marginLeft: 4 }}>
-              / {data.devices_limit}
-            </span>
-          </div>
-          <div className="metric__hint">
-            <Link to="/devices">Управление →</Link>
-          </div>
-        </div>
       </div>
 
-      <div className="card">
-        <h2 className="card__title">Подсказка</h2>
-        <p style={{ margin: 0, color: "var(--fg-2)" }}>
-          {isPro
-            ? "Вы на тарифе Pro — все функции AI Explainer'а доступны без ограничений. Скачайте Optimyzer с лендинга и используйте ключ активации из истории платежей."
-            : "Хотите безлимит AI-объяснений? Перейдите на Pro — 2 990 ₽/мес, отмена в любой момент."}
-        </p>
-        {!isPro && (
-          <div style={{ marginTop: 12 }}>
-            <Link to="/subscription" className="btn btn--primary">
-              Перейти на Pro
-            </Link>
-          </div>
-        )}
-      </div>
+      <DownloadCard />
+
+      {!isPro && (
+        <div className="card">
+          <h2 className="card__title">Хотите безлимит AI-объяснений?</h2>
+          <p style={{ margin: "0 0 12px", color: "var(--fg-2)" }}>
+            Pro — 2 990 ₽/мес, отмена в любой момент.
+          </p>
+          <Link to="/subscription" className="btn btn--primary">
+            Перейти на Pro
+          </Link>
+        </div>
+      )}
     </>
+  );
+}
+
+// Заглушка для скачивания desktop приложения. До первого Release на GitHub
+// показываем «скоро» вместо мёртвых ссылок.
+function DownloadCard() {
+  return (
+    <div className="card">
+      <h2 className="card__title">Скачать Optimyzer</h2>
+      <p style={{ margin: "0 0 16px", color: "var(--fg-2)" }}>
+        Desktop приложение для анализа архивов технологического журнала 1С.
+        После установки введите свой ключ активации из истории платежей.
+      </p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <DownloadButton label="Windows" subtitle=".msi · скоро" />
+        <DownloadButton label="macOS" subtitle=".dmg · скоро" />
+        <DownloadButton label="Linux" subtitle=".AppImage · скоро" />
+      </div>
+      <p style={{ marginTop: 12, fontSize: 12, color: "var(--fg-3)" }}>
+        Сборки появятся в первом релизе. Пока тестируем приватно у пилотных юзеров.
+      </p>
+    </div>
+  );
+}
+
+function DownloadButton({ label, subtitle }: { label: string; subtitle: string }) {
+  return (
+    <button
+      type="button"
+      className="btn"
+      disabled
+      style={{
+        flexDirection: "column",
+        alignItems: "flex-start",
+        padding: "10px 16px",
+        gap: 2,
+      }}
+    >
+      <span style={{ fontWeight: 700 }}>{label}</span>
+      <span style={{ fontSize: 11, color: "var(--fg-3)", fontWeight: 500 }}>
+        {subtitle}
+      </span>
+    </button>
   );
 }
