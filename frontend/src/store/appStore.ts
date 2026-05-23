@@ -84,6 +84,9 @@ interface AppStore {
   cmdOpen: boolean;
   setCmdOpen: (v: boolean) => void;
 
+  settingsDialogOpen: boolean;
+  setSettingsDialogOpen: (v: boolean) => void;
+
   archive: ArchiveState | null;
   setArchive: (a: ArchiveState | null) => void;
 
@@ -132,6 +135,9 @@ export const useAppStore = create<AppStore>((set) => ({
 
   cmdOpen: false,
   setCmdOpen: (v) => set({ cmdOpen: v }),
+
+  settingsDialogOpen: false,
+  setSettingsDialogOpen: (v) => set({ settingsDialogOpen: v }),
 
   archive: null,
   setArchive: (a) => set({ archive: a }),

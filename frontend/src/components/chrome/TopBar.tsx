@@ -15,6 +15,7 @@ interface TopBarProps {
 export function TopBar({ onOpenArchive, onActiveArchiveDeleted }: TopBarProps) {
   const archive = useAppStore((s) => s.archive);
   const setCmdOpen = useAppStore((s) => s.setCmdOpen);
+  const setSettingsDialogOpen = useAppStore((s) => s.setSettingsDialogOpen);
   const storageStats = useAppStore((s) => s.storageStats);
   const ingest = useAppStore((s) => s.ingest);
   const progressCardMinimized = useAppStore((s) => s.progressCardMinimized);
@@ -118,16 +119,15 @@ export function TopBar({ onOpenArchive, onActiveArchiveDeleted }: TopBarProps) {
         >
           <Badge tone={healthTone}>{healthLabel}</Badge>
         </div>
-        <button className={styles.icon_btn} title={t.topbar.alertsTooltip} disabled>
-          <Icon name="Bell" size={15} />
-        </button>
-        <button className={styles.ai_btn} title={t.topbar.aiHelperTooltip} disabled>
-          <Icon name="Sparkles" size={13} />
-          <span className={styles.ai_label}>{t.topbar.aiBadge}</span>
-          <Badge tone="mute">{t.topbar.aiBadgePro}</Badge>
-        </button>
-        <div className="div-v" style={{ height: 20, margin: "0 4px" }} />
-        <button className={styles.settings_btn} title={t.topbar.settingsTooltip}>
+        {/* Sales build: кнопки «Алерты» и «AI-помощник» удалены — обе были
+            disabled-заглушки с упоминанием Module 2 / AI Pro и подрывали
+            доверие к продукту. Будут возвращены когда соответствующие
+            фичи действительно появятся. */}
+        <button
+          className={styles.settings_btn}
+          title={t.topbar.settingsTooltip}
+          onClick={() => setSettingsDialogOpen(true)}
+        >
           <Icon name="Settings" size={14} />
         </button>
       </div>

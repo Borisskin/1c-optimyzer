@@ -331,6 +331,20 @@ export const t = {
     copyButtonLabel: "Скопировать",
     error: "Ошибка анализа: {detail}",
   },
+  settings: {
+    title: "Настройки",
+    close: "Закрыть",
+    tabs: {
+      about: "О программе",
+    },
+    about: {
+      description:
+        "Optimyzer — анализатор производительности 1С с AI-объяснениями. Загружает технологические журналы, выявляет долгие операции, блокировки, проблемные запросы.",
+      versionLabel: "Версия:",
+      editionLabel: "Сборка:",
+      repoLabel: "Репозиторий:",
+    },
+  },
   errors: {
     folderNotFound: "Папка не найдена",
     notADirectory: "Это не папка — перетащите папку с логами",
