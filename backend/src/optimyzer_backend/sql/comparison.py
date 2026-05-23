@@ -75,10 +75,12 @@ def compare_slow_queries(
     limit: int = 50,
 ) -> dict[str, Any]:
     """Diff топ-N медленных queries by sql_text_hash."""
+    # query = exemplar самого медленного реального вызова, не нормализованная
+    # форма со «?» (см. fix от 23.05.2026).
     sql = f"""
         SELECT
             sql_text_hash,
-            ANY_VALUE(sql_text_normalized) AS query,
+            ARG_MAX(COALESCE(sql_text, sql_text_normalized), duration_us) AS query,
             COUNT(*) AS calls,
             SUM(duration_us) / 1000.0 AS total_ms,
             AVG(duration_us) / 1000.0 AS avg_ms

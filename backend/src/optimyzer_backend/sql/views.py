@@ -112,10 +112,15 @@ def slow_queries(
         "count": "calls",
     }.get(sort_by, "total_duration_ms")
 
+    # query = exemplar самого медленного вызова из группы (raw SQL текст с
+    # реальными значениями параметров), НЕ нормализованная форма со знаками
+    # вопроса. Группировка остаётся по sql_text_hash (нормализованной форме),
+    # но юзеру показываем читаемый пример. Подробности — fix от 23.05.2026
+    # (Sergey: «знаки вопроса — это неправильно, нужен реальный текст»).
     sql = f"""
         SELECT
             sql_text_hash,
-            ANY_VALUE(sql_text_normalized) AS query,
+            ARG_MAX(COALESCE(sql_text, sql_text_normalized), duration_us) AS query,
             COUNT(*) AS calls,
             SUM(duration_us) / 1000.0 AS total_duration_ms,
             AVG(duration_us) / 1000.0 AS avg_duration_ms,

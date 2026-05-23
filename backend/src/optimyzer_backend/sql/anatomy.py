@@ -105,7 +105,9 @@ def get_operation_anatomy(
             process_role,
             process_pid,
             duration_us / 1000.0 AS duration_ms,
-            sql_text_normalized,
+            -- raw sql_text — реальные значения параметров, не «?». Колонка
+            -- остаётся под именем sql_text_normalized для совместимости фронта.
+            COALESCE(sql_text, sql_text_normalized) AS sql_text_normalized,
             context
         FROM events
         WHERE context_normalized = ?
@@ -133,11 +135,13 @@ def get_operation_anatomy(
         for row in breakdown_result["rows"]:
             breakdown.append(dict(zip(cols, row)))
 
-    # Top SQL inside operation (только если DBMSSQL events были)
+    # Top SQL inside operation (только если DBMSSQL events были).
+    # query = exemplar (самый медленный реальный вызов из группы), а не
+    # нормализованная форма со знаками вопроса.
     top_sql_sql = """
         SELECT
             sql_text_hash,
-            ANY_VALUE(sql_text_normalized) AS query,
+            ARG_MAX(COALESCE(sql_text, sql_text_normalized), duration_us) AS query,
             COUNT(*) AS calls,
             SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
             AVG(COALESCE(duration_us, 0)) / 1000.0 AS avg_duration_ms,
@@ -234,7 +238,9 @@ def get_session_anatomy(
             event_type,
             duration_us / 1000.0 AS duration_ms,
             context_normalized,
-            sql_text_normalized
+            -- raw sql_text — реальные значения параметров. Колонка остаётся
+            -- под именем sql_text_normalized для совместимости фронта.
+            COALESCE(sql_text, sql_text_normalized) AS sql_text_normalized
         FROM events
         WHERE session_id = ?
         ORDER BY ts
@@ -260,11 +266,11 @@ def get_session_anatomy(
         for row in breakdown_result["rows"]:
             breakdown.append(dict(zip(cols, row)))
 
-    # Top SQL within session
+    # Top SQL within session (query = exemplar самого медленного вызова).
     top_sql_sql = """
         SELECT
             sql_text_hash,
-            ANY_VALUE(sql_text_normalized) AS query,
+            ARG_MAX(COALESCE(sql_text, sql_text_normalized), duration_us) AS query,
             COUNT(*) AS calls,
             SUM(COALESCE(duration_us, 0)) / 1000.0 AS total_duration_ms,
             MAX(COALESCE(duration_us, 0)) / 1000.0 AS max_duration_ms

@@ -16,17 +16,17 @@ TEMPLATES: list[dict[str, Any]] = [
         "id": "top_slow_sql",
         "category": "performance",
         "label": "Топ 100 медленных SQL запросов",
-        "description": "DBMSSQL events сгруппированы по sql_text_normalized с суммарной длительностью.",
+        "description": "DBMSSQL events сгруппированы по sql_text_hash, query = exemplar самого медленного вызова с реальными значениями.",
         "sql": """SELECT
-    sql_text_normalized AS query,
+    ARG_MAX(COALESCE(sql_text, sql_text_normalized), duration_us) AS query,
     COUNT(*) AS calls,
     SUM(duration_us) / 1000.0 AS total_ms,
     AVG(duration_us) / 1000.0 AS avg_ms,
     MAX(duration_us) / 1000.0 AS max_ms
 FROM events
 WHERE event_type = 'DBMSSQL'
-  AND sql_text_normalized IS NOT NULL
-GROUP BY sql_text_normalized
+  AND sql_text_hash IS NOT NULL
+GROUP BY sql_text_hash
 ORDER BY total_ms DESC NULLS LAST
 LIMIT 100;""",
     },
