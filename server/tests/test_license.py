@@ -52,11 +52,48 @@ def test_activate_used_key_404(client, db_session):
     assert resp.status_code == 404
 
 
-def test_activate_inactive_subscription_403(client, db_session):
+def test_activate_free_user_works(client, db_session):
+    """Free юзер тоже может активировать desktop (per mandatory login решение).
+    Раньше тут было 403 — теперь 200, но лимит устройств = 1 для Free."""
     user = make_user(db_session)  # Free
     key = license_keys_service.issue_key(db_session, user)
     resp = client.post("/v1/license/activate", json=_activate_payload(key.key))
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["subscription"]["plan"] == "free"
+    assert body["subscription"]["pro_active"] is False
+
+
+def test_activate_free_device_limit_409(client, db_session):
+    """Free юзер: лимит 1 устройство — второй ключ → 409."""
+    user = make_user(db_session)
+    k1 = license_keys_service.issue_key(db_session, user)
+    resp = client.post("/v1/license/activate", json=_activate_payload(k1.key))
+    assert resp.status_code == 200
+    k2 = license_keys_service.issue_key(db_session, user)
+    resp = client.post(
+        "/v1/license/activate",
+        json=_activate_payload(k2.key, fp=f"second-device-{'y' * 48}"),
+    )
+    assert resp.status_code == 409
+
+
+def test_issue_for_cabinet_requires_auth(client):
+    resp = client.post("/v1/license/issue-for-cabinet")
+    assert resp.status_code == 401
+
+
+def test_issue_for_cabinet_returns_key(client, db_session):
+    from tests.factories import access_cookies_for
+    user = make_user(db_session)
+    resp = client.post(
+        "/v1/license/issue-for-cabinet",
+        cookies=access_cookies_for(user),
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["key"].startswith("OPTM-")
+    assert body["deep_link"] == f"optimyzer://activate?key={body['key']}"
 
 
 def test_activate_device_limit_409_for_free(client, db_session):

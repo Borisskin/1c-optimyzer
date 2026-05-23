@@ -8,9 +8,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from pydantic import BaseModel
+
 from api.db import get_db
-from api.deps import get_client_ip, get_current_device_user
-from models.subscription import SubscriptionPlan
+from api.deps import get_client_ip, get_current_device_user, get_current_user
 from models.user import User
 from schemas.devices import DeviceHeartbeatRequest, DeviceHeartbeatResponse
 from schemas.license import (
@@ -26,6 +27,18 @@ from services.auth_service import mask_ip
 from services.jwt_service import create_device_token
 
 router = APIRouter(prefix="/v1/license", tags=["license"])
+
+
+class IssueKeyForCabinetResponse(BaseModel):
+    """POST /v1/license/issue-for-cabinet.
+
+    Cabinet вызывает после OAuth login юзера чтобы получить activation key для
+    desktop приложения. Юзер потом либо копирует ключ в desktop, либо открывает
+    `optimyzer://activate?key=...` deep link.
+    """
+
+    key: str
+    deep_link: str
 
 
 @router.post(
@@ -49,10 +62,15 @@ def activate(
 
     user: User = key_record.user
     sub = user.subscription
-    if not sub or sub.plan != SubscriptionPlan.PRO or sub.ends_at <= datetime.utcnow():
+    # Free юзеры тоже могут активировать desktop — им просто выдаётся device JWT
+    # без Pro-привилегий (soft cap = 5 AI/мес на user_id вместо безлимита).
+    # Раньше тут было `if sub.plan != PRO → 403`, но это блокирует mandatory
+    # login для Free, что противоречит решению Сергея от 23.05.2026
+    # (полная блокировка приложения без активации).
+    if not sub:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Subscription is not active — обратитесь в поддержку",
+            "User has no subscription record — обратитесь в поддержку",
         )
 
     # Проверяем лимит ДО создания/обновления device — если уже превышен, шлём 409.
@@ -105,6 +123,27 @@ def activate(
             pro_active=sub.is_pro_active,
         ),
     )
+
+
+@router.post(
+    "/issue-for-cabinet",
+    response_model=IssueKeyForCabinetResponse,
+    summary="Выдать activation key для desktop приложения (cabinet only)",
+)
+def issue_for_cabinet(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueKeyForCabinetResponse:
+    """Cabinet → POST → получает свежий activation key для текущего юзера.
+
+    Юзер потом либо копирует key в desktop, либо открывает
+    `optimyzer://activate?key=...` (deep link который Tauri ловит).
+    Key — одноразовый, привязан к user_id. На стороне desktop'а нужно
+    POST'нуть его на `/v1/license/activate` с fingerprint своего устройства.
+    """
+    record = license_keys_service.issue_key(db, user)
+    deep_link = f"optimyzer://activate?key={record.key}"
+    return IssueKeyForCabinetResponse(key=record.key, deep_link=deep_link)
 
 
 @router.post("/heartbeat", response_model=DeviceHeartbeatResponse)

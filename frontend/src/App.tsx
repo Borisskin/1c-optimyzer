@@ -31,8 +31,11 @@ import { useTelemetryFlush } from "@/hooks/useTelemetryFlush";
 import { telemetry } from "@/utils/telemetry";
 import { WelcomeModal, useWelcomeModal } from "@/components/overlays/WelcomeModal";
 import { EmptyArchiveState } from "@/components/overlays/EmptyArchiveState";
+import { LoginGate } from "@/components/overlays/LoginGate";
+import { useAccountStore } from "@/store/accountStore";
 
 export function App() {
+  const accessToken = useAccountStore((s) => s.accessToken);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const cmdOpen = useAppStore((s) => s.cmdOpen);
   const setCmdOpen = useAppStore((s) => s.setCmdOpen);
@@ -187,6 +190,13 @@ export function App() {
       pushToast(format(t.errors.dialogError, { detail: String(e) }), "err");
     }
   }, [loadDirectoryFromPath, pushToast]);
+
+  // Mandatory login gate — пока юзер не активирован, всё приложение заблокировано
+  // (решение Сергея 23.05.2026: учёт AI-генераций требует user_id, без login
+  // нельзя ничем пользоваться, даже анализом архивов).
+  if (!accessToken) {
+    return <LoginGate />;
+  }
 
   return (
     <div className="app" data-sidebar={sidebarOpen ? "open" : "closed"}>

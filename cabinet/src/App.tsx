@@ -10,6 +10,7 @@ import { Devices } from "@/pages/Devices";
 import { Payments } from "@/pages/Payments";
 import { Usage } from "@/pages/Usage";
 import { Settings } from "@/pages/Settings";
+import { DesktopActivate } from "@/pages/DesktopActivate";
 
 export function App() {
   return (
@@ -24,6 +25,7 @@ export function App() {
         }
       >
         <Route path="/" element={<Overview />} />
+        <Route path="/desktop-activate" element={<DesktopActivate />} />
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/credits" element={<Credits />} />
         <Route path="/devices" element={<Devices />} />

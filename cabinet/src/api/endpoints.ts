@@ -129,3 +129,12 @@ export const apiDevices = {
 export const apiUsage = {
   summary: () => api<UsageSummary>("/v1/usage/summary"),
 };
+
+export const apiLicense = {
+  /** POST /v1/license/issue-for-cabinet — выдать ключ активации для desktop. */
+  issueForCabinet: () =>
+    api<{ key: string; deep_link: string }>(
+      "/v1/license/issue-for-cabinet",
+      { method: "POST" },
+    ),
+};

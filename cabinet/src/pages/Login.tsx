@@ -1,10 +1,27 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiAuth } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
+
+// Где сохраняем «откуда пришёл юзер» (desktop / web) чтобы после OAuth
+// callback редиректить в нужное место.
+const FROM_KEY = "optimyzer.oauth.from";
 
 export function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Если URL содержит `?from=desktop`, запомним — после OAuthCallback
+  // отправим юзера на /desktop-activate вместо /.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const from = params.get("from");
+    if (from === "desktop") {
+      sessionStorage.setItem(FROM_KEY, "desktop");
+    }
+  }, []);
+
+  const fromDesktop =
+    typeof window !== "undefined" && sessionStorage.getItem(FROM_KEY) === "desktop";
 
   async function startYandexLogin() {
     setBusy(true);
@@ -39,7 +56,11 @@ export function Login() {
           <rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4" />
         </svg>
         <h1 className="login__title">Optimyzer</h1>
-        <p className="login__sub">Личный кабинет — подписка, кредиты, устройства</p>
+        <p className="login__sub">
+          {fromDesktop
+            ? "Войдите чтобы активировать desktop приложение"
+            : "Личный кабинет — подписка, кредиты, устройства"}
+        </p>
 
         <button
           type="button"
