@@ -178,21 +178,24 @@ def test_generate_key_format():
     assert all(len(p) == 4 for p in parts[1:])
 
 
-def test_consume_key_marks_used(db_session):
+def test_regenerate_key_invalidates_old(db_session):
+    """После regenerate старый ключ помечен is_used=True (= отозван)."""
     user = make_user(db_session)
-    key = license_keys_service.issue_key(db_session, user)
-    consumed = license_keys_service.consume_key(db_session, key.key, device_id="dev-1")
-    assert consumed.is_used is True
-    assert consumed.used_at is not None
-    assert consumed.used_by_device_id == "dev-1"
+    old = license_keys_service.issue_key(db_session, user)
+    new = license_keys_service.regenerate_key(db_session, user)
+    db_session.refresh(old)
+    assert old.is_used is True
+    assert old.used_at is not None
+    assert new.key != old.key
+    assert new.is_used is False
 
 
-def test_consume_already_used_raises(db_session):
+def test_get_or_create_active_key_idempotent(db_session):
+    """Повторный вызов возвращает тот же ключ (один активный на user)."""
     user = make_user(db_session)
-    key = license_keys_service.issue_key(db_session, user)
-    license_keys_service.consume_key(db_session, key.key, device_id="dev-1")
-    with pytest.raises(LookupError, match="already used"):
-        license_keys_service.consume_key(db_session, key.key, device_id="dev-2")
+    a = license_keys_service.get_or_create_active_key(db_session, user)
+    b = license_keys_service.get_or_create_active_key(db_session, user)
+    assert a.key == b.key
 
 
 # --- recurring billing ---

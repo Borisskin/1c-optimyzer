@@ -1,9 +1,20 @@
-"""Генерация и валидация license keys в формате OPTM-XXXX-XXXX-XXXX-XXXX."""
+"""License keys: один персональный ключ на юзера (OPTM-XXXX-XXXX-XXXX-XXXX).
+
+Семантика:
+- Ключ привязан к user_id навсегда (до regenerate)
+- Переиспользуемый — юзер может активировать на нескольких устройствах
+  (до device_limit, который зависит от тарифа: Free=1, Pro=5)
+- Free / Pro статус определяется текущей подпиской — НЕ полем в ключе
+- При regenerate — старый помечается is_used=True (используем как is_revoked)
+  и больше не валиден, выдаётся новый
+
+Поле LicenseKey.is_used сохраняем (миграция была бы), но семантика
+изменилась с «использован 1 раз» на «отозван (после regenerate)».
+"""
 
 from __future__ import annotations
 
 import random
-import string
 from datetime import datetime
 
 from sqlalchemy import select
@@ -26,8 +37,11 @@ def generate_key() -> str:
 
 
 def issue_key(db: Session, user: User, *, payment: Payment | None = None) -> LicenseKey:
-    """Создать новый ключ для юзера (вызывается webhook'ом при успешной оплате Pro)."""
-    # 5 попыток на случай collision — практически невозможно при таком алфавите.
+    """Создать новый ключ (raw create — не проверяет существующие).
+
+    Обычно вызывайте `get_or_create_active_key` или `regenerate_key` вместо этого.
+    Прямой `issue_key` используется только webhook'ом оплаты для legacy совместимости.
+    """
     for _ in range(5):
         candidate = generate_key()
         if not db.scalar(select(LicenseKey).where(LicenseKey.key == candidate)):
@@ -47,24 +61,33 @@ def issue_key(db: Session, user: User, *, payment: Payment | None = None) -> Lic
     return record
 
 
-def consume_key(db: Session, key: str, *, device_id: str) -> LicenseKey:
-    """Пометить ключ использованным.
+def get_active_key(db: Session, user: User) -> LicenseKey | None:
+    """Найти текущий активный (не отозванный) ключ юзера."""
+    return db.scalar(
+        select(LicenseKey)
+        .where(LicenseKey.user_id == user.id)
+        .where(LicenseKey.is_used.is_(False))
+    )
 
-    Raises:
-        LookupError: ключ не найден или уже использован.
-    """
-    record = db.scalar(select(LicenseKey).where(LicenseKey.key == key))
-    if record is None:
-        raise LookupError("License key not found")
-    if record.is_used:
-        raise LookupError("License key already used")
-    record.is_used = True
-    record.used_at = datetime.utcnow()
-    record.used_by_device_id = device_id
-    db.commit()
-    db.refresh(record)
-    return record
+
+def get_or_create_active_key(db: Session, user: User) -> LicenseKey:
+    """Если у юзера уже есть активный ключ — вернуть его, иначе создать новый."""
+    existing = get_active_key(db, user)
+    if existing:
+        return existing
+    return issue_key(db, user)
+
+
+def regenerate_key(db: Session, user: User) -> LicenseKey:
+    """Отозвать текущий ключ (если был) и выпустить новый."""
+    current = get_active_key(db, user)
+    if current:
+        current.is_used = True
+        current.used_at = datetime.utcnow()
+        db.commit()
+    return issue_key(db, user)
 
 
 def lookup_key(db: Session, key: str) -> LicenseKey | None:
-    return db.scalar(select(LicenseKey).where(LicenseKey.key == key))
+    """Найти ключ по строке. Не проверяет is_used — это делает caller."""
+    return db.scalar(select(LicenseKey).where(LicenseKey.key == key.strip().upper()))

@@ -131,10 +131,13 @@ export const apiUsage = {
 };
 
 export const apiLicense = {
-  /** POST /v1/license/issue-for-cabinet — выдать ключ активации для desktop. */
-  issueForCabinet: () =>
+  /** GET /v1/license/my-key — текущий персональный ключ (создаёт если не было). */
+  myKey: () =>
+    api<{ key: string; deep_link: string }>("/v1/license/my-key"),
+  /** POST /v1/license/regenerate-key — выдать новый, старый отозвать. */
+  regenerate: () =>
     api<{ key: string; deep_link: string }>(
-      "/v1/license/issue-for-cabinet",
+      "/v1/license/regenerate-key",
       { method: "POST" },
     ),
 };

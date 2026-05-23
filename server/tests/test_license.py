@@ -41,14 +41,28 @@ def test_activate_unknown_key_404(client):
     assert resp.status_code == 404
 
 
-def test_activate_used_key_404(client, db_session):
+def test_activate_key_is_reusable(client, db_session):
+    """Ключ персональный, переиспользуемый — можно активировать на нескольких
+    устройствах (до device_limit для Pro = 5)."""
     user = make_user(db_session)
     upgrade_to_pro(db_session, user, days=30)
     key = license_keys_service.issue_key(db_session, user)
-    # Используем ключ один раз
-    client.post("/v1/license/activate", json=_activate_payload(key.key, fp=f"fingerprint-one-{'x' * 48}"))
-    # Второй раз — 404
-    resp = client.post("/v1/license/activate", json=_activate_payload(key.key, fp=f"fingerprint-two-{'x' * 48}"))
+    # Первое устройство — 200
+    r1 = client.post("/v1/license/activate", json=_activate_payload(key.key, fp=f"fingerprint-one-{'x' * 48}"))
+    assert r1.status_code == 200
+    # Второе устройство тем же ключом — тоже 200 (Pro лимит = 5)
+    r2 = client.post("/v1/license/activate", json=_activate_payload(key.key, fp=f"fingerprint-two-{'x' * 48}"))
+    assert r2.status_code == 200
+
+
+def test_activate_revoked_key_404(client, db_session):
+    """После regenerate_key старый ключ становится невалидным."""
+    user = make_user(db_session)
+    upgrade_to_pro(db_session, user, days=30)
+    old_key = license_keys_service.issue_key(db_session, user)
+    # Перегенерируем — старый отозван
+    license_keys_service.regenerate_key(db_session, user)
+    resp = client.post("/v1/license/activate", json=_activate_payload(old_key.key))
     assert resp.status_code == 404
 
 
@@ -78,22 +92,40 @@ def test_activate_free_device_limit_409(client, db_session):
     assert resp.status_code == 409
 
 
-def test_issue_for_cabinet_requires_auth(client):
-    resp = client.post("/v1/license/issue-for-cabinet")
+def test_my_key_requires_auth(client):
+    resp = client.get("/v1/license/my-key")
     assert resp.status_code == 401
 
 
-def test_issue_for_cabinet_returns_key(client, db_session):
+def test_my_key_returns_persistent_key(client, db_session):
+    """GET /my-key возвращает один и тот же ключ при повторных вызовах."""
     from tests.factories import access_cookies_for
     user = make_user(db_session)
-    resp = client.post(
-        "/v1/license/issue-for-cabinet",
-        cookies=access_cookies_for(user),
-    )
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["key"].startswith("OPTM-")
-    assert body["deep_link"] == f"optimyzer://activate?key={body['key']}"
+    cookies = access_cookies_for(user)
+    r1 = client.get("/v1/license/my-key", cookies=cookies)
+    assert r1.status_code == 200, r1.text
+    key1 = r1.json()["key"]
+    assert key1.startswith("OPTM-")
+    # Второй вызов — тот же ключ (не генерирует новый)
+    r2 = client.get("/v1/license/my-key", cookies=cookies)
+    assert r2.status_code == 200
+    assert r2.json()["key"] == key1
+
+
+def test_regenerate_key_invalidates_old(client, db_session):
+    """POST /regenerate-key выдаёт новый ключ, старый отзывает."""
+    from tests.factories import access_cookies_for
+    user = make_user(db_session)
+    cookies = access_cookies_for(user)
+    old = client.get("/v1/license/my-key", cookies=cookies).json()["key"]
+    new = client.post("/v1/license/regenerate-key", cookies=cookies).json()["key"]
+    assert new != old
+    # Старый ключ теперь не работает
+    resp = client.post("/v1/license/activate", json=_activate_payload(old))
+    assert resp.status_code == 404
+    # Новый — работает
+    resp = client.post("/v1/license/activate", json=_activate_payload(new))
+    assert resp.status_code == 200
 
 
 def test_activate_device_limit_409_for_free(client, db_session):

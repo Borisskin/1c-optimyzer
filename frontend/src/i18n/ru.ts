@@ -349,7 +349,7 @@ export const t = {
     hideKeyInput: "Скрыть ввод ключа",
     keyLabel: "Ключ активации",
     keyHint:
-      "Ключ приходит на email после оплаты на optimyzer.pro. Формат: OPTM-XXXX-XXXX-XXXX-XXXX.",
+      "Откройте личный кабинет, скопируйте ваш постоянный ключ и вставьте сюда. Формат: OPTM-XXXX-XXXX-XXXX-XXXX.",
     activate: "Активировать",
     activating: "Активируем…",
     activatedToast: "Pro активирован — спасибо!",

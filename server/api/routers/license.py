@@ -63,9 +63,14 @@ def activate(
     db: Annotated[Session, Depends(get_db)],
 ) -> LicenseActivateResponse:
     """Обмен activation key + fingerprint на device JWT."""
+    # Ключ персональный, переиспользуемый — `is_used=True` означает что юзер
+    # его перегенерировал (старый отозван). Невалидные = не найден или отозван.
     key_record = license_keys_service.lookup_key(db, payload.key)
     if key_record is None or key_record.is_used:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "License key not found or already used")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Ключ не найден или отозван. Получите новый в личном кабинете.",
+        )
 
     user: User = key_record.user
     sub = user.subscription
@@ -117,7 +122,8 @@ def activate(
         app_version=payload.app_version,
         ip_masked=ip_masked,
     )
-    license_keys_service.consume_key(db, payload.key, device_id=device.id)
+    # Ключ НЕ помечаем «использованным» — он персональный, переиспользуемый.
+    # Привязка device → user уже сделана через register_or_update_device выше.
 
     token = create_device_token(user_id=user.id, device_id=device.id)
     return LicenseActivateResponse(
@@ -132,25 +138,46 @@ def activate(
     )
 
 
-@router.post(
-    "/issue-for-cabinet",
+@router.get(
+    "/my-key",
     response_model=IssueKeyForCabinetResponse,
-    summary="Выдать activation key для desktop приложения (cabinet only)",
+    summary="Текущий персональный ключ активации (создаёт если не было)",
 )
-def issue_for_cabinet(
+def my_key(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> IssueKeyForCabinetResponse:
-    """Cabinet → POST → получает свежий activation key для текущего юзера.
+    """Cabinet: показать юзеру его персональный ключ.
 
-    Юзер потом либо копирует key в desktop, либо открывает
-    `optimyzer://activate?key=...` (deep link который Tauri ловит).
-    Key — одноразовый, привязан к user_id. На стороне desktop'а нужно
-    POST'нуть его на `/v1/license/activate` с fingerprint своего устройства.
+    Один ключ на user (создаётся при первом GET). Переиспользуемый —
+    юзер может активировать его на нескольких устройствах (Free=1, Pro=5).
+    Free/Pro статус — отдельная подписка, ключ один и тот же.
     """
-    record = license_keys_service.issue_key(db, user)
-    deep_link = f"optimyzer://activate?key={record.key}"
-    return IssueKeyForCabinetResponse(key=record.key, deep_link=deep_link)
+    record = license_keys_service.get_or_create_active_key(db, user)
+    return IssueKeyForCabinetResponse(
+        key=record.key,
+        deep_link=f"optimyzer://activate?key={record.key}",
+    )
+
+
+@router.post(
+    "/regenerate-key",
+    response_model=IssueKeyForCabinetResponse,
+    summary="Перегенерировать ключ (старый отзывается)",
+)
+def regenerate_key(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueKeyForCabinetResponse:
+    """Cabinet: перегенерация ключа. Старый ключ становится невалидным —
+    устройства, активированные на нём, при следующем heartbeat увидят 401
+    и перейдут в не-активированное состояние (юзер должен ввести новый ключ).
+    """
+    record = license_keys_service.regenerate_key(db, user)
+    return IssueKeyForCabinetResponse(
+        key=record.key,
+        deep_link=f"optimyzer://activate?key={record.key}",
+    )
 
 
 @router.post("/heartbeat", response_model=DeviceHeartbeatResponse)
