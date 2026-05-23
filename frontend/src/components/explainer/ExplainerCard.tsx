@@ -199,7 +199,7 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
     return (
       <div style={loadingRowStyle}>
         <Icon name="Brain" size={13} color="var(--o-accent)" className="pulse" />
-        <span>AI готовит объяснение…</span>
+        <span>AI готовит консультацию…</span>
       </div>
     );
   }

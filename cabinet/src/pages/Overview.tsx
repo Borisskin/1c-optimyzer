@@ -34,7 +34,7 @@ export function Overview() {
           <div className="metric__hint">
             {isPro
               ? `действует до ${new Date(data.subscription.ends_at).toLocaleDateString("ru-RU")}`
-              : "5 AI-объяснений / мес"}
+              : "5 AI-консультаций / мес"}
           </div>
         </div>
         <div className="metric">
@@ -59,7 +59,7 @@ export function Overview() {
 
       {!isPro && (
         <div className="card">
-          <h2 className="card__title">Хотите безлимит AI-объяснений?</h2>
+          <h2 className="card__title">Хотите безлимит AI-консультаций?</h2>
           <p style={{ margin: "0 0 12px", color: "var(--fg-2)" }}>
             Pro — 2 990 ₽/мес, отмена в любой момент.
           </p>

@@ -1,139 +1,92 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { apiLicense } from "@/api/endpoints";
 
 /**
- * Страница активации desktop приложения.
+ * Страница активации desktop приложения (device flow).
  *
- * Юзер попадает сюда автоматически после OAuth login (если открыл cabinet из
- * desktop'а через `/login?from=desktop`). Cabinet генерирует одноразовый
- * activation key через /v1/license/issue-for-cabinet и предлагает два пути:
+ * Юзер попадает сюда после OAuth login. Cabinet получает session_id из URL
+ * (`?session=XXX`) и сразу POST'ит на /v1/license/desktop-confirm. Desktop
+ * приложение тем временем polling'ом ждёт confirm — как только сработало,
+ * заходит в основной UI.
  *
- *   1. **Deep link** (primary) — кнопка «Открыть в Optimyzer» открывает
- *      `optimyzer://activate?key=OPTM-XXXX-...`. Tauri ловит deep link,
- *      активирует desktop без копи-паста.
- *   2. **Manual copy** (fallback) — поле с ключом + кнопка «Скопировать».
- *      Юзер вставляет в desktop Settings → «Введите ключ активации».
+ * Юзеру тут ничего делать не надо — просто показываем «Готово, вернитесь
+ * в Optimyzer».
  */
 export function DesktopActivate() {
-  const issue = useMutation({ mutationFn: () => apiLicense.issueForCabinet() });
-  const [copied, setCopied] = useState(false);
+  const [params] = useSearchParams();
+  const sessionId = params.get("session");
 
-  // Автоматически выпускаем ключ при первом mount'е.
+  const confirm = useMutation({
+    mutationFn: () => {
+      if (!sessionId) throw new Error("no session");
+      return apiLicense.desktopConfirm(sessionId);
+    },
+  });
+
   useEffect(() => {
-    if (!issue.data && !issue.isPending && !issue.error) {
-      issue.mutate();
+    if (sessionId && !confirm.data && !confirm.isPending && !confirm.error) {
+      confirm.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sessionId]);
 
-  async function copyKey() {
-    if (!issue.data?.key) return;
-    try {
-      await navigator.clipboard.writeText(issue.data.key);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // fallback: select text
-    }
+  if (!sessionId) {
+    return (
+      <>
+        <div className="page__head">
+          <h1 className="page__title">Активация desktop приложения</h1>
+        </div>
+        <div className="card">
+          <p style={{ margin: 0, color: "var(--fg-2)" }}>
+            Откройте Optimyzer и нажмите «Войти через Yandex». Вы автоматически
+            попадёте на эту страницу с правильной ссылкой активации.
+          </p>
+        </div>
+      </>
+    );
   }
 
   return (
     <>
       <div className="page__head">
         <h1 className="page__title">Активация desktop приложения</h1>
-        <p className="page__lead">
-          Один ключ = одно устройство. Free даёт 5 AI-объяснений в месяц на ваш
-          аккаунт.
-        </p>
       </div>
 
-      {issue.isPending && (
+      {confirm.isPending && (
         <div className="card">
-          <div className="loader">Генерируем ключ…</div>
+          <div className="loader">Активируем…</div>
         </div>
       )}
 
-      {issue.error && (
+      {confirm.error && (
         <div className="error-banner">
-          Не удалось получить ключ: {issue.error.message}
+          Не удалось активировать: {confirm.error.message}.{" "}
+          <button
+            type="button"
+            className="btn"
+            style={{ marginTop: 8 }}
+            onClick={() => confirm.mutate()}
+          >
+            Попробовать ещё раз
+          </button>
         </div>
       )}
 
-      {issue.data && (
-        <>
-          <div className="card">
-            <h2 className="card__title">Способ 1 — открыть в Optimyzer (рекомендуем)</h2>
-            <p style={{ color: "var(--fg-2)", marginTop: 0 }}>
-              Откройте Optimyzer на этом компьютере прямо отсюда. Сработает
-              если desktop приложение установлено.
-            </p>
-            <a
-              href={issue.data.deep_link}
-              className="btn btn--primary"
-              style={{ fontSize: 15 }}
-            >
-              Открыть в Optimyzer
-            </a>
-          </div>
-
-          <div className="card">
-            <h2 className="card__title">Способ 2 — скопировать ключ вручную</h2>
-            <p style={{ color: "var(--fg-2)", marginTop: 0 }}>
-              Откройте Optimyzer → Настройки → Аккаунт → «Введите ключ активации».
-              Вставьте этот ключ:
-            </p>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                marginTop: 12,
-              }}
-            >
-              <code
-                style={{
-                  flex: 1,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 16,
-                  padding: "12px 16px",
-                  background: "var(--bg-3)",
-                  borderRadius: "var(--r)",
-                  letterSpacing: "0.05em",
-                  userSelect: "all",
-                }}
-              >
-                {issue.data.key}
-              </code>
-              <button
-                type="button"
-                className="btn"
-                onClick={copyKey}
-              >
-                {copied ? "Скопировано ✓" : "Скопировать"}
-              </button>
-            </div>
-            <p style={{ color: "var(--fg-3)", fontSize: 12, marginTop: 8 }}>
-              Ключ одноразовый и привязывается к вашему компьютеру после активации.
-              Если потеряли — нажмите{" "}
-              <button
-                type="button"
-                onClick={() => issue.mutate()}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--accent)",
-                  cursor: "pointer",
-                  padding: 0,
-                  textDecoration: "underline",
-                }}
-              >
-                сгенерировать новый
-              </button>
-              .
-            </p>
-          </div>
-        </>
+      {confirm.data && (
+        <div className="card">
+          <h2 className="card__title" style={{ color: "var(--accent)" }}>
+            ✓ Готово!
+          </h2>
+          <p style={{ margin: "0 0 16px", color: "var(--fg)" }}>
+            Optimyzer активирован на устройстве <strong>{confirm.data.device_name}</strong>.
+          </p>
+          <p style={{ margin: 0, color: "var(--fg-2)" }}>
+            Вернитесь в Optimyzer — приложение само поймёт что вы вошли,
+            и откроет основной экран. Эту вкладку можно закрыть.
+          </p>
+        </div>
       )}
     </>
   );

@@ -2,6 +2,7 @@
 
 from models.base import Base
 from models.credits import Credits
+from models.desktop_session import DesktopSession, DesktopSessionStatus
 from models.device import Device
 from models.license_key import LicenseKey
 from models.payment import Payment, PaymentStatus
@@ -14,6 +15,8 @@ from models.user import User
 __all__ = [
     "Base",
     "Credits",
+    "DesktopSession",
+    "DesktopSessionStatus",
     "Device",
     "LicenseKey",
     "Payment",

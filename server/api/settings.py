@@ -56,9 +56,9 @@ class Settings(BaseSettings):
     yandex_client_id: str = ""
     yandex_client_secret: str = ""
     # Должно СОВПАДАТЬ с тем что зарегистрировано в oauth.yandex.ru/client.
-    # У Сергея — http://localhost/success (порт 80; см. routers/auth.py
-    # OAUTH_LANDING_PATH = "/success" + nginx/Apache proxy).
-    yandex_redirect_uri: str = "http://localhost/success"
+    # Дев: http://localhost:8001/success — uvicorn ловит callback напрямую
+    # на :8001/success (routers/auth.py OAUTH_LANDING_PATH = "/success").
+    yandex_redirect_uri: str = "http://localhost:8001/success"
     yandex_oauth_authorize_url: str = "https://oauth.yandex.ru/authorize"
     yandex_oauth_token_url: str = "https://oauth.yandex.ru/token"
     yandex_user_info_url: str = "https://login.yandex.ru/info"

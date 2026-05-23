@@ -1,137 +1,170 @@
 /**
  * LoginGate — full-screen блокировка приложения пока юзер не активирован.
  *
- * Показывается в App.tsx когда `accountStore.accessToken === null`.
- * Полностью блокирует анализ архивов, переключение экранов и любые
- * другие действия — решение Сергея 23.05.2026 (mandatory login для
- * учёта AI-генераций на стороне cloud).
+ * Device flow (как Apple TV / GitHub CLI):
+ *   1. Юзер кликает «Войти через Yandex»
+ *   2. Desktop POST'ит cloud.desktopInit → получает session_id + cabinet_url
+ *   3. Открывается system browser на cabinet/desktop-activate?session=...
+ *   4. Юзер логинится через Yandex в browser
+ *   5. Cabinet auto-confirms сессию через /v1/license/desktop-confirm
+ *   6. Desktop polling'ом (раз в 2 сек) ждёт status=confirmed
+ *   7. Как только получил access_token — accountStore.activate() → LoginGate уходит
  *
- * UX:
- *   1. PulseLogo + welcome text
- *   2. Primary кнопка «Войти через Yandex» → открывает cabinet/login?from=desktop
- *      в system browser (через @tauri-apps/plugin-shell.open)
- *   3. Fallback expander «Уже есть ключ?» → поле ввода + кнопка «Активировать»
- *
- * После активации (либо через deep link от cabinet → ловит Tauri →
- * accountStore.activate(), либо через ручной ввод ключа здесь) — LoginGate
- * исчезает, юзер видит обычный UI.
+ * Без ключей активации и копи-паста.
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccountStore } from "@/store/accountStore";
-import { useAppStore } from "@/store/appStore";
-import { cabinetUrl, cloud, CloudError } from "@/api/cloud";
+import { cloud, CloudError } from "@/api/cloud";
 import { t } from "@/i18n/ru";
 import { computeFingerprint, detectDeviceName, detectPlatform } from "@/utils/fingerprint";
 import { PulseLogo } from "@/components/icons/PulseLogo";
 
+type Phase = "idle" | "initiating" | "waiting" | "error";
+
+const POLL_INTERVAL_MS = 2000;
+const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 минут
+
 export function LoginGate() {
   const activate = useAccountStore((s) => s.activate);
-  const pushToast = useAppStore((s) => s.pushToast);
 
-  const [keyOpen, setKeyOpen] = useState(false);
-  const [key, setKey] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const sessionRef = useRef<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startedAtRef = useRef<number>(0);
 
-  function openCabinetLogin() {
-    // Tauri webview позволяет window.open(url, '_blank') открывать в system browser.
-    // Если в будущем потребуется явный API — добавим @tauri-apps/plugin-shell
-    // (требует Rust rebuild + permissions в tauri.conf.json).
-    window.open(cabinetUrl("/login?from=desktop"), "_blank", "noreferrer");
-  }
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
 
-  async function submitKey() {
-    if (!key.trim()) return;
-    setBusy(true);
+  useEffect(() => stopPolling, [stopPolling]);
+
+  const pollOnce = useCallback(async () => {
+    const sessionId = sessionRef.current;
+    if (!sessionId) return;
+
+    if (Date.now() - startedAtRef.current > POLL_TIMEOUT_MS) {
+      stopPolling();
+      setPhase("error");
+      setError(t.loginGate.errors.timeout);
+      return;
+    }
+
+    try {
+      const resp = await cloud.desktopPoll(sessionId);
+      if (resp.status === "confirmed" && resp.access_token && resp.user && resp.device && resp.subscription) {
+        stopPolling();
+        activate({
+          accessToken: resp.access_token,
+          deviceId: resp.device.id,
+          profile: {
+            userId: resp.user.id,
+            email: resp.user.email,
+            displayName: resp.user.display_name,
+          },
+          subscription: {
+            plan: resp.subscription.plan,
+            endsAt: resp.subscription.ends_at,
+            proActive: resp.subscription.pro_active,
+          },
+        });
+        return;
+      }
+      if (resp.status === "expired" || resp.status === "cancelled") {
+        stopPolling();
+        setPhase("error");
+        setError(
+          resp.status === "expired"
+            ? t.loginGate.errors.timeout
+            : t.loginGate.errors.cancelled,
+        );
+        return;
+      }
+      // pending — продолжаем ждать
+      pollTimerRef.current = setTimeout(pollOnce, POLL_INTERVAL_MS);
+    } catch (err) {
+      // Сетевая ошибка — ретраим
+      console.warn("Desktop poll failed:", (err as CloudError).message);
+      pollTimerRef.current = setTimeout(pollOnce, POLL_INTERVAL_MS);
+    }
+  }, [activate, stopPolling]);
+
+  const startLogin = useCallback(async () => {
+    setPhase("initiating");
     setError(null);
     try {
       const fp = await computeFingerprint();
-      const resp = await cloud.activate({
-        key: key.trim(),
+      const init = await cloud.desktopInit({
         fingerprint: fp,
         deviceName: detectDeviceName(),
         platform: detectPlatform(),
         appVersion: t.app.version,
       });
-      activate({
-        accessToken: resp.access_token,
-        deviceId: resp.device.id,
-        profile: {
-          userId: resp.user.id,
-          email: resp.user.email,
-          displayName: resp.user.display_name,
-        },
-        subscription: {
-          plan: resp.subscription.plan,
-          endsAt: resp.subscription.ends_at,
-          proActive: resp.subscription.pro_active,
-        },
-      });
-      pushToast(t.loginGate.activatedToast, "ok");
+      sessionRef.current = init.session_id;
+      startedAtRef.current = Date.now();
+      // Открываем system browser на cabinet
+      window.open(init.cabinet_url, "_blank", "noreferrer");
+      setPhase("waiting");
+      // Стартуем polling через секунду — даём browser открыться
+      pollTimerRef.current = setTimeout(pollOnce, 1000);
     } catch (err) {
-      const ce = err as CloudError;
-      setError(
-        ce.reason === "not_found"
-          ? t.account.errors.keyNotFound
-          : ce.reason === "conflict"
-            ? t.account.errors.deviceLimit
-            : ce.reason === "network"
-              ? t.account.errors.network
-              : ce.message || t.account.errors.generic,
-      );
-    } finally {
-      setBusy(false);
+      setPhase("error");
+      setError((err as CloudError).message || t.loginGate.errors.network);
     }
-  }
+  }, [pollOnce]);
+
+  const cancelWaiting = useCallback(() => {
+    stopPolling();
+    sessionRef.current = null;
+    setPhase("idle");
+    setError(null);
+  }, [stopPolling]);
 
   return (
     <div style={backdropStyle}>
       <div style={cardStyle}>
-        <PulseLogo size={64} style={{ marginBottom: 16 }} />
+        <PulseLogo size={72} style={{ marginBottom: 20 }} />
         <h1 style={titleStyle}>Optimyzer</h1>
         <p style={leadStyle}>{t.loginGate.lead}</p>
 
-        <button type="button" style={primaryBtnStyle} onClick={openCabinetLogin}>
-          {t.loginGate.signInYandex}
-        </button>
-
-        <div style={separatorStyle}>
-          <span>{t.loginGate.separator}</span>
-        </div>
-
-        {!keyOpen ? (
-          <button
-            type="button"
-            style={linkBtnStyle}
-            onClick={() => setKeyOpen(true)}
-          >
-            {t.loginGate.alreadyHaveKey}
+        {phase === "idle" && (
+          <button type="button" style={primaryBtnStyle} onClick={startLogin}>
+            {t.loginGate.signInYandex}
           </button>
-        ) : (
-          <div style={keySectionStyle}>
-            <input
-              type="text"
-              style={keyInputStyle}
-              placeholder="OPTM-XXXX-XXXX-XXXX-XXXX"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              disabled={busy}
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button
-              type="button"
-              style={activateBtnStyle}
-              onClick={submitKey}
-              disabled={busy || key.trim().length < 10}
-            >
-              {busy ? t.account.activating : t.account.activate}
-            </button>
-          </div>
         )}
 
-        {error && <div style={errorStyle}>{error}</div>}
+        {phase === "initiating" && (
+          <button type="button" style={primaryBtnStyle} disabled>
+            {t.loginGate.initiating}
+          </button>
+        )}
+
+        {phase === "waiting" && (
+          <>
+            <div style={waitingBoxStyle}>
+              <div style={spinnerStyle} />
+              <p style={{ margin: 0, fontSize: 14, color: "var(--o-text-2, #475569)" }}>
+                {t.loginGate.waiting}
+              </p>
+            </div>
+            <button type="button" style={linkBtnStyle} onClick={cancelWaiting}>
+              {t.loginGate.cancel}
+            </button>
+          </>
+        )}
+
+        {phase === "error" && (
+          <>
+            <div style={errorStyle}>{error}</div>
+            <button type="button" style={primaryBtnStyle} onClick={startLogin}>
+              {t.loginGate.retry}
+            </button>
+          </>
+        )}
 
         <p style={footnoteStyle}>{t.loginGate.footnote}</p>
       </div>
@@ -149,50 +182,44 @@ const backdropStyle: React.CSSProperties = {
   placeItems: "center",
   zIndex: 9999,
   padding: 24,
+  fontFamily: '"Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 const cardStyle: React.CSSProperties = {
-  width: "min(440px, 100%)",
+  width: "min(480px, 100%)",
   background: "#ffffff",
   borderRadius: 16,
-  padding: "40px 36px",
+  padding: "48px 40px",
   boxShadow: "0 20px 60px rgba(15, 27, 45, 0.15)",
   textAlign: "center",
 };
 
 const titleStyle: React.CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: 28,
-  fontWeight: 700,
+  margin: "0 0 12px",
+  fontSize: 32,
+  fontWeight: 800,
   color: "#0f172a",
+  letterSpacing: "-0.02em",
 };
 
 const leadStyle: React.CSSProperties = {
-  margin: "0 0 24px",
+  margin: "0 0 28px",
   color: "#475569",
-  fontSize: 14,
+  fontSize: 15,
   lineHeight: 1.55,
 };
 
 const primaryBtnStyle: React.CSSProperties = {
   display: "block",
   width: "100%",
-  padding: "12px 20px",
+  padding: "14px 20px",
   background: "#ffdb4d",
   color: "#000",
   border: "none",
   borderRadius: 8,
-  fontSize: 15,
+  fontSize: 16,
   fontWeight: 700,
   cursor: "pointer",
-};
-
-const separatorStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  margin: "20px 0",
-  color: "#94a3b8",
-  fontSize: 12,
 };
 
 const linkBtnStyle: React.CSSProperties = {
@@ -200,53 +227,55 @@ const linkBtnStyle: React.CSSProperties = {
   width: "100%",
   background: "transparent",
   border: "none",
-  color: "#0ea5a4",
+  color: "#64748b",
   fontSize: 14,
-  fontWeight: 600,
+  fontWeight: 500,
   cursor: "pointer",
   padding: 8,
+  marginTop: 8,
 };
 
-const keySectionStyle: React.CSSProperties = {
+const waitingBoxStyle: React.CSSProperties = {
   display: "flex",
-  gap: 8,
+  alignItems: "center",
+  gap: 12,
+  padding: "16px 18px",
+  background: "#f0fdfa",
+  borderRadius: 8,
+  border: "1px solid #99f6e4",
 };
 
-const keyInputStyle: React.CSSProperties = {
-  flex: 1,
-  padding: "10px 12px",
-  border: "1px solid #cbd5e1",
-  borderRadius: 8,
-  fontFamily: '"JetBrains Mono", monospace',
-  fontSize: 13,
-  letterSpacing: "0.04em",
-};
-
-const activateBtnStyle: React.CSSProperties = {
-  padding: "10px 16px",
-  background: "#0ea5a4",
-  color: "#fff",
-  border: "none",
-  borderRadius: 8,
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: "pointer",
+const spinnerStyle: React.CSSProperties = {
+  width: 20,
+  height: 20,
+  border: "3px solid #99f6e4",
+  borderTopColor: "#0ea5a4",
+  borderRadius: "50%",
+  animation: "spin 0.8s linear infinite",
 };
 
 const errorStyle: React.CSSProperties = {
-  marginTop: 12,
-  padding: "8px 12px",
+  marginBottom: 16,
+  padding: "12px 16px",
   background: "#fef2f2",
   border: "1px solid #fecaca",
   borderRadius: 8,
   color: "#b91c1c",
-  fontSize: 13,
+  fontSize: 14,
   textAlign: "left",
 };
 
 const footnoteStyle: React.CSSProperties = {
-  margin: "24px 0 0",
+  margin: "28px 0 0",
   fontSize: 12,
   color: "#94a3b8",
   lineHeight: 1.5,
 };
+
+// Inject keyframes для спиннера один раз
+if (typeof document !== "undefined" && !document.getElementById("loginGateSpinKeyframes")) {
+  const style = document.createElement("style");
+  style.id = "loginGateSpinKeyframes";
+  style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+  document.head.appendChild(style);
+}

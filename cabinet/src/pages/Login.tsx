@@ -5,18 +5,23 @@ import { ApiError } from "@/api/client";
 // Где сохраняем «откуда пришёл юзер» (desktop / web) чтобы после OAuth
 // callback редиректить в нужное место.
 const FROM_KEY = "optimyzer.oauth.from";
+const SESSION_KEY = "optimyzer.oauth.desktop_session";
 
 export function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Если URL содержит `?from=desktop`, запомним — после OAuthCallback
-  // отправим юзера на /desktop-activate вместо /.
+  // Если URL содержит `?from=desktop` (или `?session=`) — запомним.
+  // После OAuthCallback отправим юзера на /desktop-activate?session=... .
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const from = params.get("from");
-    if (from === "desktop") {
+    const session = params.get("session");
+    if (from === "desktop" || session) {
       sessionStorage.setItem(FROM_KEY, "desktop");
+    }
+    if (session) {
+      sessionStorage.setItem(SESSION_KEY, session);
     }
   }, []);
 

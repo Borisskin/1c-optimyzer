@@ -37,7 +37,7 @@ export function Subscription() {
       <div className="page__head">
         <h1 className="page__title">Подписка</h1>
         <p className="page__lead">
-          {isPro ? "Тариф Pro · безлимит AI-объяснений" : "Тариф Free · 5 AI-объяснений в месяц"}
+          {isPro ? "Тариф Pro · безлимит AI-консультаций" : "Тариф Free · 5 AI-консультаций в месяц"}
         </p>
       </div>
 

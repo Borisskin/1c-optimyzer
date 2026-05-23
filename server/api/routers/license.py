@@ -8,10 +8,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.db import get_db
 from api.deps import get_client_ip, get_current_device_user, get_current_user
+from models.desktop_session import DesktopSessionStatus
 from models.user import User
 from schemas.devices import DeviceHeartbeatRequest, DeviceHeartbeatResponse
 from schemas.license import (
@@ -22,7 +23,13 @@ from schemas.license import (
     SubscriptionContext,
     UserContext,
 )
-from services import credits_service, device_service, license_keys_service, soft_caps
+from services import (
+    credits_service,
+    desktop_session_service,
+    device_service,
+    license_keys_service,
+    soft_caps,
+)
 from services.auth_service import mask_ip
 from services.jwt_service import create_device_token
 
@@ -39,6 +46,39 @@ class IssueKeyForCabinetResponse(BaseModel):
 
     key: str
     deep_link: str
+
+
+# ---------- Device flow (init/confirm/poll) ----------
+
+
+class DesktopInitRequest(BaseModel):
+    fingerprint: str = Field(..., min_length=10, max_length=64)
+    device_name: str = Field(..., min_length=1, max_length=255)
+    platform: str = Field(..., pattern="^(windows|macos|linux)$")
+    app_version: str = Field(..., min_length=1, max_length=32)
+
+
+class DesktopInitResponse(BaseModel):
+    session_id: str
+    expires_at: datetime
+    cabinet_url: str  # куда desktop открывает browser
+
+
+class DesktopConfirmRequest(BaseModel):
+    session_id: str
+
+
+class DesktopConfirmResponse(BaseModel):
+    status: str  # confirmed | already
+    device_name: str
+
+
+class DesktopPollResponse(BaseModel):
+    status: str  # pending | confirmed | expired | claimed | cancelled
+    access_token: str | None = None
+    user: UserContext | None = None
+    device: DeviceContext | None = None
+    subscription: SubscriptionContext | None = None
 
 
 @router.post(
@@ -144,6 +184,107 @@ def issue_for_cabinet(
     record = license_keys_service.issue_key(db, user)
     deep_link = f"optimyzer://activate?key={record.key}"
     return IssueKeyForCabinetResponse(key=record.key, deep_link=deep_link)
+
+
+@router.post(
+    "/desktop-init",
+    response_model=DesktopInitResponse,
+    summary="Desktop: создать pending сессию активации (device flow step 1)",
+)
+def desktop_init(
+    payload: DesktopInitRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> DesktopInitResponse:
+    """Desktop вызывает при «Войти через Yandex» — БЕЗ auth.
+
+    Создаём session_id. Desktop потом открывает browser на
+    `<cabinet>/desktop-activate?session=<id>` и polling'ом ждёт confirm.
+    """
+    session = desktop_session_service.init_session(
+        db,
+        fingerprint=payload.fingerprint,
+        device_name=payload.device_name,
+        platform=payload.platform,
+        app_version=payload.app_version,
+    )
+    cabinet_base = (
+        settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:5173"
+    )
+    return DesktopInitResponse(
+        session_id=session.id,
+        expires_at=session.expires_at,
+        cabinet_url=f"{cabinet_base}/desktop-activate?session={session.id}",
+    )
+
+
+@router.post(
+    "/desktop-confirm",
+    response_model=DesktopConfirmResponse,
+    summary="Cabinet: подтвердить сессию после OAuth login (device flow step 2)",
+)
+def desktop_confirm(
+    payload: DesktopConfirmRequest,
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> DesktopConfirmResponse:
+    """Cabinet вызывает после login юзера — связываем session с user_id."""
+    try:
+        session = desktop_session_service.confirm_session(
+            db,
+            payload.session_id,
+            user,
+            ip=get_client_ip(request),
+        )
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except desktop_session_service.DeviceLimitReached as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Device limit reached: {exc.active_count}/{exc.limit}. "
+            "Деактивируйте старое устройство.",
+        ) from exc
+
+    return DesktopConfirmResponse(
+        status="confirmed" if session.status == DesktopSessionStatus.CONFIRMED else "already",
+        device_name=session.device_name,
+    )
+
+
+@router.get(
+    "/desktop-poll",
+    response_model=DesktopPollResponse,
+    summary="Desktop: poll статуса сессии (device flow step 3)",
+)
+def desktop_poll(
+    session_id: Annotated[str, Field(min_length=10)],
+    db: Annotated[Session, Depends(get_db)],
+) -> DesktopPollResponse:
+    """Desktop polling'ом каждые ~2 сек. Когда status=confirmed — отдаём токен,
+    помечаем claimed. БЕЗ auth (session_id — секрет per-device, проверяется).
+    """
+    session = desktop_session_service.poll_session(db, session_id)
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "session not found")
+
+    if session.status != DesktopSessionStatus.CONFIRMED:
+        return DesktopPollResponse(status=session.status.value)
+
+    # confirmed — отдаём token и помечаем claimed.
+    desktop_session_service.claim_session(db, session_id)
+    user = session.user  # type: ignore[attr-defined]
+    sub = user.subscription if user else None
+    return DesktopPollResponse(
+        status="confirmed",
+        access_token=session.issued_access_token,
+        user=UserContext(id=user.id, email=user.email, display_name=user.display_name),
+        device=DeviceContext(id=session.device_id, name=session.device_name),
+        subscription=SubscriptionContext(
+            plan=sub.plan.value if sub else "free",
+            ends_at=sub.ends_at if sub else session.expires_at,
+            pro_active=sub.is_pro_active if sub else False,
+        ),
+    )
 
 
 @router.post("/heartbeat", response_model=DeviceHeartbeatResponse)
