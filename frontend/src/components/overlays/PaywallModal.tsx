@@ -25,10 +25,15 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
 
   if (!open) return null;
 
-  const title =
-    reason === "credits_depleted" ? t.paywall.titleCredits : t.paywall.titleFree;
-  const description =
-    freeQuotaRemaining === 0
+  const isNotAuthenticated = reason === "not_authenticated";
+  const title = isNotAuthenticated
+    ? t.paywall.titleNotAuthenticated
+    : reason === "credits_depleted"
+      ? t.paywall.titleCredits
+      : t.paywall.titleFree;
+  const description = isNotAuthenticated
+    ? t.paywall.descriptionNotAuthenticated
+    : freeQuotaRemaining === 0
       ? t.paywall.descriptionExhausted
       : t.paywall.descriptionGeneric;
 
@@ -44,24 +49,38 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
         <p style={descStyle}>{description}</p>
 
         <div style={actionsStyle}>
-          <a
-            href={pricingUrl()}
-            target="_blank"
-            rel="noreferrer noopener"
-            style={primaryBtnStyle}
-            onClick={onClose}
-          >
-            {t.paywall.upgrade}
-          </a>
-          <a
-            href={cabinetUrl("/credits")}
-            target="_blank"
-            rel="noreferrer noopener"
-            style={secondaryBtnStyle}
-            onClick={onClose}
-          >
-            {t.paywall.buyCredits}
-          </a>
+          {isNotAuthenticated ? (
+            <a
+              href={cabinetUrl("/login")}
+              target="_blank"
+              rel="noreferrer noopener"
+              style={primaryBtnStyle}
+              onClick={onClose}
+            >
+              {t.paywall.signInFree}
+            </a>
+          ) : (
+            <>
+              <a
+                href={pricingUrl()}
+                target="_blank"
+                rel="noreferrer noopener"
+                style={primaryBtnStyle}
+                onClick={onClose}
+              >
+                {t.paywall.upgrade}
+              </a>
+              <a
+                href={cabinetUrl("/credits")}
+                target="_blank"
+                rel="noreferrer noopener"
+                style={secondaryBtnStyle}
+                onClick={onClose}
+              >
+                {t.paywall.buyCredits}
+              </a>
+            </>
+          )}
           <button type="button" style={linkBtnStyle} onClick={onClose}>
             {t.paywall.dismiss}
           </button>

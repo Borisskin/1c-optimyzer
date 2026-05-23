@@ -89,24 +89,32 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   const onRequestAi = useCallback(async () => {
     if (aiLoading || aiRequested) return;
 
-    // Soft cap check — только если юзер активирован (есть accessToken). Иначе
-    // dev/local-only режим: соблюдение лимитов невозможно, разрешаем.
-    if (accessToken) {
-      try {
-        const check = await cloud.checkUsage(accessToken);
-        if (!check.allowed) {
-          setPaywall({
-            open: true,
-            reason: check.reason,
-            freeRemaining: check.free_quota_remaining,
-          });
-          return;
-        }
-      } catch (err) {
-        // Cloud недоступен — не блокируем юзера (graceful degradation).
-        // Просто логируем и продолжаем.
-        console.warn("Soft cap check failed:", (err as CloudError).message);
+    // Без активации AI запрещён — не можем учитывать генерации, не можем
+    // enforce'ить лимиты. Показываем paywall с CTA «Зарегистрируйтесь».
+    if (!accessToken) {
+      setPaywall({
+        open: true,
+        reason: "not_authenticated",
+        freeRemaining: null,
+      });
+      return;
+    }
+
+    // Soft cap check — есть accessToken.
+    try {
+      const check = await cloud.checkUsage(accessToken);
+      if (!check.allowed) {
+        setPaywall({
+          open: true,
+          reason: check.reason,
+          freeRemaining: check.free_quota_remaining,
+        });
+        return;
       }
+    } catch (err) {
+      // Cloud недоступен — не блокируем активного юзера (graceful degradation).
+      // Просто логируем и продолжаем — но только если accessToken есть.
+      console.warn("Soft cap check failed:", (err as CloudError).message);
     }
 
     setAiRequested(true);

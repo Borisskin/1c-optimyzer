@@ -50,6 +50,7 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
   const activate = useAccountStore((s) => s.activate);
   const pushToast = useAppStore((s) => s.pushToast);
   const cache = useAccountStore((s) => s.cache);
+  const accessToken = useAccountStore((s) => s.accessToken);
 
   const [keyInputOpen, setKeyInputOpen] = useState(false);
   const [key, setKey] = useState("");
@@ -109,11 +110,16 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
     }
   }
 
+  // Незарегистрированный юзер — accessToken'а нет ещё.
+  const isAnonymous = !accessToken;
+
   return (
     <div className={styles.tab}>
       <div className={styles.heroFree}>
         <div className={styles.badgeRow}>
-          <span className={styles.badgeFree}>FREE · {t.app.version}</span>
+          <span className={isAnonymous ? styles.badgeMuted : styles.badgeFree}>
+            {isAnonymous ? `НЕ ЗАРЕГИСТРИРОВАН · ${t.app.version}` : `FREE · ${t.app.version}`}
+          </span>
           {degraded && (
             <span className={styles.badgeWarn}>{t.account.offlineDegraded}</span>
           )}
@@ -121,23 +127,37 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
             <span className={styles.badgeMuted}>{t.account.offlineWarn}</span>
           )}
         </div>
-        <p className={styles.heroLead}>{t.account.freeDescription}</p>
+        <p className={styles.heroLead}>
+          {isAnonymous ? t.account.anonymousDescription : t.account.freeDescription}
+        </p>
 
-        <div className={styles.progressWrap}>
-          <div className={styles.progressLabel}>
-            {t.account.quotaLabel} <strong>{used}</strong> / {quotaTotal}
+        {!isAnonymous && (
+          <div className={styles.progressWrap}>
+            <div className={styles.progressLabel}>
+              {t.account.quotaLabel} <strong>{used}</strong> / {quotaTotal}
+            </div>
+            <div className={styles.progressTrack}>
+              <div className={styles.progressBar} style={{ width: `${pct}%` }} />
+            </div>
           </div>
-          <div className={styles.progressTrack}>
-            <div className={styles.progressBar} style={{ width: `${pct}%` }} />
-          </div>
-        </div>
+        )}
 
         <div className={styles.heroActions}>
+          {isAnonymous && (
+            <a
+              href={cabinetUrl("/login")}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={styles.btnPrimary}
+            >
+              {t.account.signInFree}
+            </a>
+          )}
           <a
             href={pricingUrl()}
             target="_blank"
             rel="noreferrer noopener"
-            className={styles.btnPrimary}
+            className={isAnonymous ? styles.btnSecondary : styles.btnPrimary}
           >
             {t.account.upgradeToPro}
           </a>

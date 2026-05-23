@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons/Icon";
+import { PulseLogo } from "@/components/icons/PulseLogo";
 import { Badge, KBD } from "@/components/primitives/Primitives";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n/ru";
@@ -70,9 +71,9 @@ export function TopBar({ onOpenArchive, onActiveArchiveDeleted }: TopBarProps) {
   return (
     <div className={styles.topbar}>
       <div className={styles.brand}>
-        <div className={styles.brand_box}>1C</div>
+        <PulseLogo size={32} />
         <div className={styles.brand_text}>
-          <div className={styles.brand_name}>{t.app.name}</div>
+          <div className={styles.brand_name}>Optimyzer</div>
           <div className={styles.brand_ver}>
             {t.app.version} · {t.app.edition}
           </div>

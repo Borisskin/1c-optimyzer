@@ -3,6 +3,7 @@ import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n/ru";
 import styles from "./SettingsDialog.module.css";
 import { AccountTab } from "./AccountTab";
+import { PulseLogo } from "@/components/icons/PulseLogo";
 
 type SettingsTab = "account" | "about";
 
@@ -75,9 +76,9 @@ export function SettingsDialog() {
           {tab === "about" && (
             <>
               <div className={styles.brand}>
-                <div className={styles.brand_box}>1C</div>
+                <PulseLogo size={48} />
                 <div className={styles.brand_text}>
-                  <div className={styles.brand_name}>{t.app.name}</div>
+                  <div className={styles.brand_name}>Optimyzer</div>
                   <div className={styles.brand_ver}>
                     {t.app.version} · {t.app.edition}
                   </div>
@@ -91,15 +92,9 @@ export function SettingsDialog() {
                 <dd>{t.app.version}</dd>
                 <dt>{t.settings.about.editionLabel}</dt>
                 <dd>{t.app.edition}</dd>
-                <dt>{t.settings.about.repoLabel}</dt>
+                <dt>{t.settings.about.supportLabel}</dt>
                 <dd>
-                  <a
-                    href="https://github.com/anymasoft/1c-optimyzer"
-                    target="_blank"
-                    rel="noreferrer noopener"
-                  >
-                    github.com/anymasoft/1c-optimyzer
-                  </a>
+                  <a href="mailto:support@optimyzer.pro">support@optimyzer.pro</a>
                 </dd>
               </dl>
             </>
