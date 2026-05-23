@@ -28,17 +28,11 @@ export function CabinetLayout() {
           <NavLink to="/" end className={navLinkClass}>
             Обзор
           </NavLink>
-          <NavLink to="/subscription" className={navLinkClass}>
-            Подписка
-          </NavLink>
           <NavLink to="/credits" className={navLinkClass}>
             Кредиты
           </NavLink>
           <NavLink to="/payments" className={navLinkClass}>
             Платежи
-          </NavLink>
-          <NavLink to="/settings" className={navLinkClass}>
-            Настройки
           </NavLink>
         </nav>
         <div className="sidebar__bottom">

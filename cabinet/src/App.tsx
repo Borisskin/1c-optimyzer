@@ -4,13 +4,12 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { Login } from "@/pages/Login";
 import { OAuthCallback } from "@/pages/OAuthCallback";
 import { Overview } from "@/pages/Overview";
-import { Subscription } from "@/pages/Subscription";
 import { Credits } from "@/pages/Credits";
 import { Payments } from "@/pages/Payments";
-import { Settings } from "@/pages/Settings";
 import { DesktopActivate } from "@/pages/DesktopActivate";
-// Devices/Usage пока не показываем — нечего отображать в pre-launch.
-// Файлы pages/Devices.tsx и pages/Usage.tsx оставлены для будущего.
+// В pre-launch sidebar показывает только: Обзор / Кредиты / Платежи.
+// Subscription / Settings / Devices / Usage скрыты — оставлены файлы и
+// route'ы редиректят на главную, чтобы старые URL'ы не вели в 404.
 
 export function App() {
   return (
@@ -26,11 +25,11 @@ export function App() {
       >
         <Route path="/" element={<Overview />} />
         <Route path="/desktop-activate" element={<DesktopActivate />} />
-        <Route path="/subscription" element={<Subscription />} />
         <Route path="/credits" element={<Credits />} />
         <Route path="/payments" element={<Payments />} />
-        <Route path="/settings" element={<Settings />} />
-        {/* Dead routes — редиректим на главную чтобы старые ссылки не вели в 404 */}
+        {/* Скрытые в pre-launch — нечего показывать, редирект на главную */}
+        <Route path="/subscription" element={<Navigate to="/" replace />} />
+        <Route path="/settings" element={<Navigate to="/" replace />} />
         <Route path="/devices" element={<Navigate to="/" replace />} />
         <Route path="/usage" element={<Navigate to="/" replace />} />
       </Route>
