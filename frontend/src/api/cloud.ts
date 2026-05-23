@@ -205,40 +205,6 @@ export const cloud = {
     });
   },
 
-  /** Device flow step 1 — desktop создаёт pending сессию активации. */
-  async desktopInit(input: {
-    fingerprint: string;
-    deviceName: string;
-    platform: "windows" | "macos" | "linux";
-    appVersion: string;
-  }): Promise<{ session_id: string; expires_at: string; cabinet_url: string }> {
-    return request<{ session_id: string; expires_at: string; cabinet_url: string }>(
-      "/v1/license/desktop-init",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          fingerprint: input.fingerprint,
-          device_name: input.deviceName,
-          platform: input.platform,
-          app_version: input.appVersion,
-        }),
-      },
-    );
-  },
-
-  /** Device flow step 3 — desktop polling'ом ждёт confirm от cabinet. */
-  async desktopPoll(sessionId: string): Promise<{
-    status: "pending" | "confirmed" | "expired" | "claimed" | "cancelled";
-    access_token?: string;
-    user?: UserInfo;
-    device?: DeviceInfo;
-    subscription?: SubscriptionInfo;
-  }> {
-    return request("/v1/license/desktop-poll?session_id=" + encodeURIComponent(sessionId), {
-      method: "GET",
-    });
-  },
-
   async trackUsage(
     token: string,
     payload: {

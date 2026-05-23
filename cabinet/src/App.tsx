@@ -6,9 +6,8 @@ import { OAuthCallback } from "@/pages/OAuthCallback";
 import { Overview } from "@/pages/Overview";
 import { Credits } from "@/pages/Credits";
 import { Payments } from "@/pages/Payments";
-import { DesktopActivate } from "@/pages/DesktopActivate";
 // В pre-launch sidebar показывает только: Обзор / Кредиты / Платежи.
-// Subscription / Settings / Devices / Usage скрыты — оставлены файлы и
+// Subscription / Settings / Devices / Usage / desktop-activate скрыты —
 // route'ы редиректят на главную, чтобы старые URL'ы не вели в 404.
 
 export function App() {
@@ -24,7 +23,6 @@ export function App() {
         }
       >
         <Route path="/" element={<Overview />} />
-        <Route path="/desktop-activate" element={<DesktopActivate />} />
         <Route path="/credits" element={<Credits />} />
         <Route path="/payments" element={<Payments />} />
         {/* Скрытые в pre-launch — нечего показывать, редирект на главную */}
@@ -32,6 +30,7 @@ export function App() {
         <Route path="/settings" element={<Navigate to="/" replace />} />
         <Route path="/devices" element={<Navigate to="/" replace />} />
         <Route path="/usage" element={<Navigate to="/" replace />} />
+        <Route path="/desktop-activate" element={<Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

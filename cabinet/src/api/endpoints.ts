@@ -137,10 +137,4 @@ export const apiLicense = {
       "/v1/license/issue-for-cabinet",
       { method: "POST" },
     ),
-  /** POST /v1/license/desktop-confirm — подтвердить device flow сессию. */
-  desktopConfirm: (sessionId: string) =>
-    api<{ status: string; device_name: string }>(
-      "/v1/license/desktop-confirm",
-      { method: "POST", body: { session_id: sessionId } },
-    ),
 };

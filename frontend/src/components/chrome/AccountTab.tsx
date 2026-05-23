@@ -52,8 +52,7 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
   const cache = useAccountStore((s) => s.cache);
   const accessToken = useAccountStore((s) => s.accessToken);
 
-  const [keyInputOpen, setKeyInputOpen] = useState(false);
-  const [key, setKey] = useState("");
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,17 +61,21 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
   const used = Math.max(quotaTotal - remaining, 0);
   const pct = Math.min((used / quotaTotal) * 100, 100);
 
-  async function handleActivate() {
+  async function handleLinkEmail() {
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError(t.paywall.emailInvalid);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const fp = await computeFingerprint();
-      const platform = detectPlatform();
-      const resp = await cloud.activate({
-        key: key.trim(),
+      const resp = await cloud.lookupByEmail({
+        email: trimmed,
         fingerprint: fp,
         deviceName: detectDeviceName(),
-        platform,
+        platform: detectPlatform(),
         appVersion: t.app.version,
       });
       activate({
@@ -89,21 +92,16 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
           proActive: resp.subscription.pro_active,
         },
       });
-      pushToast(t.account.activatedToast, "ok");
-      setKey("");
-      setKeyInputOpen(false);
+      pushToast(t.paywall.emailLinked, "ok");
+      setEmail("");
     } catch (err) {
       const ce = err as CloudError;
       const msg =
-        ce.reason === "not_found"
-          ? t.account.errors.keyNotFound
-          : ce.reason === "conflict"
-            ? t.account.errors.deviceLimit
-            : ce.reason === "unauthorized"
-              ? t.account.errors.subInactive
-              : ce.reason === "network"
-                ? t.account.errors.network
-                : ce.message || t.account.errors.generic;
+        ce.reason === "conflict"
+          ? t.account.errors.deviceLimit
+          : ce.reason === "network"
+            ? t.account.errors.network
+            : ce.message || t.account.errors.generic;
       setError(msg);
     } finally {
       setBusy(false);
@@ -142,17 +140,33 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
           </div>
         )}
 
-        <div className={styles.heroActions}>
-          {isAnonymous && (
-            <a
-              href={cabinetUrl("/login")}
-              target="_blank"
-              rel="noreferrer noopener"
+        {isAnonymous && (
+          <div className={styles.emailRow}>
+            <input
+              type="email"
+              className={styles.emailInput}
+              placeholder={t.paywall.emailPlaceholder}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={busy}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleLinkEmail();
+              }}
+            />
+            <button
+              type="button"
               className={styles.btnPrimary}
+              onClick={() => void handleLinkEmail()}
+              disabled={busy || !email.trim()}
             >
-              {t.account.signInFree}
-            </a>
-          )}
+              {busy ? t.paywall.emailLinking : t.paywall.emailLink}
+            </button>
+          </div>
+        )}
+
+        {error && <div className={styles.errorBox}>{error}</div>}
+
+        <div className={styles.heroActions}>
           <a
             href={pricingUrl()}
             target="_blank"
@@ -161,46 +175,9 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
           >
             {t.account.upgradeToPro}
           </a>
-          <button
-            type="button"
-            className={styles.btnLink}
-            onClick={() => setKeyInputOpen((v) => !v)}
-          >
-            {keyInputOpen ? t.account.hideKeyInput : t.account.alreadyBought}
-          </button>
         </div>
       </div>
 
-      {keyInputOpen && (
-        <div className={styles.keySection}>
-          <label className={styles.keyLabel} htmlFor="optimyzer-key">
-            {t.account.keyLabel}
-          </label>
-          <div className={styles.keyRow}>
-            <input
-              id="optimyzer-key"
-              className={styles.keyInput}
-              type="text"
-              placeholder="OPTM-XXXX-XXXX-XXXX-XXXX"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              disabled={busy}
-            />
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={handleActivate}
-              disabled={busy || key.trim().length < 10}
-            >
-              {busy ? t.account.activating : t.account.activate}
-            </button>
-          </div>
-          {error && <div className={styles.error}>{error}</div>}
-          <p className={styles.keyHint}>{t.account.keyHint}</p>
-        </div>
-      )}
     </div>
   );
 }
