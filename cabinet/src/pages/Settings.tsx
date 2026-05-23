@@ -37,7 +37,7 @@ export function Settings() {
       <div className="card">
         <h2 className="card__title">Уведомления</h2>
         <p style={{ color: "var(--fg-2)" }}>
-          Email-уведомления о платежах включены по умолчанию (чеки 54-ФЗ). Дополнительные
+          Email-уведомления о платежах включены по умолчанию. Дополнительные
           уведомления о смене статуса подписки — в работе.
         </p>
         <p style={{ color: "var(--fg-3)", fontSize: 13 }}>

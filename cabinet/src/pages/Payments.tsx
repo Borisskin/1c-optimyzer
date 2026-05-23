@@ -12,7 +12,7 @@ export function Payments() {
       <div className="page__head">
         <h1 className="page__title">История платежей</h1>
         <p className="page__lead">
-          Полная история покупок Pro и Credits. Чеки 54-ФЗ приходят на email.
+          История покупок. Чеки приходят на email.
         </p>
       </div>
 
