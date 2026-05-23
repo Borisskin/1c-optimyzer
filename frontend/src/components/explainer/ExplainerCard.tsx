@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { backend, type AiExplanationResult, type RuleClassifyResult } from "@/api/backend";
 
 interface Props {
@@ -14,12 +14,16 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   const [rule, setRule] = useState<RuleClassifyResult | null>(null);
   const [ai, setAi] = useState<AiExplanationResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiRequested, setAiRequested] = useState(false);
 
+  // Rule-based classification — instant, кеш в backend, дешёво. Запускаем
+  // сразу при mount. AI же стартует только по явной кнопке (Sprint 5 hotfix
+  // — раньше дёргался автоматически на каждый клик по операции и грузил
+  // Claude API без нужды).
   useEffect(() => {
     if (!archiveId || !targetId) return;
     let cancelled = false;
 
-    // Step 1 — instant rule-based classification
     backend
       .explainerClassify(archiveId, anatomyKind, targetId, features)
       .then((res) => {
@@ -29,35 +33,32 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
         if (!cancelled) setRule(null);
       });
 
-    // Step 2 — AI fire-and-forget (3-15 sec), кеш-aware
-    setAiLoading(true);
+    // При смене операции сбрасываем AI-state — старый ответ не должен
+    // висеть на новой странице.
     setAi(null);
-    backend
-      .explainerAi(
-        archiveId,
-        anatomyKind,
-        targetId,
-        anatomyData,
-        null, // rule_id и rule_body заполним после получения rule (но запрос отправляем сразу)
-        null,
-      )
-      .then((res) => {
-        if (!cancelled) setAi(res);
-      })
-      .catch(() => {
-        if (!cancelled) setAi({ ok: false, error: "AI call failed" });
-      })
-      .finally(() => {
-        if (!cancelled) setAiLoading(false);
-      });
+    setAiRequested(false);
+    setAiLoading(false);
 
     return () => {
       cancelled = true;
     };
   }, [archiveId, anatomyKind, targetId, JSON.stringify(features)]);
 
-  // Если ни rule ни AI ничего не дали — компактное сообщение
-  if (rule && !rule.matched && !aiLoading && (!ai || !ai.ok)) {
+  const onRequestAi = useCallback(() => {
+    if (aiLoading || aiRequested) return;
+    setAiRequested(true);
+    setAiLoading(true);
+    setAi(null);
+    backend
+      .explainerAi(archiveId, anatomyKind, targetId, anatomyData, null, null)
+      .then((res) => setAi(res))
+      .catch(() => setAi({ ok: false, error: "AI call failed" }))
+      .finally(() => setAiLoading(false));
+  }, [archiveId, anatomyKind, targetId, anatomyData, aiLoading, aiRequested]);
+
+  // Если rule не сработал и AI ещё не запрашивался — компактное сообщение
+  // + кнопка для AI (вдруг AI знает что rule не сумел распознать).
+  if (rule && !rule.matched && !aiRequested) {
     return (
       <div style={cardStyle}>
         <div style={titleStyle}>
@@ -65,10 +66,10 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
         </div>
         <div style={bodyMutedStyle}>
           Для этого паттерна нет подходящего готового правила.
-          {ai?.error && (
-            <div style={errLineStyle}>AI: {ai.error}</div>
-          )}
         </div>
+        <button type="button" style={aiButtonStyle} onClick={onRequestAi}>
+          ✨ Сгенерировать AI-объяснение
+        </button>
       </div>
     );
   }
@@ -78,16 +79,13 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
       <div style={titleStyle}>
         <span style={iconStyle}>💡</span>
         {rule?.matched ? rule.title : "Объяснение"}
-        {/* Spinner пока генерируется AI-ответ — единственный visible сигнал.
-            Cache hit отдаётся за ~10ms и spinner едва мелькает; новая генерация
-            занимает 3-15 сек и spinner информативен. Бейджи "AI/кеш/токены"
-            убраны — это технические детали для разработчика, а не для юзера. */}
         {aiLoading && (
-          <span style={aiLoadingStyle}>генерируется развёрнутое объяснение…</span>
+          <span style={aiLoadingStyle}>думаю…</span>
         )}
       </div>
 
-      {/* AI text если есть — приоритет над rule body */}
+      {/* Body: AI приоритетнее rule если он успешно вернулся (содержит ту же
+          rule-инфу + расширения). Иначе показываем rule body. */}
       {ai?.ok && ai.text ? (
         <div style={aiBodyStyle}>
           <Markdown text={ai.text} />
@@ -98,10 +96,17 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
         </div>
       ) : null}
 
-      {/* AI error показываем ТОЛЬКО когда rule НЕ matched. Если rule сработал —
-          у пользователя уже есть полное объяснение, AI failure нерелевантен
-          и только запутывает (visible на скрине: одновременно rule body +
-          "AI not configured" → confused user). */}
+      {/* Янтарная кнопка "Сгенерировать AI-объяснение" — показываем если
+          AI ещё не запрашивался. После клика — кнопка скрывается, в
+          заголовке появляется "думаю…", потом ai body (или ошибка). */}
+      {!aiRequested && rule?.matched && (
+        <button type="button" style={aiButtonStyle} onClick={onRequestAi}>
+          ✨ Сгенерировать AI-объяснение
+        </button>
+      )}
+
+      {/* AI error показываем ТОЛЬКО когда rule НЕ matched. Если rule сработал
+          — у пользователя уже есть rule-объяснение, AI failure нерелевантен. */}
       {ai && !ai.ok && ai.error && !rule?.matched && (
         <div style={errLineStyle}>
           AI: {ai.error}
@@ -227,6 +232,23 @@ const aiLoadingStyle: CSSProperties = {
   color: "#92400E",
   fontFamily: "var(--o-font-mono)",
   fontStyle: "italic",
+};
+
+const aiButtonStyle: CSSProperties = {
+  marginTop: 12,
+  padding: "8px 14px",
+  background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+  color: "#FFFBEB",
+  border: "1px solid #B45309",
+  borderRadius: 6,
+  fontFamily: "inherit",
+  fontSize: 12.5,
+  fontWeight: 600,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  boxShadow: "0 1px 2px rgba(180, 83, 9, 0.18)",
 };
 
 

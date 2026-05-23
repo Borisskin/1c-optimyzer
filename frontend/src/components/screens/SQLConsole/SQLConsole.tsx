@@ -293,7 +293,13 @@ function ResultsTable({ result }: { result: SQLExecuteResult }) {
         <thead>
           <tr>
             {columns.map((c) => (
-              <Th key={c.name} {...table.headerProps(c.name)}>{c.name}</Th>
+              <Th key={c.name} {...table.headerProps(c.name)}>
+                {/* Sprint 5 hotfix: тип колонки виден явно — пользователю
+                    понятно, нужно ли в WHERE писать IS NULL для пропусков
+                    (VARCHAR/UUID nullable) или просто `= 0` (NOT NULL INTEGER). */}
+                <span>{c.name}</span>
+                {c.type && <span style={columnTypeStyle}>{c.type}</span>}
+              </Th>
             ))}
           </tr>
         </thead>
@@ -302,7 +308,7 @@ function ResultsTable({ result }: { result: SQLExecuteResult }) {
             <tr key={ri}>
               {row.map((cell, ci) => (
                 <Td key={ci} mono>
-                  {formatCell(cell)}
+                  {renderCell(cell)}
                 </Td>
               ))}
             </tr>
@@ -313,11 +319,43 @@ function ResultsTable({ result }: { result: SQLExecuteResult }) {
   );
 }
 
-function formatCell(v: unknown): string {
-  if (v == null) return t.sql.results.empty_cell;
-  if (typeof v === "string") return v.length > 200 ? v.slice(0, 200) + "…" : v;
+/** Sprint 5 hotfix: NULL отрендерен явным светло-серым курсивным chip'ом,
+ *  пустая строка — действительно пустая ячейка. Раньше оба показывались
+ *  как "—" и нельзя было понять `WHERE col IS NULL` vs `WHERE col = ''`. */
+function renderCell(v: unknown): React.ReactNode {
+  if (v === null || v === undefined) {
+    return <span style={nullChipStyle} title="SQL NULL">NULL</span>;
+  }
+  if (typeof v === "string") {
+    return v.length > 200 ? v.slice(0, 200) + "…" : v;
+  }
   return String(v);
 }
+
+const nullChipStyle: React.CSSProperties = {
+  display: "inline-block",
+  padding: "0 6px",
+  borderRadius: 3,
+  background: "var(--o-subtle)",
+  color: "var(--o-text-mute, var(--o-text-3))",
+  fontFamily: "var(--o-font-mono)",
+  fontSize: 10.5,
+  fontStyle: "italic",
+  letterSpacing: "0.04em",
+};
+
+const columnTypeStyle: React.CSSProperties = {
+  marginLeft: 6,
+  padding: "0 4px",
+  background: "var(--o-subtle)",
+  color: "var(--o-text-3)",
+  fontFamily: "var(--o-font-mono)",
+  fontSize: 9.5,
+  fontWeight: 400,
+  textTransform: "uppercase",
+  letterSpacing: "0.03em",
+  borderRadius: 2,
+};
 
 function EmptyState({
   onLoadArchive,

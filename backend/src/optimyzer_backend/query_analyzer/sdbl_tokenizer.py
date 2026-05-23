@@ -45,12 +45,37 @@ OBJECT_KINDS_RU: tuple[str, ...] = (
     "Задача",
 )
 
+# Типичные опечатки типа объекта: множественное число вместо единственного.
+# Программисты часто пишут "Справочники.Контрагенты" вместо
+# "Справочник.Контрагенты" — это not valid SDBL, but встречается. Мы должны
+# дать понятную ошибку с предложением правильного типа.
+KIND_TYPOS_RU: dict[str, str] = {
+    "Справочники": "Справочник",
+    "Документы": "Документ",
+    "Перечисления": "Перечисление",
+    "РегистрыНакопления": "РегистрНакопления",
+    "РегистрыСведений": "РегистрСведений",
+    "РегистрыБухгалтерии": "РегистрБухгалтерии",
+    "РегистрыРасчета": "РегистрРасчета",
+    "ПланыСчетов": "ПланСчетов",
+    "ПланыВидовХарактеристик": "ПланВидовХарактеристик",
+    "ПланыВидовРасчета": "ПланВидовРасчета",
+    "ПланыОбмена": "ПланОбмена",
+    "ЖурналыДокументов": "ЖурналДокументов",
+    "Константы": "Константа",
+    "БизнесПроцессы": "БизнесПроцесс",
+    "Задачи": "Задача",
+    "Последовательности": "Последовательность",
+}
+
 # Идентификатор 1С: русские/латинские буквы + цифры + подчёркивания,
 # не начинается с цифры.
 _IDENT = r"[А-Яа-яA-Za-z_][А-Яа-яA-Za-z0-9_]*"
 
-# Регекс для object reference: Документ.АвансовыйОтчет / РегистрНакопления.Х
-_KIND_ALT = "|".join(OBJECT_KINDS_RU)
+# Регекс для object reference: Документ.АвансовыйОтчет / РегистрНакопления.Х.
+# Включаем и правильные kinds, и typos — чтобы semantic checker мог
+# распознать оба случая и выдать соответствующие findings.
+_KIND_ALT = "|".join(list(OBJECT_KINDS_RU) + list(KIND_TYPOS_RU.keys()))
 _OBJECT_REF_RE = re.compile(
     rf"(?<![А-Яа-яA-Za-z0-9_])({_KIND_ALT})\.({_IDENT})"
 )
@@ -86,11 +111,19 @@ _VYRAZIT_RE = re.compile(
 class ObjectReference:
     """Упоминание объекта в SDBL запросе."""
 
-    kind_ru: str       # "Справочник", "Документ", ...
+    kind_ru: str       # "Справочник", "Документ", ... (нормализованное)
     name: str          # "Контрагенты"
-    full_name: str     # "Справочник.Контрагенты"
+    full_name: str     # "Справочник.Контрагенты" (нормализованное)
     offset_start: int  # абсолютный offset в тексте запроса (0-based)
     offset_end: int    # exclusive
+    # Sprint 5 hotfix: если пользователь написал тип во множ. числе
+    # ("Справочники.X" вместо "Справочник.X") — здесь хранится оригинал
+    # ("Справочники"). Если тип написан правильно — None.
+    raw_kind: str | None = None
+    # offset где начинается raw_kind в тексте запроса — для подсветки
+    # точки ошибки именно в типе.
+    kind_offset_start: int = 0
+    kind_offset_end: int = 0
 
 
 @dataclass
@@ -138,8 +171,11 @@ def extract_object_references(query_text: str) -> list[ObjectReference]:
         vtable_offsets.add((m.start(1), base_end))
 
     for m in _OBJECT_REF_RE.finditer(query_text):
-        kind = m.group(1)
+        raw_kind = m.group(1)
         name = m.group(2)
+        # Нормализуем typo множ. числа к правильному типу.
+        normalized_kind = KIND_TYPOS_RU.get(raw_kind, raw_kind)
+        raw_kind_flag = raw_kind if raw_kind != normalized_kind else None
         if (m.start(1), m.end(2)) in vtable_offsets:
             # Это базовая часть virtual table ref — её отдельным
             # virtual_table_references найдёт. Object ref всё равно
@@ -147,11 +183,14 @@ def extract_object_references(query_text: str) -> list[ObjectReference]:
             pass
         refs.append(
             ObjectReference(
-                kind_ru=kind,
+                kind_ru=normalized_kind,
                 name=name,
-                full_name=f"{kind}.{name}",
+                full_name=f"{normalized_kind}.{name}",
                 offset_start=m.start(1),
                 offset_end=m.end(2),
+                raw_kind=raw_kind_flag,
+                kind_offset_start=m.start(1),
+                kind_offset_end=m.end(1),
             )
         )
     return refs

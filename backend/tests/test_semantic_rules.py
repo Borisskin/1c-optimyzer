@@ -468,6 +468,53 @@ class TestRegisterResourceUsedAsDimension:
         assert findings == []
 
 
+class TestObjectKindMisspelled:
+    def test_plural_spravochniki(self, synthetic_store, semantic_rules):
+        rule = _find_rule(semantic_rules, "object_kind_misspelled")
+        # Опечатка — множественное число "Справочники"
+        q = "ВЫБРАТЬ * ИЗ Справочники.Контрагенты"
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert len(findings) == 1
+        assert "Справочники" in findings[0].message
+        assert "Справочник" in findings[0].message
+
+    def test_plural_dokumenty(self, synthetic_store, semantic_rules):
+        rule = _find_rule(semantic_rules, "object_kind_misspelled")
+        q = "ВЫБРАТЬ * ИЗ Документы.АвансовыйОтчет"
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert len(findings) == 1
+        assert "Документы" in findings[0].message
+
+    def test_plural_registry(self, synthetic_store, semantic_rules):
+        rule = _find_rule(semantic_rules, "object_kind_misspelled")
+        q = "ВЫБРАТЬ * ИЗ РегистрыНакопления.Х"
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert len(findings) == 1
+        assert "РегистрыНакопления" in findings[0].message
+        assert "РегистрНакопления" in findings[0].message
+
+    def test_correct_kind_no_finding(self, synthetic_store, semantic_rules):
+        rule = _find_rule(semantic_rules, "object_kind_misspelled")
+        # Правильный тип "Справочник" (единственное число)
+        q = "ВЫБРАТЬ * ИЗ Справочник.Контрагенты"
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert findings == []
+
+    def test_misspelled_kind_also_triggers_object_not_exists(self, synthetic_store, semantic_rules):
+        """Сценарий пользователя: 'Справочники.Города1' — оба rule срабатывают.
+
+        - object_kind_misspelled: 'Справочники' → 'Справочник'
+        - object_not_exists: 'Справочник.Города1' не существует
+        """
+        kind_rule = _find_rule(semantic_rules, "object_kind_misspelled")
+        exist_rule = _find_rule(semantic_rules, "object_not_exists")
+        q = "ВЫБРАТЬ * ИЗ Справочники.Города1 КАК Города"
+        findings = native_analyze(q, [kind_rule, exist_rule], config_store=synthetic_store)
+        rule_ids = {f.rule_id for f in findings}
+        assert "object_kind_misspelled" in rule_ids
+        assert "object_not_exists" in rule_ids
+
+
 class TestConstantUsedWithDot:
     def test_positive_constant_with_dot(self, synthetic_store, semantic_rules):
         rule = _find_rule(semantic_rules, "constant_used_with_dot")

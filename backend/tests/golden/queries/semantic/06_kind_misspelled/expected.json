@@ -1,0 +1,8 @@
+{
+  "findings": [
+    {"rule_id": "object_kind_misspelled", "severity": "critical"},
+    {"rule_id": "object_not_exists", "severity": "critical"}
+  ],
+  "requires_configuration": true,
+  "notes": "Сценарий из feedback: 'Справочники' (мн.ч.) + несуществующий 'Города1'. Оба rule должны сработать."
+}

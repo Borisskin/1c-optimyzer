@@ -7,6 +7,7 @@ import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
 import { EventTypeFilter } from "@/components/tables/EventTypeFilter";
+import { ContextFilter, type ContextPresenceFilter } from "@/components/tables/ContextFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { filtersToDto, useAppStore } from "@/store/appStore";
 import vshellStyles from "@/components/views/ViewShell.module.css";
@@ -18,6 +19,7 @@ interface Props {
 export function ErrorsFeedScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+  const [contextPresence, setContextPresence] = useState<ContextPresenceFilter>("any");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [limit, setLimit] = useState(500);
   // Фильтр по event_type — server-side. Это критично: при limit=10000 редкий
@@ -52,9 +54,30 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
       });
   }, [data?.event_types]);
 
-  // useTableState — substring filter + sort внутри уже-server-side-фильтрованных rows
+  // Sprint 5 hotfix: фильтр по наличию context — client-side, потому
+  // что server-side rows уже отдаёт всё что нужно. ContextPresenceFilter
+  // дополняет существующий TableFilter (substring search) — оба работают
+  // вместе. Делаем над raw rows ПЕРЕД useTableState, чтобы счётчик
+  // visible/total в TableFilter был корректным относительно «отфильтрованного
+  // по контексту» подмножества.
+  const ctxIdx = useMemo(() => {
+    const cols = data?.columns ?? [];
+    return cols.findIndex((c) => c.name === "context");
+  }, [data?.columns]);
+
+  const filteredByContext = useMemo(() => {
+    const rows = data?.rows ?? [];
+    if (contextPresence === "any" || ctxIdx < 0) return rows;
+    return rows.filter((row) => {
+      const v = row[ctxIdx];
+      const hasContext = v !== null && v !== undefined && String(v).trim().length > 0;
+      return contextPresence === "with" ? hasContext : !hasContext;
+    });
+  }, [data?.rows, contextPresence, ctxIdx]);
+
+  // useTableState — substring filter + sort внутри уже-context-filtered rows
   const table = useTableState({
-    rows: data?.rows ?? [],
+    rows: filteredByContext,
     columns: data?.columns ?? [],
     defaultSortKey: "ts",
     defaultSortDir: "desc",
@@ -100,6 +123,12 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
                 options={availableTypes}
                 selected={selectedTypes}
                 onChange={setSelectedTypes}
+              />
+            )}
+            {ctxIdx >= 0 && (data?.rows?.length ?? 0) > 0 && (
+              <ContextFilter
+                value={contextPresence}
+                onChange={setContextPresence}
               />
             )}
             {(data?.rows?.length ?? 0) > 0 && (
@@ -188,7 +217,13 @@ export function ErrorsFeedScreen({ archiveId }: Props) {
         )}
         {archiveId && !loading && !error && (data?.rows?.length ?? 0) > 0 && table.rows.length === 0 && (
           <div className={vshellStyles.empty}>
-            Фильтр «{table.filter}» не дал совпадений
+            {table.filter
+              ? `Фильтр «${table.filter}» не дал совпадений`
+              : contextPresence === "with"
+                ? "Среди загруженных событий нет ни одного с контекстом"
+                : contextPresence === "without"
+                  ? "Среди загруженных событий нет ни одного без контекста"
+                  : "Нет совпадений"}
           </div>
         )}
       </div>

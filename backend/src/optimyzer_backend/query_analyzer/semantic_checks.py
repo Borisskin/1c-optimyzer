@@ -106,6 +106,41 @@ def check_object_not_exists(query_text: str, rule, store) -> list:
     return findings
 
 
+def check_object_kind_misspelled(query_text: str, rule, store) -> list:
+    """Опечатка в типе объекта: множественное число вместо единственного.
+
+    Срабатывает на 'Справочники.Х' (вместо 'Справочник.Х'), 'Документы.Y'
+    и других типичных typos из KIND_TYPOS_RU. Эту проверку можно делать
+    БЕЗ подключённой конфигурации — но мы оставляем requires=
+    [configuration_metadata] для консистентности с остальными semantic
+    rules (silent skip без store).
+    """
+    findings: list = []
+    for ref in extract_object_references(query_text):
+        if ref.raw_kind is None:
+            continue  # тип написан правильно
+        body = _render_body(
+            rule.body,
+            {
+                "wrong_kind": ref.raw_kind,
+                "correct_kind": ref.kind_ru,
+                "object_name": ref.name,
+                "correct_full_name": ref.full_name,
+            },
+        )
+        findings.append(
+            _make_finding(
+                rule,
+                query_text,
+                ref.kind_offset_start,
+                ref.kind_offset_end,
+                f"Тип «{ref.raw_kind}» написан во множественном числе — в 1С используется «{ref.kind_ru}»",
+                body,
+            )
+        )
+    return findings
+
+
 def check_virtual_table_not_supported(query_text: str, rule, store) -> list:
     """Виртуальная таблица не существует для этого типа регистра.
 
@@ -491,6 +526,7 @@ SemanticCheckFn = Callable[[str, "object", "object"], list]
 
 SEMANTIC_CHECKS: dict[str, SemanticCheckFn] = {
     "object_not_exists": check_object_not_exists,
+    "object_kind_misspelled": check_object_kind_misspelled,
     "virtual_table_not_supported": check_virtual_table_not_supported,
     "vyrazit_type_not_exists": check_vyrazit_type_not_exists,
     "register_dimension_or_field_missing": check_register_dimension_or_field_missing,

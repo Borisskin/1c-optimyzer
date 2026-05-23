@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { backend, type OperationAnatomyResult } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
 import { ExplainerCard } from "@/components/explainer/ExplainerCard";
@@ -262,6 +262,20 @@ function SubTableRender({
     defaultSortDir: "desc",
   });
   const truncIdx = truncateCol ? st.columns.findIndex((c) => c.name === truncateCol) : -1;
+  // Sprint 5 hotfix: expandable rows вместо hover tooltip.
+  // Hover не позволял ни скопировать, ни нормально прочитать длинный SQL.
+  // Теперь клик по строке (если truncated) раскрывает inline-блок с
+  // полным текстом — selectable и copyable.
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const toggleRow = (ri: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(ri)) next.delete(ri);
+      else next.add(ri);
+      return next;
+    });
+  };
+
   return (
     <>
       <div className={vshellStyles.panel_head}>
@@ -285,25 +299,75 @@ function SubTableRender({
             </tr>
           </thead>
           <tbody>
-            {table.rows.map((row, ri) => (
-              <tr key={ri}>
-                {row.map((cell, ci) => {
-                  const raw = formatCell(cell);
-                  const display = ci === truncIdx && raw.length > 100 ? raw.slice(0, 100) + "…" : raw;
-                  return (
-                    <td key={ci} className={vshellStyles.mono} title={ci === truncIdx ? raw : undefined}>
-                      {display}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {table.rows.map((row, ri) => {
+              const rawTrunc = truncIdx >= 0 ? formatCell(row[truncIdx]) : "";
+              const isExpandable = truncIdx >= 0 && rawTrunc.length > 100;
+              const isExpanded = expanded.has(ri);
+              return (
+                <Fragment key={ri}>
+                  <tr
+                    onClick={isExpandable ? () => toggleRow(ri) : undefined}
+                    style={{ cursor: isExpandable ? "pointer" : "default" }}
+                  >
+                    {row.map((cell, ci) => {
+                      const raw = formatCell(cell);
+                      const isTruncCell = ci === truncIdx;
+                      const display =
+                        isTruncCell && raw.length > 100
+                          ? raw.slice(0, 100) + "…"
+                          : raw;
+                      return (
+                        <td key={ci} className={vshellStyles.mono}>
+                          {isExpandable && isTruncCell && (
+                            <span style={expandToggleStyle} aria-hidden>
+                              {isExpanded ? "▼" : "▶"}{" "}
+                            </span>
+                          )}
+                          {display}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={st.columns.length} style={expandedCellStyle}>
+                        <pre style={expandedPreStyle}>{rawTrunc}</pre>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
     </>
   );
 }
+
+const expandToggleStyle: CSSProperties = {
+  color: "var(--o-text-3)",
+  fontSize: 10,
+  userSelect: "none",
+};
+
+const expandedCellStyle: CSSProperties = {
+  background: "var(--o-subtle)",
+  padding: 0,
+};
+
+const expandedPreStyle: CSSProperties = {
+  margin: 0,
+  padding: "10px 12px",
+  fontFamily: "var(--o-font-mono)",
+  fontSize: 12,
+  lineHeight: 1.45,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  color: "var(--o-text-1)",
+  userSelect: "text",
+  cursor: "text",
+};
 
 function BreakdownTable({
   breakdown,
