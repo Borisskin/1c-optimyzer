@@ -5,9 +5,8 @@ export const t = {
   app: {
     name: "1C-Optimyzer",
     edition: "standalone",
-    version: "v0.1.0",
-    devTag: "dev",
-    screenPlaceholder: 'Экран "{id}" появится в Module 2+',
+    version: "v0.5.0",
+    screenPlaceholder: 'Экран "{id}" появится в следующих обновлениях',
   },
   topbar: {
     loadFolder: "Загрузить папку с логами…",
@@ -104,7 +103,6 @@ export const t = {
     duckdb: "DuckDB",
     events: "событий",
     parsedIn: "обработано за",
-    devBuild: "dev",
   },
   sql: {
     pageTitle: "SQL Console",
@@ -238,10 +236,10 @@ export const t = {
       quit: "Выйти",
       openSettings: "Настройки",
     },
-    aboutToast: "1C-Optimyzer v0.1.0 · Module 1 (OptimyzerQL Standalone)",
+    aboutToast: "Optimyzer v0.5.0 — Анализатор производительности 1С",
     hints: {
-      file: "Файл · Module 1",
-      list: "Список · Module 1",
+      file: "Файл",
+      list: "Список",
       navigate: "Навигация",
       info: "Информация",
     },
