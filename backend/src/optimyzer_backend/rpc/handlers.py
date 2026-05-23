@@ -311,6 +311,39 @@ def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
             pass
 
 
+def _stable_archive_id_for_path(public_path: str) -> str:
+    """Возвращает archive_id для пути: переиспользует ID если такой path
+    уже был загружен раньше, иначе генерирует новый UUID.
+
+    Это нужно чтобы ключи AI-кеша (sha256(archive_id|kind|target)) переживали
+    повторную загрузку одной и той же папки. Без этого каждый reload папки
+    делал старые AI-объяснения недоступными: запись в explainer_cache.db
+    оставалась, но привязана к UUID который больше нигде не используется.
+
+    Side-effects: если ID переиспользуется и старый .duckdb файл существует,
+    он удаляется — данные будут перепарсены с нуля (содержимое папки могло
+    измениться).
+    """
+    existing = _sqlite().find_archive_id_by_path(public_path)
+    if existing is None:
+        return uuid.uuid4().hex
+    # Перед re-ingest нужно удалить старый .duckdb (если он есть на диске).
+    # Если он сейчас открыт другим архивом из _ARCHIVES — закрываем сначала.
+    open_state = _ARCHIVES.pop(existing, None)
+    if open_state is not None:
+        store = open_state.get("store")
+        if store is not None:
+            try:
+                store.close()
+            except Exception:
+                pass
+    try:
+        DuckDBStore.delete_db_file(existing)
+    except Exception:
+        pass
+    return existing
+
+
 @rpc("load_directory")
 def load_directory(path: str) -> dict[str, Any]:
     """Primary способ загрузки в Module 1 — рекурсивный обход папки.
@@ -324,11 +357,12 @@ def load_directory(path: str) -> dict[str, Any]:
     if not folder.is_dir():
         raise NotADirectoryError(f"Не папка: {path}")
 
-    archive_id = uuid.uuid4().hex
+    public_path = str(folder)
+    archive_id = _stable_archive_id_for_path(public_path)
     return _start_async_ingestion(
         source_factory=lambda: FolderSource(folder),
         archive_id=archive_id,
-        public_path=str(folder),
+        public_path=public_path,
         source_type="folder",
     )
 
@@ -344,11 +378,12 @@ def load_archive(path: str) -> dict[str, Any]:
     if not p.exists():
         raise FileNotFoundError(f"Archive not found: {path}")
 
-    archive_id = uuid.uuid4().hex
+    public_path = str(p)
+    archive_id = _stable_archive_id_for_path(public_path)
     return _start_async_ingestion(
         source_factory=lambda: ZipSource(p, archive_id=archive_id),
         archive_id=archive_id,
-        public_path=str(p),
+        public_path=public_path,
         source_type="archive",
     )
 

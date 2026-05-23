@@ -85,6 +85,21 @@ class SqliteStore:
                 (archive_id, path, size_bytes, events_count, datetime.utcnow().isoformat(), parsing_time_sec),
             )
 
+    def find_archive_id_by_path(self, path: str) -> str | None:
+        """Возвращает archive_id для уже загруженного ранее path, либо None.
+
+        Используется чтобы при повторной загрузке той же папки переиспользовать
+        прежний archive_id — это критично для стабильности ключей AI-кеша
+        (cache key = sha256(archive_id|kind|target)). Без этого reload папки
+        делал старые AI-объяснения недоступными.
+        """
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT archive_id FROM recent_archives WHERE path = ? LIMIT 1",
+                (path,),
+            ).fetchone()
+            return row["archive_id"] if row else None
+
     def list_recent_archives(self, limit: int = 10) -> list[dict[str, Any]]:
         with self._conn() as c:
             rows = c.execute(
