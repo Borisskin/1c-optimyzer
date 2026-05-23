@@ -3,7 +3,7 @@
 Гарантирует:
 - Configuration выставлена один раз (shop_id + secret_key)
 - Все запросы идут с idempotency_key
-- Чеки 54-ФЗ формируются автоматически
+- Чеки формируются автоматически
 - Webhook signature verification (если YooKassa включит подпись)
 
 Sandbox: shop_id и secret_key — те же endpoints, разные креды.
@@ -53,7 +53,7 @@ def build_receipt(
     amount_kopecks: int,
     item_subject: str = "service",
 ) -> dict[str, Any]:
-    """Чек 54-ФЗ. vat_code=1 — без НДС (для самозанятых)."""
+    """Receipt payload для YooKassa. vat_code=1 — без НДС."""
     return {
         "customer": {"email": email},
         "items": [
