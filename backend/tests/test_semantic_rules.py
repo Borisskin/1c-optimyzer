@@ -189,6 +189,57 @@ def synthetic_store(tmp_path: Path) -> ConfigurationMetadataStore:
         encoding="utf-8",
     )
 
+    # ChartsOfAccounts/Хозрасчетный — для теста ПРЕДОПРЕДЕЛЁННЫХ счетов
+    # (типовая БП 3.0 содержит ровно такие в Predefined.xml; маленький
+    # срез воспроизводит конструкцию запроса со страницы анализа).
+    (root / "ChartsOfAccounts").mkdir()
+    (root / "ChartsOfAccounts" / "Хозрасчетный.xml").write_text(
+        wrap(textwrap.dedent("""\
+        <ChartOfAccounts>
+          <Properties>
+            <Name>Хозрасчетный</Name>
+            <Synonym><v8:item><v8:lang>ru</v8:lang><v8:content>Хозрасчетный</v8:content></v8:item></Synonym>
+          </Properties>
+          <ChildObjects>
+            <Attribute><Properties>
+              <Name>Вид</Name><Type><v8:Type>xs:string</v8:Type></Type>
+            </Properties></Attribute>
+          </ChildObjects>
+        </ChartOfAccounts>
+        """)),
+        encoding="utf-8",
+    )
+    (root / "ChartsOfAccounts" / "Хозрасчетный").mkdir()
+    (root / "ChartsOfAccounts" / "Хозрасчетный" / "Ext").mkdir()
+    (root / "ChartsOfAccounts" / "Хозрасчетный" / "Ext" / "Predefined.xml").write_text(
+        textwrap.dedent("""\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <PredefinedData xmlns="http://v8.1c.ru/8.3/xcf/predef"
+                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                        xsi:type="ChartOfAccountsPredefinedItems" version="2.20">
+          <Item id="aaaaaaaa-0000-0000-0000-000000000001">
+            <Name>РасчетыСПрочимиПокупателямиИЗаказчиками</Name>
+            <Code>76.06</Code>
+          </Item>
+          <Item id="aaaaaaaa-0000-0000-0000-000000000002">
+            <Name>РасчетыСПрочимиПокупателямиИЗаказчикамиВал</Name>
+            <Code>76.26</Code>
+          </Item>
+          <Item id="aaaaaaaa-0000-0000-0000-000000000003">
+            <Name>РасчетыСПрочимиПокупателямиИЗаказчикамиУЕ</Name>
+            <Code>76.36</Code>
+            <ChildItems>
+              <Item id="aaaaaaaa-0000-0000-0000-000000000004">
+                <Name>ВложенныйПредопределённый</Name>
+                <Code>76.36.1</Code>
+              </Item>
+            </ChildItems>
+          </Item>
+        </PredefinedData>
+        """),
+        encoding="utf-8",
+    )
+
     store = ConfigurationMetadataStore(tmp_path / "test.db")
     store.index_configuration(root)
     return store
@@ -449,6 +500,87 @@ class TestAttributeNotExistsInFromAlias:
         rule = _find_rule(semantic_rules, "attribute_not_exists_in_from_alias")
         # 'Ссылка' и 'Наименование' — стандартные, должны быть OK
         q = "ВЫБРАТЬ К.Ссылка, К.Наименование, К.Код ИЗ Справочник.Контрагенты КАК К"
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert findings == []
+
+    def test_no_false_positive_inside_value_call(
+        self, synthetic_store, semantic_rules
+    ):
+        """ЗНАЧЕНИЕ(ПланСчетов.Хозрасчетный.X) — X это ПРЕДОПРЕДЕЛЁННЫЙ счёт,
+        а не реквизит. Проверка `attribute_not_exists_in_from_alias` должна
+        ИГНОРИРОВАТЬ обращения внутри ЗНАЧЕНИЕ(...).
+
+        Регрессионный тест — раньше выдавалось 3 false positive findings на
+        запрос со счетами 76.06/76.26/76.36 из типовой БП 3.0 (см. скриншот
+        Сергея от 2026-05-23).
+        """
+        rule = _find_rule(semantic_rules, "attribute_not_exists_in_from_alias")
+        q = (
+            "ВЫБРАТЬ Хозрасчетный.Ссылка "
+            "ИЗ ПланСчетов.Хозрасчетный КАК Хозрасчетный "
+            "ГДЕ Хозрасчетный.Ссылка В ИЕРАРХИИ ("
+            "    ЗНАЧЕНИЕ(ПланСчетов.Хозрасчетный.РасчетыСПрочимиПокупателямиИЗаказчиками),"
+            "    ЗНАЧЕНИЕ(ПланСчетов.Хозрасчетный.РасчетыСПрочимиПокупателямиИЗаказчикамиВал),"
+            "    ЗНАЧЕНИЕ(ПланСчетов.Хозрасчетный.РасчетыСПрочимиПокупателямиИЗаказчикамиУЕ)"
+            ")"
+        )
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        # Ни одного finding — Ссылка стандартный реквизит, обращения внутри
+        # ЗНАЧЕНИЕ должны быть проигнорированы.
+        assert findings == [], (
+            f"Ожидали 0 findings, получили {len(findings)}: "
+            f"{[f.message for f in findings]}"
+        )
+
+
+class TestPredefinedItemNotExists:
+    def test_positive_typo_in_predefined_account(
+        self, synthetic_store, semantic_rules
+    ):
+        """Опечатка в имени предопределённого счёта — должна сработать."""
+        rule = _find_rule(semantic_rules, "predefined_item_not_exists")
+        q = (
+            "ВЫБРАТЬ * ИЗ ПланСчетов.Хозрасчетный "
+            "ГДЕ Ссылка = ЗНАЧЕНИЕ(ПланСчетов.Хозрасчетный.РасчетыСНесуществующимСчетом)"
+        )
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert len(findings) == 1
+        assert "РасчетыСНесуществующимСчетом" in findings[0].message
+        assert "ПланСчетов.Хозрасчетный" in findings[0].message
+
+    def test_negative_existing_predefined_account(
+        self, synthetic_store, semantic_rules
+    ):
+        """Существующий предопределённый счёт — finding не выдаётся."""
+        rule = _find_rule(semantic_rules, "predefined_item_not_exists")
+        q = (
+            "ВЫБРАТЬ * ИЗ ПланСчетов.Хозрасчетный "
+            "ГДЕ Ссылка = ЗНАЧЕНИЕ(ПланСчетов.Хозрасчетный.РасчетыСПрочимиПокупателямиИЗаказчиками)"
+        )
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert findings == []
+
+    def test_negative_silent_on_object_without_predefined(
+        self, synthetic_store, semantic_rules
+    ):
+        """Если у объекта вообще нет ПРЕДОПРЕДЕЛЁННЫХ — finding не выдаётся
+        (иначе любой ЗНАЧЕНИЕ(Справочник.X.Y) на справочнике без predefined
+        давал бы шум). Лучше пропустить, чем кричать."""
+        rule = _find_rule(semantic_rules, "predefined_item_not_exists")
+        q = (
+            "ВЫБРАТЬ * ИЗ Справочник.Контрагенты "
+            "ГДЕ Ссылка = ЗНАЧЕНИЕ(Справочник.Контрагенты.КакойТоЭлемент)"
+        )
+        findings = native_analyze(q, [rule], config_store=synthetic_store)
+        assert findings == []
+
+    def test_negative_silent_on_unknown_parent_object(
+        self, synthetic_store, semantic_rules
+    ):
+        """Если родительский объект не существует — finding отдаёт
+        object_not_exists, наш чекер должен молчать."""
+        rule = _find_rule(semantic_rules, "predefined_item_not_exists")
+        q = "ВЫБРАТЬ ЗНАЧЕНИЕ(ПланСчетов.НесуществующийПлан.X)"
         findings = native_analyze(q, [rule], config_store=synthetic_store)
         assert findings == []
 

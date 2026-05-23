@@ -44,7 +44,10 @@ logger = logging.getLogger(__name__)
 
 
 # Версия схемы — bumped при breaking changes в DDL.
-SCHEMA_VERSION = "1"
+# v2 — добавлена таблица predefined_items (Sprint 5 hotfix: валидация
+# ЗНАЧЕНИЕ(Справочник.X.ИмяПредопределённого) и аналогично для планов
+# счетов / видов характеристик / видов расчёта).
+SCHEMA_VERSION = "2"
 
 
 # Sprint 6 placeholder типы — Sprint 5 их не реализует, но API должен быть.
@@ -131,11 +134,37 @@ class ConfigurationMetadataStore:
                     PRIMARY KEY (object_full_name, value_name),
                     FOREIGN KEY (object_full_name) REFERENCES objects(full_name) ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS predefined_items (
+                    object_full_name  TEXT NOT NULL,
+                    item_name         TEXT NOT NULL,
+                    ord               INTEGER NOT NULL,
+                    PRIMARY KEY (object_full_name, item_name),
+                    FOREIGN KEY (object_full_name) REFERENCES objects(full_name) ON DELETE CASCADE
+                );
                 """
             )
-            # SCHEMA_VERSION
+            # SCHEMA_VERSION management. Если был старый индекс (v1) — сносим
+            # данные и заставляем переиндексировать (миграции для v0.5.x не
+            # делаем — это локальный кеш, переиндексация занимает секунды).
             row = conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
             if row is None:
+                conn.execute(
+                    "INSERT INTO meta(key, value) VALUES ('schema_version', ?)",
+                    (SCHEMA_VERSION,),
+                )
+            elif row[0] != SCHEMA_VERSION:
+                # Bumped — снести старые данные. Сохраняем только новый ключ.
+                conn.executescript(
+                    """
+                    DELETE FROM attributes;
+                    DELETE FROM tabular_sections;
+                    DELETE FROM enum_values;
+                    DELETE FROM predefined_items;
+                    DELETE FROM objects;
+                    DELETE FROM meta;
+                    """
+                )
                 conn.execute(
                     "INSERT INTO meta(key, value) VALUES ('schema_version', ?)",
                     (SCHEMA_VERSION,),
@@ -257,6 +286,12 @@ class ConfigurationMetadataStore:
                 "INSERT INTO enum_values(object_full_name, value_name, ord) VALUES (?, ?, ?)",
                 (obj.full_name, ev, ord_ev),
             )
+        for ord_pi, pname in enumerate(obj.predefined_names):
+            conn.execute(
+                "INSERT OR IGNORE INTO predefined_items(object_full_name, item_name, ord) "
+                "VALUES (?, ?, ?)",
+                (obj.full_name, pname, ord_pi),
+            )
 
     def _truncate(self) -> None:
         """Удаляет все объекты из индекса (но сохраняет meta)."""
@@ -266,6 +301,7 @@ class ConfigurationMetadataStore:
                 DELETE FROM attributes;
                 DELETE FROM tabular_sections;
                 DELETE FROM enum_values;
+                DELETE FROM predefined_items;
                 DELETE FROM objects;
                 """
             )
@@ -378,6 +414,13 @@ class ConfigurationMetadataStore:
             ).fetchall()
             enum_values = [r[0] for r in ev_rows]
 
+            predefined_rows = conn.execute(
+                "SELECT item_name FROM predefined_items "
+                "WHERE object_full_name = ? ORDER BY ord",
+                (full_name,),
+            ).fetchall()
+            predefined_names = [r[0] for r in predefined_rows]
+
             return ConfigurationObject(
                 kind_ru=kind_ru,
                 name=name,
@@ -388,6 +431,7 @@ class ConfigurationMetadataStore:
                 resources=resources,
                 tabular_sections=tabular_sections,
                 enum_values=enum_values,
+                predefined_names=predefined_names,
             )
 
     def get_attributes(self, full_name: str) -> list[Attribute]:
@@ -432,6 +476,22 @@ class ConfigurationMetadataStore:
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT value_name FROM enum_values WHERE object_full_name = ? ORDER BY ord",
+                (full_name,),
+            ).fetchall()
+            return [r[0] for r in rows]
+
+    def get_predefined_names(self, full_name: str) -> list[str]:
+        """Имена ПРЕДОПРЕДЕЛЁННЫХ элементов объекта.
+
+        Заполнено для Справочник / ПланСчетов / ПланВидовХарактеристик /
+        ПланВидовРасчета (из Predefined.xml). Для остальных типов всегда
+        пустой список (логически у регистров и документов нет
+        предопределённых, у перечисления значения лежат в enum_values).
+        """
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT item_name FROM predefined_items "
+                "WHERE object_full_name = ? ORDER BY ord",
                 (full_name,),
             ).fetchall()
             return [r[0] for r in rows]

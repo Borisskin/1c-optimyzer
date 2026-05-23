@@ -358,6 +358,68 @@ class TestParser:
         en = next(o for o in objects if o.full_name == "Перечисление.ВидыКонтрагентов")
         assert en.enum_values == ["ЮридическоеЛицо", "ФизическоеЛицо"]
 
+    def test_parse_predefined_items_from_chart_of_accounts(self, synthetic_dump: Path):
+        """Парсер должен извлекать имена предопределённых счетов
+        из ChartsOfAccounts/<Name>/Ext/Predefined.xml — включая
+        вложенные через <ChildItems>."""
+        # Добавляем ПланСчетов.Хозрасчетный + Predefined.xml в synthetic_dump
+        coa_dir = synthetic_dump / "ChartsOfAccounts"
+        coa_dir.mkdir()
+        (coa_dir / "Хозрасчетный.xml").write_text(
+            _wrap_metadata(textwrap.dedent("""\
+                <ChartOfAccounts uuid="aaaa1111-2222-3333-4444-555555555555">
+                  <Properties>
+                    <Name>Хозрасчетный</Name>
+                    <Synonym><v8:item><v8:lang>ru</v8:lang><v8:content>Хозрасчетный</v8:content></v8:item></Synonym>
+                  </Properties>
+                </ChartOfAccounts>
+            """)),
+            encoding="utf-8",
+        )
+        ext_dir = coa_dir / "Хозрасчетный" / "Ext"
+        ext_dir.mkdir(parents=True)
+        (ext_dir / "Predefined.xml").write_text(
+            textwrap.dedent("""\
+                <?xml version="1.0" encoding="UTF-8"?>
+                <PredefinedData xmlns="http://v8.1c.ru/8.3/xcf/predef"
+                                xsi:type="ChartOfAccountsPredefinedItems"
+                                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                  <Item><Name>ОсновныеСредства</Name><Code>01</Code>
+                    <ChildItems>
+                      <Item><Name>ОСвОрганизации</Name><Code>01.01</Code></Item>
+                    </ChildItems>
+                  </Item>
+                  <Item><Name>Материалы</Name><Code>10</Code></Item>
+                </PredefinedData>
+            """),
+            encoding="utf-8",
+        )
+
+        parser = ConfigurationParser(synthetic_dump)
+        objects = parser.parse()
+        coa = next(o for o in objects if o.full_name == "ПланСчетов.Хозрасчетный")
+        assert "ОсновныеСредства" in coa.predefined_names
+        assert "ОСвОрганизации" in coa.predefined_names  # вложенный
+        assert "Материалы" in coa.predefined_names
+
+    def test_parse_no_predefined_xml_returns_empty(self, synthetic_dump: Path):
+        """Для объекта без Predefined.xml — список пуст (а не None и не ошибка)."""
+        parser = ConfigurationParser(synthetic_dump)
+        objects = parser.parse()
+        # У синтетического каталога Контрагенты нет Predefined.xml
+        catalog = next(o for o in objects if o.full_name == "Справочник.Контрагенты")
+        assert catalog.predefined_names == []
+
+    def test_parse_predefined_ignored_for_unsupported_kinds(self, synthetic_dump: Path):
+        """У документа / регистра предопределённых нет — даже если
+        случайно создать рядом файл Predefined.xml. (Поведение парсера —
+        он смотрит только для Справочник/ПланСчетов/ПланВидов…)."""
+        # Регистр накопления — здесь предопределённых не бывает
+        parser = ConfigurationParser(synthetic_dump)
+        objects = parser.parse()
+        register = next(o for o in objects if o.full_name == "РегистрНакопления.ТоварыНаСкладах")
+        assert register.predefined_names == []
+
     def test_parse_non_existent_folders_skipped(self, synthetic_dump: Path):
         """Папок Documents/AccountingRegisters нет — парсер не падает."""
         parser = ConfigurationParser(synthetic_dump)

@@ -72,6 +72,55 @@ def _format_similar(similar: list[str]) -> str:
     return "\n".join(f"- `{s}`" for s in similar)
 
 
+_VALUE_CALL_RE = __import__("re").compile(
+    r"(?i)(?<![А-Яа-яA-Za-z0-9_])ЗНАЧЕНИЕ\s*\("
+)
+
+
+def _mask_value_calls(query_text: str) -> str:
+    """Заменяет содержимое каждого ``ЗНАЧЕНИЕ(...)`` (вместе с самими
+    скобками и словом ЗНАЧЕНИЕ) на пробелы той же длины.
+
+    Зачем: внутри ``ЗНАЧЕНИЕ(...)`` идёт обращение к **предопределённому**
+    элементу справочника / счёта / вида характеристики / значению
+    перечисления — это НЕ доступ к реквизиту через алиас. Если оставить
+    эти подстроки в тексте, ``check_attribute_not_exists_in_from_alias``
+    ошибочно посчитает имя предопределённого реквизитом и выдаст false
+    positive (видели на запросах БП 3.0 со счетами вида
+    ``ЗНАЧЕНИЕ(ПланСчетов.Хозрасчетный.РасчетыСПрочимиПокупателямиИЗаказчиками)``).
+
+    Сохраняем длину текста — это важно, потому что offset'ы остальных
+    findings вычисляются по позиции в исходной строке.
+
+    Простой балансировщик скобок: ЗНАЧЕНИЕ() в SDBL не содержит вложенных
+    вызовов, но защищаемся на случай странного ввода — считаем до тех
+    пор, пока счётчик скобок не вернётся в 0.
+    """
+    masked = list(query_text)
+    pos = 0
+    n = len(query_text)
+    while True:
+        m = _VALUE_CALL_RE.search(query_text, pos)
+        if m is None:
+            break
+        # m.end() указывает сразу ПОСЛЕ '('. Стартуем баланс с 1.
+        depth = 1
+        i = m.end()
+        while i < n and depth > 0:
+            ch = query_text[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            i += 1
+        # Маскируем весь диапазон [m.start(), i)
+        for k in range(m.start(), i):
+            if masked[k] != "\n":
+                masked[k] = " "
+        pos = i
+    return "".join(masked)
+
+
 # ---- Checks ----
 
 
@@ -356,10 +405,19 @@ def check_attribute_not_exists_in_from_alias(query_text: str, rule, store) -> li
     if not aliases:
         return findings
 
-    # Для каждого alias ищем alias.X
+    # ЗНАЧЕНИЕ(Kind.Object.Item) — это обращение к ПРЕДОПРЕДЕЛЁННОМУ
+    # элементу, а не доступ к реквизиту через alias. Маскируем такие
+    # вызовы пробелами (длина сохраняется → offset'ы остальных findings
+    # корректны), чтобы regex `alias.X` не зацеплял их.
+    # Отдельно валидируется правилом `predefined_item_not_exists`.
+    search_text = _mask_value_calls(query_text)
+
+    # Для каждого alias ищем alias.X. Lookbehind включает точку — иначе
+    # в строке `Kind.Alias.X` regex принял бы `Alias.X` за обращение к
+    # реквизиту, хотя на самом деле это часть полного имени объекта.
     for alias, full_name in aliases:
         attr_pattern = re.compile(
-            rf"(?<![А-Яа-яA-Za-z0-9_]){re.escape(alias)}\.([А-Яа-яA-Za-z_][А-Яа-яA-Za-z0-9_]*)"
+            rf"(?<![А-Яа-яA-Za-z0-9_.]){re.escape(alias)}\.([А-Яа-яA-Za-z_][А-Яа-яA-Za-z0-9_]*)"
         )
         # Все реквизиты + табчасти + StandardAttribute (стандартные поля
         # 1С — Ссылка, Код, Наименование, ПометкаУдаления, Предопределённый,
@@ -383,7 +441,7 @@ def check_attribute_not_exists_in_from_alias(query_text: str, rule, store) -> li
         }
         valid_attrs |= STANDARD_ATTRS
 
-        for m in attr_pattern.finditer(query_text):
+        for m in attr_pattern.finditer(search_text):
             attr_name = m.group(1)
             if attr_name in valid_attrs:
                 continue
@@ -481,6 +539,128 @@ def check_tabular_section_used_as_attribute(query_text: str, rule, store) -> lis
     return []
 
 
+def check_predefined_item_not_exists(query_text: str, rule, store) -> list:
+    """Обращение ``ЗНАЧЕНИЕ(Kind.Object.Item)`` к несуществующему
+    ПРЕДОПРЕДЕЛЁННОМУ элементу.
+
+    Сферы применения:
+        Справочник.X.Item             — предопределённый элемент справочника
+        ПланСчетов.X.Item             — предопределённый счёт
+        ПланВидовХарактеристик.X.Item — предопределённый вид характеристики
+        ПланВидовРасчета.X.Item       — предопределённый вид расчёта
+
+    Для ``Перечисление.X.Item`` уже есть отдельное правило
+    ``enum_value_not_exists`` — здесь его не дублируем.
+
+    Когда срабатывает: ровно тогда, когда родительский объект существует в
+    конфигурации, но имени Item нет в его списке предопределённых (см.
+    Predefined.xml). Если родительский объект не существует — это поймает
+    ``object_not_exists``, мы остаёмся silent.
+
+    Особый случай: если объект подходящего типа существует, но Predefined.xml
+    у него **пуст** (нет ни одного предопределённого) — finding не выдаётся,
+    потому что иначе любой запрос на конфигурации без явных предопределённых
+    стал бы заваленным false positive'ами. Считаем такие случаи «не знаем —
+    значит молчим».
+    """
+    findings: list = []
+    import re
+
+    # Перечисление ловит отдельный чекер; здесь не дублируем.
+    KINDS = (
+        "Справочник",
+        "ПланСчетов",
+        "ПланВидовХарактеристик",
+        "ПланВидовРасчета",
+    )
+    kinds_alt = "|".join(KINDS)
+    # ЗНАЧЕНИЕ ( Kind . Object . Item [.OptionalSubItem] )
+    # ``Item`` иногда содержит подзначение через точку (для иерархических
+    # предопределённых: Группа.Подгруппа). Sprint 5: проверяем только первый
+    # сегмент. Subsegmenты — отдельный TODO.
+    pattern = re.compile(
+        rf"(?im)(?<![А-Яа-яA-Za-z0-9_])ЗНАЧЕНИЕ\s*\(\s*"
+        rf"({kinds_alt})\.([А-Яа-яA-Za-z_][А-Яа-яA-Za-z0-9_]*)\."
+        rf"([А-Яа-яA-Za-z_][А-Яа-яA-Za-z0-9_]*)"
+    )
+    for m in pattern.finditer(query_text):
+        kind = m.group(1)
+        obj_name = m.group(2)
+        item_name = m.group(3)
+        full_name = f"{kind}.{obj_name}"
+        if not store.is_object_exists(full_name):
+            continue  # object_not_exists даст свой finding
+        valid_items = store.get_predefined_names(full_name)
+        if not valid_items:
+            # Конфигурация не предоставила список — молчим, чтобы не выдавать
+            # false positives (например для справочника без предопределённых).
+            continue
+        if item_name in valid_items:
+            continue
+        # Подсказываем похожие
+        similar_items = _similar_strings(item_name, valid_items, max_distance=3, limit=5)
+        body = _render_body(
+            rule.body,
+            {
+                "object_full_name": full_name,
+                "item_name": item_name,
+                "valid_predefined": (
+                    "\n".join(f"- `{n}`" for n in similar_items)
+                    if similar_items
+                    else "\n".join(f"- `{n}`" for n in valid_items[:8])
+                ),
+            },
+        )
+        findings.append(
+            _make_finding(
+                rule,
+                query_text,
+                m.start(3),
+                m.end(3),
+                (
+                    f"Предопределённый элемент «{item_name}» не существует "
+                    f"у «{full_name}»"
+                ),
+                body,
+            )
+        )
+    return findings
+
+
+def _similar_strings(target: str, candidates: list[str], max_distance: int, limit: int) -> list[str]:
+    """Простая выборка похожих строк по Levenshtein-расстоянию.
+
+    Используется для подсказок «возможно вы имели в виду…» в предопределённых
+    элементах. Дублирует логику из ConfigurationMetadataStore._levenshtein,
+    но локально — чтобы не тянуть импорт ради одной функции.
+    """
+
+    def lev(a: str, b: str) -> int:
+        if a == b:
+            return 0
+        if not a:
+            return len(b)
+        if not b:
+            return len(a)
+        prev = list(range(len(b) + 1))
+        for i, ca in enumerate(a, start=1):
+            curr = [i] + [0] * len(b)
+            for j, cb in enumerate(b, start=1):
+                cost = 0 if ca == cb else 1
+                curr[j] = min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+            prev = curr
+        return prev[-1]
+
+    scored: list[tuple[int, str]] = []
+    tl = target.lower()
+    for c in candidates:
+        d = lev(tl, c.lower())
+        if d <= max_distance:
+            scored.append((d, c))
+    scored.sort(key=lambda p: (p[0], p[1]))
+    return [s for _, s in scored[:limit]]
+
+
 def check_constant_used_with_dot(query_text: str, rule, store) -> list:
     """Обращение Константа.Х.Поле — у констант нет полей.
 
@@ -535,6 +715,7 @@ SEMANTIC_CHECKS: dict[str, SemanticCheckFn] = {
     "register_resource_used_as_dimension": check_register_resource_used_as_dimension,
     "tabular_section_used_as_attribute": check_tabular_section_used_as_attribute,
     "constant_used_with_dot": check_constant_used_with_dot,
+    "predefined_item_not_exists": check_predefined_item_not_exists,
 }
 
 

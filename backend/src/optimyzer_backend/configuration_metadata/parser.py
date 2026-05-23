@@ -122,6 +122,12 @@ class ConfigurationObject:
     resources: list[Attribute] = field(default_factory=list)
     tabular_sections: list[TabularSection] = field(default_factory=list)
     enum_values: list[str] = field(default_factory=list)
+    # Имена ПРЕДОПРЕДЕЛЁННЫХ элементов: для Справочник / ПланСчетов /
+    # ПланВидовХарактеристик / ПланВидовРасчета — список из Predefined.xml.
+    # Используется правилом `predefined_item_not_exists` для валидации
+    # обращений `ЗНАЧЕНИЕ(Справочник.X.ИмяЭлемента)`. Для Перечисления
+    # предопределённые значения хранятся в enum_values (отдельное правило).
+    predefined_names: list[str] = field(default_factory=list)
 
     @property
     def full_name(self) -> str:
@@ -165,6 +171,7 @@ class ConfigurationObject:
             "resources": [r.to_dict() for r in self.resources],
             "tabular_sections": [ts.to_dict() for ts in self.tabular_sections],
             "enum_values": list(self.enum_values),
+            "predefined_names": list(self.predefined_names),
             "virtual_tables": self.virtual_tables,
         }
 
@@ -332,6 +339,58 @@ class ConfigurationParser:
                     logger.warning("Skip %s: %s: %s", xml_file.name, type(exc).__name__, exc)
         return objects
 
+    # Типы, у которых имеет смысл искать Predefined.xml. Регистры, перечисления,
+    # документы и т.п. предопределённых элементов в этом смысле не имеют.
+    _PREDEFINED_KINDS_RU = frozenset({
+        "Справочник",
+        "ПланСчетов",
+        "ПланВидовХарактеристик",
+        "ПланВидовРасчета",
+    })
+
+    def _parse_predefined_names(self, xml_path: Path, kind_ru: str, name: str) -> list[str]:
+        """Извлекает имена предопределённых элементов из Ext/Predefined.xml.
+
+        Predefined.xml лежит рядом с описанием объекта по пути
+        ``<Folder>/<Name>/Ext/Predefined.xml``. Содержимое — дерево
+        ``<Item><Name>...</Name><ChildItems><Item>...</Item></ChildItems></Item>``.
+
+        Возвращает плоский список имён (включая вложенные). Если файла нет
+        или это не подходящий тип объекта — пустой список.
+        """
+        if kind_ru not in self._PREDEFINED_KINDS_RU:
+            return []
+        # xml_path = <root>/<Folder>/<Name>.xml; Predefined.xml — рядом
+        predefined_path = xml_path.parent / name / "Ext" / "Predefined.xml"
+        if not predefined_path.is_file():
+            return []
+        try:
+            tree = ET.parse(predefined_path)
+        except ET.ParseError as exc:
+            logger.warning("Skip Predefined.xml %s: %s", predefined_path, exc)
+            return []
+        names: list[str] = []
+        # Корневой элемент <PredefinedData> (или другой) → рекурсивно собираем
+        # все локальные <Name> прямых детей <Item>.
+        for item in self._iter_items_recursive(tree.getroot()):
+            for child in item:
+                if _localname(child.tag) == "Name":
+                    txt = _text(child)
+                    if txt:
+                        names.append(txt)
+                    break
+        return names
+
+    def _iter_items_recursive(self, elem: ET.Element) -> Iterable[ET.Element]:
+        """DFS по всем <Item> в произвольной глубине (учитывая <ChildItems>)."""
+        for child in elem:
+            if _localname(child.tag) == "Item":
+                yield child
+                yield from self._iter_items_recursive(child)
+            else:
+                # ChildItems и другие промежуточные обёртки
+                yield from self._iter_items_recursive(child)
+
     def _parse_object_file(
         self, xml_path: Path, expected_root_tag: str, kind_ru: str
     ) -> ConfigurationObject | None:
@@ -389,6 +448,8 @@ class ConfigurationParser:
                     if ts is not None:
                         tabular_sections.append(ts)
 
+        predefined_names = self._parse_predefined_names(xml_path, kind_ru, name)
+
         return ConfigurationObject(
             kind_ru=kind_ru,
             name=name,
@@ -399,4 +460,5 @@ class ConfigurationParser:
             resources=resources,
             tabular_sections=tabular_sections,
             enum_values=enum_values,
+            predefined_names=predefined_names,
         )
