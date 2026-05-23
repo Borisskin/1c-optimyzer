@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <title>Konvey — design</title>
+  <meta name="viewport" content="width=1280"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="konvey/styles.css"/>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+    #root { height: 100%; }
+    /* Make every artboard's content render as an isolated stacking context. */
+    .k-app { position: relative; }
+  </style>
+</head>
+<body>
+  <template id="__bundler_thumbnail" data-bg-color="#f4f4f5">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="800" fill="#f4f4f5"/>
+      <!-- Three columns silhouette -->
+      <rect x="120" y="180" width="280" height="500" rx="8" fill="#ffffff" stroke="#e6e6e9" stroke-width="2"/>
+      <rect x="420" y="180" width="360" height="500" rx="8" fill="#fcfcfd" stroke="#e6e6e9" stroke-width="2"/>
+      <rect x="800" y="180" width="280" height="500" rx="8" fill="#ffffff" stroke="#e6e6e9" stroke-width="2"/>
+      <!-- Column header lines -->
+      <rect x="140" y="210" width="100" height="8" rx="2" fill="#0e0e10"/>
+      <rect x="440" y="210" width="120" height="8" rx="2" fill="#0e0e10"/>
+      <rect x="820" y="210" width="100" height="8" rx="2" fill="#0e0e10"/>
+      <!-- Field rows on left -->
+      <g fill="#d6d6da">
+        <rect x="140" y="260" width="180" height="6" rx="2"/>
+        <rect x="140" y="290" width="160" height="6" rx="2"/>
+        <rect x="140" y="320" width="200" height="6" rx="2"/>
+        <rect x="140" y="350" width="170" height="6" rx="2"/>
+        <rect x="140" y="380" width="190" height="6" rx="2"/>
+        <rect x="140" y="410" width="150" height="6" rx="2"/>
+      </g>
+      <!-- Field rows on middle -->
+      <g fill="#d6d6da">
+        <rect x="440" y="260" width="220" height="6" rx="2"/>
+        <rect x="440" y="290" width="200" height="6" rx="2"/>
+        <rect x="440" y="320" width="240" height="6" rx="2"/>
+        <rect x="440" y="350" width="180" height="6" rx="2"/>
+        <rect x="440" y="380" width="220" height="6" rx="2"/>
+        <rect x="440" y="410" width="200" height="6" rx="2"/>
+      </g>
+      <!-- Field rows on right -->
+      <g fill="#d6d6da">
+        <rect x="820" y="260" width="180" height="6" rx="2"/>
+        <rect x="820" y="290" width="200" height="6" rx="2"/>
+        <rect x="820" y="320" width="170" height="6" rx="2"/>
+        <rect x="820" y="350" width="190" height="6" rx="2"/>
+        <rect x="820" y="380" width="160" height="6" rx="2"/>
+        <rect x="820" y="410" width="180" height="6" rx="2"/>
+      </g>
+      <!-- Mapping bezier lines, left → middle -->
+      <g fill="none" stroke-width="2">
+        <path d="M 340 263 C 400 263, 400 263, 440 263" stroke="#1f8a5b"/>
+        <path d="M 340 293 C 400 293, 400 323, 440 323" stroke="#1f8a5b"/>
+        <path d="M 340 323 C 400 323, 400 293, 440 293" stroke="#b07418"/>
+        <path d="M 340 353 C 400 353, 400 353, 440 353" stroke="#1f8a5b"/>
+        <path d="M 340 383 C 400 383, 400 413, 440 413" stroke="#1f8a5b"/>
+        <path d="M 340 413 C 400 413, 400 383, 440 383" stroke="#b54545"/>
+      </g>
+      <!-- Mapping bezier lines, middle → right -->
+      <g fill="none" stroke-width="2">
+        <path d="M 680 263 C 740 263, 740 263, 820 263" stroke="#1f8a5b"/>
+        <path d="M 680 293 C 740 293, 740 293, 820 293" stroke="#1f8a5b"/>
+        <path d="M 680 323 C 740 323, 740 323, 820 323" stroke="#b07418"/>
+        <path d="M 680 353 C 740 353, 740 353, 820 353" stroke="#1f8a5b"/>
+        <path d="M 680 383 C 740 383, 740 413, 820 413" stroke="#1f8a5b"/>
+        <path d="M 680 413 C 740 413, 740 383, 820 383" stroke="#1f8a5b"/>
+      </g>
+      <!-- Wordmark -->
+      <text x="600" y="120" text-anchor="middle" font-family="IBM Plex Sans, system-ui, sans-serif" font-size="48" font-weight="600" fill="#0e0e10" letter-spacing="-1">Konvey</text>
+      <text x="600" y="148" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="14" fill="#7d7d85">generating 1C exchange rules · EnterpriseData / КД 3.1</text>
+    </svg>
+  </template>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="konvey/data.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="konvey/shared.jsx"></script>
+  <script type="text/babel" src="konvey/workspace.jsx"></script>
+  <script type="text/babel" src="konvey/screens.jsx"></script>
+
+  <script type="text/babel" data-presets="react">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="workspace"
+            title="Main Workspace"
+            subtitle="Ядро приложения. Три-колоночный mapping (Source · EnterpriseData · Target), Right Inspector меняется по контексту, Bottom Dock — Problems / Generated XML / AI Chat / History."
+          >
+            <DCArtboard id="ws-hero" label="A · Mapping selected (hero)" width={1440} height={900}>
+              <Workspace variant="mapping-selected"/>
+            </DCArtboard>
+
+            <DCArtboard id="ws-obj" label="B · Object selected · inspector ПКО" width={1440} height={900}>
+              <Workspace variant="object-selected"/>
+            </DCArtboard>
+
+            <DCArtboard id="ws-drag" label="C · Drag-and-drop · compatible drop targets" width={1440} height={900}>
+              <Workspace variant="drag-drop"/>
+            </DCArtboard>
+
+            <DCArtboard id="ws-ai" label="D · AI auto-mapping in progress" width={1440} height={900}>
+              <Workspace variant="ai-mapping"/>
+            </DCArtboard>
+
+            <DCArtboard id="ws-banner" label="E · Persistent banner · API error + toast" width={1440} height={900}>
+              <Workspace variant="mapping-selected" showBanner showToast/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="dock"
+            title="Bottom Dock — состояния"
+            subtitle="Те же 3 колонки сверху, разные вкладки внизу: AI Chat (главный канал prompt-driven работы), Problems (валидация), Generated XML (live preview правил)."
+          >
+            <DCArtboard id="dock-ai" label="A · AI Chat" width={1440} height={1000}>
+              <Workspace variant="ai-chat"/>
+            </DCArtboard>
+            <DCArtboard id="dock-problems" label="B · Problems (Validation View)" width={1440} height={1000}>
+              <Workspace variant="problems"/>
+            </DCArtboard>
+            <DCArtboard id="dock-xml" label="C · Generated XML (Preview)" width={1440} height={1000}>
+              <Workspace variant="preview"/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="picker"
+            title="Project Picker"
+            subtitle="Стартовый экран. Карточки с прогрессом маппинга, статусом валидации, hover-меню."
+          >
+            <DCArtboard id="pp-list" label="A · Project list · 6 projects, kebab open" width={1200} height={800}>
+              <ProjectPicker/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="wizard"
+            title="New Project Wizard"
+            subtitle="4 шага. Здесь — шаг 4 (выбор объектов для обмена), с шаблонами и автоматическим добавлением зависимостей."
+          >
+            <DCArtboard id="wz-4" label="A · Step 4 · Objects for exchange" width={1280} height={820}>
+              <WizardStep4/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="handler"
+            title="Handler Editor"
+            subtitle="Редактор BSL-кода обработчиков с AI Assistant справа. Подсветка синтаксиса, история генераций, шаблоны для текущего события."
+          >
+            <DCArtboard id="he-main" label="A · Filled handler · AI history visible" width={1280} height={820}>
+              <HandlerEditor/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="diff"
+            title="Diff View"
+            subtitle="Сравнение версий проекта. Левая колонка — git-like список (added/removed/changed), правая — компактный three-pane с diff-подсветкой."
+          >
+            <DCArtboard id="dv-main" label="A · Diff between snapshot and current" width={1280} height={820}>
+              <DiffView/>
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="palette"
+            title="Command Palette"
+            subtitle="⌘K overlay. Fuzzy-поиск по объектам и командам. Главный способ навигации для опытных пользователей."
+          >
+            <DCArtboard id="cp-main" label="A · Search “map контра”" width={1200} height={760}>
+              <CommandPalette/>
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<title>ГосЛог Проверка — Email System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="pdf-system.css"/>
+<style>
+  body { background: #e9eaef; margin: 0; }
+  deck-stage::part(slide) {
+    box-shadow: 0 1px 2px rgba(17,20,29,0.04), 0 24px 60px -20px rgba(17,20,29,0.20);
+    border-radius: 2px;
+  }
+
+  /* ======== Email-specific bits on top of pdf-system.css ======== */
+  .spec-bg { background: var(--paper-cool); }
+  .spec-bg .page-body { padding-top: 80px; }
+
+  /* "Mail client" frame around an email mockup */
+  .mail-frame {
+    width: 600px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--hairline-md);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 1px rgba(17,20,29,0.03), 0 18px 40px -16px rgba(17,20,29,0.18);
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--ink-2);
+  }
+  .mail-meta {
+    background: #fbfbfd;
+    border-bottom: 1px solid var(--hairline);
+    padding: 14px 22px;
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    column-gap: 14px;
+    row-gap: 4px;
+    align-items: center;
+  }
+  .mail-meta .lbl {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .mail-meta .val { font-size: 9pt; color: var(--ink); }
+  .mail-meta .val.from { font-weight: 600; }
+  .mail-meta .val .email { color: var(--muted); font-weight: 400; margin-left: 4px; font-family: 'JetBrains Mono', monospace; font-size: 8.5pt; }
+  .mail-meta .when { font-size: 8.5pt; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .mail-meta .subject {
+    grid-column: 2 / 4;
+    font-size: 11pt;
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+  .mail-meta .preheader {
+    grid-column: 2 / 4;
+    font-size: 8.5pt;
+    color: var(--muted);
+  }
+
+  /* Email body (the actual template) */
+  .em {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #2c3142;
+  }
+  .em-head {
+    background: #fff;
+    padding: 24px 36px 20px;
+    border-bottom: 1px solid var(--hairline);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .em-head .brand { display: inline-flex; align-items: center; gap: 10px; }
+  .em-head .brand .mk {
+    width: 22px; height: 22px; border-radius: 5px; background: var(--indigo); position: relative;
+  }
+  .em-head .brand .mk::before {
+    content: ''; position: absolute; inset: 4px 4.5px 5px;
+    border: 1.5px solid #fff; border-top: 0; border-radius: 1px 1px 3px 3px;
+  }
+  .em-head .brand .mk::after {
+    content: ''; position: absolute; width: 6.5px; height: 3.5px; left: 7.7px; top: 9px;
+    border: 1.4px solid #fff; border-top: 0; border-right: 0;
+    transform: rotate(-45deg);
+  }
+  .em-head .brand .name {
+    font-weight: 700; font-size: 12px; letter-spacing: -0.01em; color: var(--ink);
+  }
+  .em-head .brand .sub {
+    font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--muted);
+    font-weight: 600; display: block; margin-top: 2px;
+  }
+  .em-head .right { font-size: 9px; color: var(--muted); letter-spacing: 0.10em; text-transform: uppercase; font-weight: 600; }
+
+  .em-body { padding: 32px 36px 28px; }
+  .em-body p { margin: 0 0 14px; font-size: 13.5px; color: #2c3142; line-height: 1.6; }
+  .em-body .greeting {
+    font-family: 'Newsreader', Georgia, serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+  .em-body h1.eh {
+    font-size: 24px; line-height: 1.18; font-weight: 700; letter-spacing: -0.022em;
+    color: var(--ink); margin: 0 0 16px;
+  }
+  .em-body .eyebrow-em {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700;
+    color: var(--indigo-2); margin: 0 0 12px;
+  }
+  .em-body strong { color: var(--ink); font-weight: 600; }
+
+  .em-cta {
+    display: inline-block;
+    background: var(--indigo);
+    color: #fff;
+    text-decoration: none;
+    padding: 13px 22px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: -0.005em;
+    line-height: 1;
+  }
+  .em-cta.outline {
+    background: #fff;
+    color: var(--indigo);
+    border: 1px solid var(--indigo);
+  }
+  .em-cta-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 6px 0 4px; }
+  .em-cta-row .meta { font-size: 11px; color: var(--muted); }
+
+  .em-rule { height: 1px; background: var(--hairline); margin: 22px 0; border: 0; }
+  .em-rule.bold { background: var(--rule); }
+
+  .em-foot {
+    background: #fafbfd;
+    padding: 22px 36px 24px;
+    border-top: 1px solid var(--hairline);
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .em-foot a { color: var(--ink-3); text-decoration: underline; }
+  .em-foot .row1 { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
+  .em-foot .addr { font-size: 10.5px; }
+  .em-foot .legal { font-size: 9.5px; color: var(--muted-2); margin-top: 12px; line-height: 1.55; }
+
+  /* Signature block */
+  .sig {
+    display: flex; gap: 14px; align-items: center;
+    padding: 14px 0 6px;
+  }
+  .sig .ava {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #4338ca 0%, #6d68db 60%, #a4a0e3 100%);
+    color: #fff;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 14px; letter-spacing: -0.01em;
+  }
+  .sig .who { font-size: 12.5px; color: var(--ink); font-weight: 600; }
+  .sig .role { font-size: 10.5px; color: var(--muted); }
+  .sig .contact { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .sig .contact a { color: var(--indigo-2); text-decoration: none; }
+
+  /* Stat band */
+  .em-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--hairline-md);
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .em-stats .cell {
+    padding: 14px 16px;
+    border-right: 1px solid var(--hairline);
+  }
+  .em-stats .cell:last-child { border-right: 0; }
+  .em-stats .lbl { font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; }
+  .em-stats .val { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; font-feature-settings: 'tnum'; line-height: 1.1; margin-top: 6px; }
+  .em-stats .val.ok { color: var(--ok-ink); }
+  .em-stats .val.bad { color: var(--danger-ink); }
+  .em-stats .delta { font-size: 9.5px; color: var(--muted); margin-top: 3px; }
+
+  /* Quote / proof */
+  .em-quote {
+    border-left: 2px solid var(--indigo);
+    padding: 4px 0 4px 16px;
+    margin: 16px 0;
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 15.5px;
+    line-height: 1.5;
+    color: var(--ink);
+    font-weight: 400;
+  }
+  .em-quote .who {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 10.5px;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    margin-top: 8px;
+  }
+
+  /* Risk row inside email */
+  .em-risk {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 12px;
+  }
+  .em-risk:last-child { border-bottom: 0; }
+  .em-risk .name { font-weight: 600; color: var(--ink); }
+  .em-risk .reason { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .em-risk .score {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Bar / score visualization */
+  .scorebar {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 8px; margin-bottom: 14px;
+  }
+  .scorebar .track {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(17,20,29,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+  .scorebar .fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--danger-ink);
+    border-radius: 3px;
+  }
+  .scorebar .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--danger-ink);
+    font-feature-settings: 'tnum';
+    width: 30px; text-align: right;
+  }
+
+  /* Annotation callouts around mockups */
+  .anno-row {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-top: 10px;
+  }
+  .anno {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 8.5pt; color: var(--ink-3); line-height: 1.45;
+    flex: 1;
+  }
+  .anno .dot {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--indigo);
+    color: #fff;
+    display: grid; place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt;
+    font-weight: 700;
+  }
+  .anno .ttl { color: var(--ink); font-weight: 600; font-size: 9pt; display: block; margin-bottom: 1px; }
+
+  /* Inline color and type swatches (reused from pdf system but smaller) */
+  .swatch-mini {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 8.5pt; color: var(--ink-3);
+  }
+  .swatch-mini .chip {
+    width: 18px; height: 18px; border-radius: 3px; border: 1px solid var(--hairline-md);
+  }
+
+  /* Cover */
+  .cover-grid {
+    background: var(--paper);
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover-grid .corner {
+    position: absolute; top: 36px; left: 56px; right: 56px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    z-index: 2;
+  }
+  .cover-grid .corner .meta {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt; color: var(--muted);
+    line-height: 1.5;
+    text-transform: uppercase; letter-spacing: 0.10em;
+  }
+  .cover-grid .corner .meta b { color: var(--ink); font-weight: 600; }
+  .cover-grid {
+    background: var(--paper);
+    height: 100%;
+    position: relative;
+  }
+  .cover-grid .stack {
+    position: absolute;
+    left: 0; right: 0; bottom: 44px;
+    padding: 0 56px;
+    z-index: 2;
+  }
+  .cover-grid .stack .eyebrow { font-size: 9pt; }
+  .cover-grid .stack h1 {
+    margin: 10px 0 12px;
+    font-size: 32pt;
+    line-height: 1.02;
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    color: var(--ink);
+    max-width: 560px;
+  }
+  .cover-grid .stack h1 .ital {
+    font-family: 'Newsreader', Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--indigo-deep);
+  }
+  .cover-grid .stack .lede {
+    max-width: 540px;
+    font-size: 10.5pt;
+    color: var(--ink-3);
+    line-height: 1.5;
+  }
+  .cover-grid .stack .toc {
+    margin-top: 16px;
+    border-top: 1px solid var(--rule);
+    padding-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 3px 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5pt;
+    color: var(--ink-3);
+  }
+  .cover-grid .stack .toc .item { display: flex; justify-content: space-between; }
+  .cover-grid .stack .toc .item b { color: var(--ink); font-weight: 500; }
+  .cover-grid .stack .toc .item .pn { color: var(--muted); }
+
+  /* Inset envelope decorative */
+  .env-deco {
+    position: absolute;
+    inset: 12% -20px auto auto;
+    width: 320px; height: 240px;
+    z-index: 1;
+    pointer-events: none;
+    transform: rotate(8deg);
+  }
+  .env-deco .env {
+    position: absolute; inset: 0;
+    background: var(--paper-cool);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    box-shadow: 0 30px 80px -30px rgba(17,20,29,0.18);
+  }
+  .env-deco .env::before {
+    content: ''; position: absolute;
+    inset: -1px; height: 60%;
+    border-bottom: 1px solid var(--rule);
+    background: #fff;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+  }
+  .env-deco .stamp {
+    position: absolute;
+    right: 22px; top: 22px;
+    width: 64px; height: 80px;
+    border: 1px dashed var(--rule);
+    background: rgba(67,56,202,0.04);
+    transform: rotate(-3deg);
+    display: grid; place-items: center;
+    color: var(--indigo-2);
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.3;
+    padding: 6px;
+  }
+  .env-deco .seal {
+    position: absolute;
+    bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--indigo-deep);
+    box-shadow: 0 6px 14px -4px rgba(30,27,75,0.4);
+    display: grid; place-items: center;
+    color: #fff;
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .env-deco .seal::before {
+    content: ''; position: absolute; inset: 4px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+
+  /* Component spec helpers */
+  .spec-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .spec-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .spec-card {
+    border: 1px solid var(--hairline-md);
+    border-radius: 4px;
+    background: #fff;
+    padding: 14px;
+  }
+  .spec-card .sl-eyebrow {
+    font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); font-weight: 600;
+  }
+  .spec-card .sl-name { font-size: 10.5pt; font-weight: 700; color: var(--ink); margin-top: 2px; }
+  .spec-card .sl-meta { font-size: 8pt; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+  .spec-card .sl-preview {
+    margin-top: 10px;
+    padding: 14px;
+    background: var(--paper-cool);
+    border-radius: 3px;
+    border: 1px solid var(--hairline);
+  }
+  .spec-card .sl-divider {
+    margin: 10px -14px;
+    height: 1px; background: var(--hairline);
+  }
+
+  /* Mobile / dark variants */
+  .device {
+    width: 280px;
+    border: 1px solid var(--hairline-md);
+    border-radius: 22px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 16px 40px -16px rgba(17,20,29,0.20);
+  }
+  .device .notch {
+    height: 26px; background: #fff;
+    border-bottom: 1px solid var(--hairline);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    font-size: 9px; color: var(--ink); font-family: 'JetBrains Mono', monospace; font-weight: 600;
+  }
+  .device .notch .dots { display: flex; gap: 3px; }
+  .device .notch .dots span { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-2); }
+  .device .scrn {
+    height: 460px;
+    overflow: hidden;
+    background: #fff;
+    font-size: 11.5px;
+  }
+  .device.dark { background: #0c0e16; border-color: rgba(255,255,255,0.10); }
+  .device.dark .notch { background: #0c0e16; color: rgba(255,255,255,0.85); border-bottom-color: rgba(255,255,255,0.06); }
+  .device.dark .notch .dots span { background: rgba(255,255,255,0.85); }
+  .device.dark .scrn { background: #0c0e16; }
+
+  .em-dark { background: #0c0e16; color: rgba(255,255,255,0.78); }
+  .em-dark h1.eh { color: #fff; }
+  .em-dark .em-head { background: #0c0e16; border-bottom-color: rgba(255,255,255,0.08); }
+  .em-dark .em-head .brand .name { color: #fff; }
+  .em-dark .em-head .brand .mk { background: #6d68db; }
+  .em-dark .em-body p { color: rgba(255,255,255,0.78); }
+  .em-dark .em-body strong { color: #fff; }
+  .em-dark .em-cta { background: #6d68db; color: #fff; }
+  .em-dark .em-rule { background: rgba(255,255,255,0.08); }
+  .em-dark .em-foot { background: #08090f; border-top-color: rgba(255,255,255,0.06); color: rgba(255,255,255,0.40); }
+  .em-dark .eyebrow-em { color: #a4a0e3; }
+  .em-dark .em-stats { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.10); }
+  .em-dark .em-stats .cell { border-right-color: rgba(255,255,255,0.08); }
+  .em-dark .em-stats .val { color: #fff; }
+  .em-dark .em-stats .lbl { color: rgba(255,255,255,0.48); }
+  .em-dark .em-stats .delta { color: rgba(255,255,255,0.48); }
+
+  /* Subject-line table */
+  .subj-tbl {
+    border-collapse: collapse; width: 100%; font-size: 9pt;
+    border: 1px solid var(--hairline-md);
+    border-radius: 4px; overflow: hidden;
+  }
+  .subj-tbl th, .subj-tbl td { padding: 9px 12px; text-align: left; vertical-align: top; }
+  .subj-tbl thead th {
+    background: var(--paper-cool); font-size: 7.5pt; text-transform: uppercase;
+    letter-spacing: 0.10em; color: var(--muted); font-weight: 600;
+    border-bottom: 1px solid var(--rule);
+  }
+  .subj-tbl tbody tr { border-bottom: 1px solid var(--hairline); }
+  .subj-tbl tbody tr:last-child { border-bottom: 0; }
+  .subj-tbl .sl { font-family: 'Inter', sans-serif; font-weight: 600; color: var(--ink); }
+  .subj-tbl .sl .preh { display: block; font-weight: 400; font-size: 8.5pt; color: var(--muted); margin-top: 2px; }
+  .subj-tbl .nm { font-family: 'JetBrains Mono', monospace; font-size: 8pt; color: var(--ink-3); }
+  .subj-tbl .ch { font-family: 'JetBrains Mono', monospace; font-size: 8pt; }
+</style>
+<script type="application/json" id="speaker-notes">[]</script>
+</head>
+<body>
+<script src="deck-stage.js"></script>
+
+<deck-stage width="794" height="1123">
+
+<!-- ==========================================================
+     SLIDE 01 — COVER
+     ========================================================== -->
+<section data-screen-label="01 Cover" class="page page-cover">
+  <div class="cover-grid">
+    <div class="corner">
+      <div class="brand-doc">
+        <div class="mark"></div>
+        <div class="word">
+          <span class="name">ГосЛог Проверка</span>
+          <span class="sub">Email System · v1.0</span>
+        </div>
+      </div>
+      <div class="meta">
+        Sales · Outreach<br/>
+        <b>Internal · Design Concept</b><br/>
+        08.05.2026
+      </div>
+    </div>
+
+    <div class="env-deco">
+      <div class="env"></div>
+      <div class="stamp">ГосЛог<br/>Проверка<br/>2026</div>
+      <div class="seal">PAdES<br/>· B-T ·</div>
+    </div>
+
+    <div class="stack">
+      <span class="eyebrow indigo">Sales Outreach · Email Templates</span>
+      <h1>Письма, которые <span class="ital">читают.</span></h1>
+      <div class="lede">Премиальная система email-шаблонов для исходящих рассылок ГосЛог Проверка. Шесть типов писем, единая визуальная грамматика, корректное отображение в Outlook · Gmail · Яндекс · Mail.ru — light и dark.</div>
+
+      <div class="toc">
+        <div class="item"><b>System Overview · Анатомия</b><span class="pn">02</span></div>
+        <div class="item"><b>Type & Tokens</b><span class="pn">03</span></div>
+        <div class="item"><b>Component Library</b><span class="pn">04</span></div>
+        <div class="item"><b>Cold Outreach Email</b><span class="pn">05</span></div>
+        <div class="item"><b>Risk Alert Digest</b><span class="pn">06</span></div>
+        <div class="item"><b>Case Study Proof</b><span class="pn">07</span></div>
+        <div class="item"><b>Trial → Upgrade</b><span class="pn">08</span></div>
+        <div class="item"><b>Mobile · Dark Mode</b><span class="pn">09</span></div>
+        <div class="item"><b>Subject Line System</b><span class="pn">10</span></div>
+        <div class="item"><b>Implementation Guide</b><span class="pn">11</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="run-foot" style="bottom: 20px;">
+    <span>Email Design System</span>
+    <span class="conf">Internal Use Only</span>
+    <span class="pgnum">01 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 02 — SYSTEM OVERVIEW (anatomy)
+     ========================================================== -->
+<section data-screen-label="02 System Overview" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">02 / Anatomy</span>
+  </div>
+  <div class="page-body">
+    <span class="eyebrow indigo">01 — System overview</span>
+    <h1 class="h1 mt-2" style="margin-top:6px;">Анатомия письма</h1>
+    <div class="cap" style="margin-top:4px;">600 px тело, 36 px горизонтальные поля, 5 функциональных зон. Любой шаблон — комбинация этих блоков.</div>
+
+    <div style="display:grid;grid-template-columns:1fr 240px;gap:24px;margin-top:22px;align-items:start;">
+      <div>
+        <div class="mail-frame" style="width:100%;max-width:420px;margin:0;">
+          <div class="em">
+            <div class="em-head">
+              <div class="brand">
+                <div class="mk"></div>
+                <div>
+                  <div class="name">ГосЛог Проверка</div>
+                  <span class="sub">Compliance Brief</span>
+                </div>
+              </div>
+              <div class="right">№ 042</div>
+            </div>
+            <div class="em-body" style="padding:24px 28px 22px;">
+              <div class="eyebrow-em">Risk Bulletin · Q2 2026</div>
+              <h1 class="eh" style="font-size:20px;">Два контрагента в портфеле — критический риск</h1>
+              <p style="font-size:12.5px;">За последние 7 дней система обнаружила <strong>2 critical-инцидента</strong> и 5 high-risk сигналов.</p>
+              <div class="em-stats" style="margin:14px 0;">
+                <div class="cell"><div class="lbl">Critical</div><div class="val bad" style="font-size:18px;">2</div></div>
+                <div class="cell"><div class="lbl">High</div><div class="val" style="font-size:18px;color:var(--warn-ink);">5</div></div>
+                <div class="cell"><div class="lbl">Clean</div><div class="val ok" style="font-size:18px;">26</div></div>
+              </div>
+              <a class="em-cta" style="font-size:11.5px;padding:10px 18px;">Открыть отчёт</a>
+            </div>
+            <div class="em-foot" style="padding:16px 28px 18px;font-size:9.5px;">
+              ООО «ГосЛог Проверка» · Санкт-Петербург<br/>
+              <a>Отписаться</a> · <a>Управление подпиской</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;font-size:8.5pt;color:var(--ink-3);line-height:1.5;">
+        <div>
+          <div class="eyebrow" style="margin-bottom:4px;">A · Header</div>
+          Brand mark + название + sub-label. Высота 64 px. Не кликается — узнаваемость.
+        </div>
+        <div>
+          <div class="eyebrow" style="margin-bottom:4px;">B · Hook</div>
+          Eyebrow + H1 24 px + лид. Главная мысль читается без прокрутки.
+        </div>
+        <div>
+          <div class="eyebrow" style="margin-bottom:4px;">C · Evidence</div>
+          KPI-блок, цитата или risk-список. Превращает обещание в факт.
+        </div>
+        <div>
+          <div class="eyebrow" style="margin-bottom:4px;">D · CTA</div>
+          Один primary, опционально secondary outline. Никогда более 2.
+        </div>
+        <div>
+          <div class="eyebrow" style="margin-bottom:4px;">E · Footer</div>
+          Юр. адрес, отписка (обязательно), причина рассылки.
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:26px;">
+      <div class="left">
+        <span class="num">02</span>
+        <span class="title">Сетка и отступы</span>
+      </div>
+      <span class="meta">600 / 528 / 36</span>
+    </div>
+
+    <div class="spec-grid-3">
+      <div class="spec-card">
+        <div class="sl-eyebrow">Container</div>
+        <div class="sl-name">600 px</div>
+        <div class="sl-meta">max-width · единая для всех ESP</div>
+        <div class="body-sm" style="margin-top:8px;">Безопасная ширина для Outlook 2016+, Gmail web/mobile, Яндекс.Почта, Mail.ru, Apple Mail.</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Inner padding</div>
+        <div class="sl-name">36 px</div>
+        <div class="sl-meta">по бокам · 32 px сверху</div>
+        <div class="body-sm" style="margin-top:8px;">Контент 528 px. На мобильных padding сжимается до 22 px (через media query).</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Vertical rhythm</div>
+        <div class="sl-name">8 px шаг</div>
+        <div class="sl-meta">базовая сетка</div>
+        <div class="body-sm" style="margin-top:8px;">Между блоками 22–32 px. Между параграфами 14 px. Не используем margin-collapse.</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Email System Reference</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">02 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 03 — TYPE & TOKENS
+     ========================================================== -->
+<section data-screen-label="03 Type Tokens" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">03 / Type & Tokens</span>
+  </div>
+  <div class="page-body">
+    <span class="eyebrow indigo">02 — Type, color, fallbacks</span>
+    <h1 class="h1 mt-2" style="margin-top:6px;">Типографика и токены</h1>
+    <div class="cap" style="margin-top:4px;">Inter с системным fallback. Цвет — то же индиго, что в продукте, в безопасных hex-значениях.</div>
+
+    <div class="sec-head" style="margin-top:22px;">
+      <div class="left">
+        <span class="num">01</span>
+        <span class="title">Шкала</span>
+      </div>
+      <span class="meta">Inter → Helvetica Neue → Arial</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+      <div class="spec-card">
+        <div class="sl-eyebrow">H1 · Hook</div>
+        <div style="font-size:24px;font-weight:700;letter-spacing:-0.022em;line-height:1.18;color:var(--ink);margin-top:6px;">Письма, которые читают до конца</div>
+        <div class="sl-meta" style="margin-top:8px;">24 / 1.18 / 700 · letter-spacing −0.022em</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Lede · Лид</div>
+        <div style="font-size:14px;line-height:1.6;color:var(--ink-2);margin-top:6px;">Премиальная система email-шаблонов для исходящих рассылок.</div>
+        <div class="sl-meta" style="margin-top:8px;">14 / 1.6 / 400</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Body</div>
+        <div style="font-size:13.5px;line-height:1.6;color:var(--ink-2);margin-top:6px;">За последние 7 дней система обнаружила 2 critical-инцидента.</div>
+        <div class="sl-meta" style="margin-top:8px;">13.5 / 1.6 / 400 · #2c3142</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Eyebrow</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:var(--indigo-2);margin-top:6px;">RISK BULLETIN · Q2 2026</div>
+        <div class="sl-meta" style="margin-top:8px;">10 / 700 · tracking 0.16em</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Quote · Newsreader italic</div>
+        <div style="font-family:'Newsreader',Georgia,serif;font-size:15.5px;line-height:1.5;color:var(--ink);margin-top:6px;">«ГосЛог сократил время проверки в 4 раза»</div>
+        <div class="sl-meta" style="margin-top:8px;">Newsreader 15.5 / 1.5 / 400</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Caption / Footer</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">Вы получили письмо как клиент тарифа Pro</div>
+        <div class="sl-meta" style="margin-top:8px;">11 / 400 · #797f94</div>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:24px;">
+      <div class="left">
+        <span class="num">02</span>
+        <span class="title">Палитра</span>
+      </div>
+      <span class="meta">только hex · без HSL/oklch</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(6, 1fr);gap:10px;">
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#11141d;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Ink</div>
+        <div class="sl-meta">#11141D</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#2c3142;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Body</div>
+        <div class="sl-meta">#2C3142</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#797f94;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Muted</div>
+        <div class="sl-meta">#797F94</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#4338ca;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Indigo</div>
+        <div class="sl-meta">#4338CA</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#1e1b4b;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Indigo Deep</div>
+        <div class="sl-meta">#1E1B4B</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#fafbfd;border:1px solid var(--hairline-md);border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Surface</div>
+        <div class="sl-meta">#FAFBFD</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#15803d;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">OK</div>
+        <div class="sl-meta">#15803D</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#b45309;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Warn</div>
+        <div class="sl-meta">#B45309</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#b91c1c;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Danger</div>
+        <div class="sl-meta">#B91C1C</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#0c0e16;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Dark BG</div>
+        <div class="sl-meta">#0C0E16</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:#6d68db;border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Indigo / dark</div>
+        <div class="sl-meta">#6D68DB</div>
+      </div>
+      <div class="spec-card" style="padding:10px;">
+        <div style="height:48px;background:linear-gradient(135deg,#4338ca 0%,#a4a0e3 100%);border-radius:3px;"></div>
+        <div class="sl-name" style="font-size:9pt;margin-top:8px;">Avatar</div>
+        <div class="sl-meta">indigo · 135°</div>
+      </div>
+    </div>
+  </div>
+  <div class="run-foot">
+    <span>Email System Reference</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">03 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 04 — COMPONENT LIBRARY
+     ========================================================== -->
+<section data-screen-label="04 Components" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">04 / Components</span>
+  </div>
+  <div class="page-body">
+    <span class="eyebrow indigo">03 — Building blocks</span>
+    <h1 class="h1 mt-2" style="margin-top:6px;">Библиотека компонентов</h1>
+    <div class="cap" style="margin-top:4px;">Атомарные блоки. Каждый шаблон собирается из этого набора без дополнительных инвенций.</div>
+
+    <div class="spec-grid-2" style="margin-top:22px;">
+      <div class="spec-card">
+        <div class="sl-eyebrow">Button · primary</div>
+        <div class="sl-name">CTA — основное действие</div>
+        <div class="sl-preview" style="text-align:left;padding:18px;">
+          <a class="em-cta">Запросить демо</a>
+        </div>
+        <div class="sl-meta">background #4338CA · 13/600 · padding 13/22 · radius 4</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Button · outline</div>
+        <div class="sl-name">Secondary action</div>
+        <div class="sl-preview" style="padding:18px;">
+          <a class="em-cta outline">Узнать подробнее</a>
+        </div>
+        <div class="sl-meta">background #fff · color #4338CA · 1px border</div>
+      </div>
+
+      <div class="spec-card">
+        <div class="sl-eyebrow">KPI band</div>
+        <div class="sl-name">3-cell statistics</div>
+        <div class="sl-preview" style="padding:14px;">
+          <div class="em-stats">
+            <div class="cell"><div class="lbl">Critical</div><div class="val bad">2</div></div>
+            <div class="cell"><div class="lbl">High</div><div class="val" style="color:var(--warn-ink);">5</div></div>
+            <div class="cell"><div class="lbl">Clean</div><div class="val ok">26</div></div>
+          </div>
+        </div>
+        <div class="sl-meta">3 column · table-based · responsive stack</div>
+      </div>
+
+      <div class="spec-card">
+        <div class="sl-eyebrow">Quote · proof</div>
+        <div class="sl-name">Customer voice</div>
+        <div class="sl-preview" style="padding:14px;">
+          <div class="em-quote" style="font-size:14px;margin:0;">
+            «ГосЛог сократил наш цикл проверки контрагента с 2 дней до 4 часов.»
+            <span class="who">Анна Лебедева · Директор по закупкам, ООО «БалтТранс»</span>
+          </div>
+        </div>
+        <div class="sl-meta">Newsreader italic · 2px indigo border-left</div>
+      </div>
+
+      <div class="spec-card">
+        <div class="sl-eyebrow">Signature</div>
+        <div class="sl-name">Author block</div>
+        <div class="sl-preview" style="padding:14px;">
+          <div class="sig" style="padding:0;">
+            <div class="ava">МК</div>
+            <div>
+              <div class="who">Михаил Корнев</div>
+              <div class="role">Head of Sales · ГосЛог Проверка</div>
+              <div class="contact">+7 812 305-22-18 · <a>m.kornev@goslog.pro</a></div>
+            </div>
+          </div>
+        </div>
+        <div class="sl-meta">avatar 44 · indigo gradient · monogram</div>
+      </div>
+
+      <div class="spec-card">
+        <div class="sl-eyebrow">Risk row</div>
+        <div class="sl-name">Inline counterparty</div>
+        <div class="sl-preview" style="padding:14px;">
+          <div class="em-risk" style="padding:6px 0;">
+            <div>
+              <div class="name">ИП Смирнов А. И.</div>
+              <div class="reason">Не в реестре экспедиторов</div>
+            </div>
+            <div class="scorebar" style="margin:0;width:120px;">
+              <div class="track"><div class="fill" style="width:91%;"></div></div>
+              <div class="num">91</div>
+            </div>
+          </div>
+        </div>
+        <div class="sl-meta">name + reason + score-bar · 6px track</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Email System Reference</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">04 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 05 — TEMPLATE 01 · COLD OUTREACH
+     ========================================================== -->
+<section data-screen-label="05 Cold Outreach" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">05 / Template 01 · Cold Outreach</span>
+  </div>
+  <div class="page-body">
+    <div class="row between" style="display:flex;justify-content:space-between;align-items:baseline;">
+      <div>
+        <span class="eyebrow indigo">Template 01</span>
+        <h1 class="h1 mt-2" style="margin-top:4px;">Холодное письмо · первое касание</h1>
+      </div>
+      <div class="cap" style="text-align:right;">
+        <span class="mono" style="color:var(--ink-2);font-weight:600;">cold-01.html</span><br/>
+        ICP: руководитель закупок · 50–500 ТС
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="mail-frame">
+        <div class="mail-meta">
+          <span class="lbl">От</span>
+          <span class="val from">Михаил Корнев<span class="email">m.kornev@goslog.pro</span></span>
+          <span class="when">08.05.2026 · 09:42</span>
+
+          <span class="lbl">Тема</span>
+          <span class="subject">Проверили вашего нового контрагента — нашли 3 риска</span>
+
+          <span class="lbl">Превью</span>
+          <span class="preheader">Бесплатный экспресс-отчёт по ИНН за 2 минуты — без регистрации</span>
+        </div>
+
+        <div class="em">
+          <div class="em-head">
+            <div class="brand">
+              <div class="mk"></div>
+              <div>
+                <div class="name">ГосЛог Проверка</div>
+                <span class="sub">Compliance for Logistics</span>
+              </div>
+            </div>
+            <div class="right">№ 0142 · 2026</div>
+          </div>
+
+          <div class="em-body">
+            <p class="greeting">Анна, добрый день.</p>
+
+            <p>Заметил, что в марте вы заключили договор с <strong>ООО «РегионТрансЛогистик»</strong> (ИНН 7728345612) — публичные тендеры, реестр Росавтодора.</p>
+
+            <p>Перед тем как написать вам, я прогнал ИНН через нашу систему. Получилось вот что:</p>
+
+            <div class="em-stats" style="margin:18px 0 22px;">
+              <div class="cell">
+                <div class="lbl">Risk score</div>
+                <div class="val bad">71</div>
+                <div class="delta" style="color:var(--danger-ink);">High risk</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">Налоги</div>
+                <div class="val" style="color:var(--warn-ink);">4.8 М ₽</div>
+                <div class="delta">задолженность ФНС</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">Арбитраж</div>
+                <div class="val">7</div>
+                <div class="delta">споров за 12 мес</div>
+              </div>
+            </div>
+
+            <p>Это, скорее всего, не остановит сделку. Но обычно <strong>директора закупок не любят узнавать такие вещи постфактум</strong> — особенно когда сумма превышает 5 млн ₽.</p>
+
+            <p>Мы делаем <strong>ГосЛог Проверка</strong> — сервис, который собирает выписку из 14 реестров (ФНС, ЕГРЮЛ, ЕФРСБ, реестр экспедиторов, КАД) за 90 секунд и подсвечивает критические риски в одном PDF.</p>
+
+            <hr class="em-rule"/>
+
+            <div class="eyebrow-em">Что предлагаю</div>
+
+            <p>Готов сделать <strong>бесплатный аудит 5 ваших действующих контрагентов</strong> и прислать отчёт в формате, который можно показать совету директоров. 20 минут вашего времени, ничего подписывать не нужно.</p>
+
+            <div class="em-cta-row">
+              <a class="em-cta">Забронировать слот · 20 мин</a>
+              <span class="meta">или ответьте «да» в этом письме</span>
+            </div>
+
+            <hr class="em-rule"/>
+
+            <div class="sig">
+              <div class="ava">МК</div>
+              <div>
+                <div class="who">Михаил Корнев</div>
+                <div class="role">Head of Sales · ГосЛог Проверка</div>
+                <div class="contact">+7 812 305-22-18 · <a>goslog.pro</a></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="em-foot">
+            <div class="row1">
+              <div class="addr">
+                <strong style="color:var(--ink-3);">ООО «ГосЛог Проверка»</strong><br/>
+                Санкт-Петербург, наб. Обводного канала, 134, лит. А · ИНН 7842156234
+              </div>
+              <div style="text-align:right;">
+                <a>Отписаться</a><br/>
+                <a>Управление подпиской</a>
+              </div>
+            </div>
+            <div class="legal">
+              Письмо отправлено по адресу <span class="mono">a.lebedeva@balttrans.ru</span>, найденному в открытых источниках. Если рассылка не интересна — одно нажатие, и мы больше не свяжемся.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Cold Outreach · Template 01</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">05 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 06 — TEMPLATE 02 · RISK ALERT DIGEST
+     ========================================================== -->
+<section data-screen-label="06 Risk Alert" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">06 / Template 02 · Risk Alert</span>
+  </div>
+  <div class="page-body">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+      <div>
+        <span class="eyebrow indigo">Template 02</span>
+        <h1 class="h1 mt-2" style="margin-top:4px;">Risk-алерт · еженедельный дайджест</h1>
+      </div>
+      <div class="cap" style="text-align:right;">
+        <span class="mono" style="color:var(--ink-2);font-weight:600;">alert-weekly.html</span><br/>
+        Audience: action-клиенты · 47 контрагентов в портфеле
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="mail-frame">
+        <div class="mail-meta">
+          <span class="lbl">От</span>
+          <span class="val from">ГосЛог Проверка<span class="email">alerts@goslog.pro</span></span>
+          <span class="when">07.05.2026 · 06:00</span>
+
+          <span class="lbl">Тема</span>
+          <span class="subject">⚠ 2 critical · 5 high — ваш портфель за неделю</span>
+
+          <span class="lbl">Превью</span>
+          <span class="preheader">ИП Смирнов вне реестра экспедиторов · ТрансКарго СЗ — банкротство</span>
+        </div>
+
+        <div class="em">
+          <div class="em-head">
+            <div class="brand">
+              <div class="mk"></div>
+              <div>
+                <div class="name">ГосЛог Проверка</div>
+                <span class="sub">Risk Bulletin · 18 нед.</span>
+              </div>
+            </div>
+            <div class="right">07.05.2026</div>
+          </div>
+
+          <div class="em-body">
+            <div class="eyebrow-em">Risk Bulletin · Q2 2026 · w18</div>
+            <h1 class="eh">2 контрагента требуют действий сегодня</h1>
+            <p style="color:var(--ink-3);">За 7 дней система проверила <strong>47 действующих контрагентов</strong> и обнаружила изменения статусов у девяти. Краткая сводка:</p>
+
+            <div class="em-stats" style="margin:18px 0 22px;">
+              <div class="cell">
+                <div class="lbl">Critical</div>
+                <div class="val bad">2</div>
+                <div class="delta" style="color:var(--danger-ink);">требуют действий</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">High</div>
+                <div class="val" style="color:var(--warn-ink);">5</div>
+                <div class="delta">эскалация</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">Без замечаний</div>
+                <div class="val ok">26</div>
+                <div class="delta">+1 к прошлой неделе</div>
+              </div>
+            </div>
+
+            <hr class="em-rule bold"/>
+
+            <div class="eyebrow-em" style="color:var(--danger-ink);">Critical · действия требуются</div>
+
+            <div style="margin:14px 0 4px;">
+              <div class="em-risk">
+                <div style="flex:1;">
+                  <div class="name">ИП Смирнов Алексей Игоревич</div>
+                  <div class="reason">Не в реестре экспедиторов · договор № ЛП-2025-441 на 8.4 млн ₽</div>
+                </div>
+                <div class="scorebar" style="margin:0;width:120px;">
+                  <div class="track"><div class="fill" style="width:91%;"></div></div>
+                  <div class="num">91</div>
+                </div>
+              </div>
+
+              <div class="em-risk">
+                <div style="flex:1;">
+                  <div class="name">ООО «ТрансКарго Северо-Запад»</div>
+                  <div class="reason">Намерение о банкротстве · ЕФРСБ № 11894721 от 22.04.2026</div>
+                </div>
+                <div class="scorebar" style="margin:0;width:120px;">
+                  <div class="track"><div class="fill" style="width:87%;"></div></div>
+                  <div class="num">87</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="em-cta-row" style="margin-top:18px;">
+              <a class="em-cta">Открыть Risk Report</a>
+              <a class="em-cta outline">Скачать PDF</a>
+            </div>
+
+            <hr class="em-rule"/>
+
+            <p style="color:var(--muted);font-size:11.5px;">Полный отчёт включает 5 high-risk контрагентов, хронологию изменений и рекомендованные действия. Открывается в один клик из дашборда.</p>
+          </div>
+
+          <div class="em-foot">
+            <div class="row1">
+              <div class="addr">
+                <strong style="color:var(--ink-3);">ООО «Логистик Партнёр»</strong><br/>
+                Тариф Pro · 47 контрагентов в мониторинге
+              </div>
+              <div style="text-align:right;">
+                <a>Настройка алертов</a><br/>
+                <a>Отписаться от дайджеста</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Risk Alert · Template 02</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">06 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 07 — TEMPLATE 03 · CASE STUDY
+     ========================================================== -->
+<section data-screen-label="07 Case Study" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">07 / Template 03 · Case Study</span>
+  </div>
+  <div class="page-body">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+      <div>
+        <span class="eyebrow indigo">Template 03</span>
+        <h1 class="h1 mt-2" style="margin-top:4px;">Кейс-письмо · социальное доказательство</h1>
+      </div>
+      <div class="cap" style="text-align:right;">
+        <span class="mono" style="color:var(--ink-2);font-weight:600;">case-balttrans.html</span><br/>
+        Audience: leads после demo · MQL → SQL
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="mail-frame">
+        <div class="mail-meta">
+          <span class="lbl">От</span>
+          <span class="val from">Михаил Корнев · ГосЛог<span class="email">m.kornev@goslog.pro</span></span>
+          <span class="when">08.05.2026 · 14:18</span>
+
+          <span class="lbl">Тема</span>
+          <span class="subject">Как «БалтТранс» отвергли 3 рисковых сделки в Q1</span>
+
+          <span class="lbl">Превью</span>
+          <span class="preheader">2 дня → 4 часа на проверку контрагента · реальная история одного из вас</span>
+        </div>
+
+        <div class="em">
+          <div class="em-head">
+            <div class="brand">
+              <div class="mk"></div>
+              <div>
+                <div class="name">ГосЛог Проверка</div>
+                <span class="sub">Customer Story</span>
+              </div>
+            </div>
+            <div class="right">КЕЙС № 04</div>
+          </div>
+
+          <div class="em-body">
+            <div class="eyebrow-em">Customer story · ООО «БалтТранс»</div>
+            <h1 class="eh">«Сократили цикл проверки контрагента с 2 дней до 4 часов»</h1>
+            <p style="color:var(--ink-3);">История о том, как директор по закупкам в логистической компании на 280 ТС перестроила процесс комплаенса — и что из этого получилось за первый квартал.</p>
+
+            <div class="em-stats" style="margin:20px 0 22px;">
+              <div class="cell">
+                <div class="lbl">Цикл проверки</div>
+                <div class="val">−87%</div>
+                <div class="delta">2 дня → 4 часа</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">Отвергли сделок</div>
+                <div class="val">3</div>
+                <div class="delta">сумма 24 М ₽</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">ROI Q1</div>
+                <div class="val ok">×11.4</div>
+                <div class="delta">к стоимости тарифа</div>
+              </div>
+            </div>
+
+            <div class="em-quote">
+              «Раньше юристы вручную сводили выписки из ФНС, КАД и ЕФРСБ — два дня минимум. Сейчас открываю карточку, через 90 секунд вижу score 71 и отказываюсь от сделки. Спать стала спокойнее.»
+              <span class="who">Анна Лебедева · Директор по закупкам, ООО «БалтТранс»</span>
+            </div>
+
+            <hr class="em-rule"/>
+
+            <div class="eyebrow-em">Контекст</div>
+            <p>«БалтТранс» — региональный экспедитор, 280 единиц техники, оборот 1.4 млрд ₽. До внедрения проверка нового контрагента занимала <strong>в среднем 1.8 рабочих дня</strong> и требовала юриста + аналитика. После внедрения — 4 часа от ИНН до подписания протокола.</p>
+
+            <div class="eyebrow-em" style="margin-top:18px;">Что они отвергли</div>
+            <p>Из 47 проверенных за квартал контрагентов <strong>3 получили critical-флаг</strong> и были исключены из тендера: один — фиктивная регистрация (массовый адрес), второй — намерение о банкротстве, третий — дисквалификация руководителя.</p>
+
+            <div class="em-cta-row" style="margin-top:18px;">
+              <a class="em-cta">Прочитать полный кейс</a>
+              <span class="meta">PDF · 4 страницы · 3 минуты</span>
+            </div>
+
+            <hr class="em-rule"/>
+
+            <div class="sig">
+              <div class="ava">МК</div>
+              <div>
+                <div class="who">Михаил Корнев</div>
+                <div class="role">Head of Sales · ГосЛог Проверка</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="em-foot">
+            <div class="row1">
+              <div class="addr">
+                Вы получили это письмо как лид после демо 02.05.2026.
+              </div>
+              <div style="text-align:right;">
+                <a>Не интересно</a> · <a>Отписаться</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Case Study · Template 03</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">07 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 08 — TEMPLATE 04 · TRIAL → UPGRADE
+     ========================================================== -->
+<section data-screen-label="08 Upgrade" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">08 / Template 04 · Trial → Upgrade</span>
+  </div>
+  <div class="page-body">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+      <div>
+        <span class="eyebrow indigo">Template 04</span>
+        <h1 class="h1 mt-2" style="margin-top:4px;">Триал заканчивается · апгрейд</h1>
+      </div>
+      <div class="cap" style="text-align:right;">
+        <span class="mono" style="color:var(--ink-2);font-weight:600;">trial-end-3d.html</span><br/>
+        Trigger: −3 дня до окончания триала · персонализация
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="mail-frame">
+        <div class="mail-meta">
+          <span class="lbl">От</span>
+          <span class="val from">ГосЛог Проверка<span class="email">noreply@goslog.pro</span></span>
+          <span class="when">08.05.2026 · 10:00</span>
+
+          <span class="lbl">Тема</span>
+          <span class="subject">3 дня до окончания триала — и 14 проверок, которые вы сделали</span>
+
+          <span class="lbl">Превью</span>
+          <span class="preheader">Сохраните историю проверок · скидка 20% на годовой Pro до 11 мая</span>
+        </div>
+
+        <div class="em">
+          <div class="em-head">
+            <div class="brand">
+              <div class="mk"></div>
+              <div>
+                <div class="name">ГосЛог Проверка</div>
+                <span class="sub">Lifecycle</span>
+              </div>
+            </div>
+            <div class="right">TRIAL · 11/14</div>
+          </div>
+
+          <div class="em-body">
+            <div class="eyebrow-em">Trial Reminder · −3 дня</div>
+            <h1 class="eh">За 11 дней триала вы провели 14 проверок</h1>
+            <p style="color:var(--ink-3);">И обнаружили 2 критических риска. Чтобы история проверок и мониторинг сохранились, оформите тариф до <strong>11 мая 2026</strong> — иначе аккаунт перейдёт в read-only.</p>
+
+            <div class="em-stats" style="margin:18px 0 22px;">
+              <div class="cell">
+                <div class="lbl">Проверок</div>
+                <div class="val">14</div>
+                <div class="delta">из 25 в триале</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">Risk-флаги</div>
+                <div class="val bad">2</div>
+                <div class="delta">critical найдено</div>
+              </div>
+              <div class="cell">
+                <div class="lbl">Сэкономлено</div>
+                <div class="val ok">~38 ч</div>
+                <div class="delta">vs. ручная проверка</div>
+              </div>
+            </div>
+
+            <hr class="em-rule"/>
+
+            <div style="border:1px solid var(--indigo-tint-2);border-radius:4px;padding:18px 20px;background:var(--indigo-tint);margin:8px 0 18px;">
+              <div class="eyebrow-em" style="margin-bottom:6px;">Pro · годовой тариф</div>
+              <div style="display:flex;align-items:baseline;gap:14px;">
+                <div>
+                  <span style="font-size:28px;font-weight:700;color:var(--ink);letter-spacing:-0.025em;font-feature-settings:'tnum';">119 200 ₽</span>
+                  <span style="font-size:14px;color:var(--muted);text-decoration:line-through;margin-left:8px;font-feature-settings:'tnum';">149 000 ₽</span>
+                </div>
+                <span class="badge ok" style="font-size:9pt;">−20% до 11.05</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--ink-3);margin-top:8px;">Безлимитные проверки · мониторинг до 100 контрагентов · Risk Bulletin · API · приоритетная поддержка.</div>
+            </div>
+
+            <div class="em-cta-row">
+              <a class="em-cta">Оформить со скидкой</a>
+              <a class="em-cta outline">Сравнить тарифы</a>
+            </div>
+
+            <p style="color:var(--muted);font-size:11.5px;margin-top:18px;">Не готовы сейчас? Ответьте на это письмо — продлим триал на 7 дней без условий.</p>
+          </div>
+
+          <div class="em-foot">
+            <div class="row1">
+              <div class="addr">
+                <strong style="color:var(--ink-3);">ООО «Логистик Партнёр»</strong> · триал начат 27.04.2026
+              </div>
+              <div style="text-align:right;">
+                <a>Управление подпиской</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Trial → Upgrade · Template 04</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">08 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 09 — MOBILE + DARK
+     ========================================================== -->
+<section data-screen-label="09 Mobile Dark" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">09 / Mobile · Dark</span>
+  </div>
+  <div class="page-body">
+    <span class="eyebrow indigo">04 — Adaptive</span>
+    <h1 class="h1 mt-2" style="margin-top:6px;">Мобильная версия и тёмная тема</h1>
+    <div class="cap" style="margin-top:4px;">@media (max-width: 480px) и (prefers-color-scheme: dark). Apple Mail / Gmail iOS · 67% открытий.</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px;align-items:start;">
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:10px;">Light · iPhone 15 · 1×</div>
+        <div class="device" style="margin:0 auto;">
+          <div class="notch">
+            <span>9:41</span>
+            <div class="dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="scrn">
+            <div class="em">
+              <div class="em-head" style="padding:14px 18px 12px;">
+                <div class="brand">
+                  <div class="mk"></div>
+                  <div>
+                    <div class="name" style="font-size:11px;">ГосЛог Проверка</div>
+                    <span class="sub" style="font-size:7.5px;">Risk Bulletin</span>
+                  </div>
+                </div>
+              </div>
+              <div class="em-body" style="padding:16px 18px;">
+                <div class="eyebrow-em" style="font-size:8.5px;">RISK BULLETIN · w18</div>
+                <h1 class="eh" style="font-size:16px;line-height:1.2;">2 контрагента требуют действий</h1>
+                <div class="em-stats" style="grid-template-columns:1fr;margin:12px 0;">
+                  <div class="cell" style="padding:10px 12px;border-right:0;border-bottom:1px solid var(--hairline);">
+                    <div class="lbl" style="font-size:7.5px;">Critical</div>
+                    <div class="val bad" style="font-size:16px;">2</div>
+                  </div>
+                  <div class="cell" style="padding:10px 12px;border-right:0;border-bottom:1px solid var(--hairline);">
+                    <div class="lbl" style="font-size:7.5px;">High</div>
+                    <div class="val" style="color:var(--warn-ink);font-size:16px;">5</div>
+                  </div>
+                  <div class="cell" style="padding:10px 12px;border-right:0;">
+                    <div class="lbl" style="font-size:7.5px;">Clean</div>
+                    <div class="val ok" style="font-size:16px;">26</div>
+                  </div>
+                </div>
+                <a class="em-cta" style="display:block;text-align:center;font-size:11px;padding:11px;">Открыть Risk Report</a>
+                <p style="font-size:10px;margin-top:10px;color:var(--muted);">5 high-risk · хронология · действия в одном PDF.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="anno-row" style="margin-top:14px;">
+          <div class="anno"><div class="dot">1</div><div><b class="ttl">Стек 1 колонка</b>KPI-блок переходит из 3 cell в вертикальный stack через @media.</div></div>
+        </div>
+        <div class="anno-row">
+          <div class="anno"><div class="dot">2</div><div><b class="ttl">CTA на всю ширину</b>display:block + text-align:center · палец 44 px минимум.</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:10px;">Dark · iPhone 15 · auto</div>
+        <div class="device dark" style="margin:0 auto;">
+          <div class="notch">
+            <span>9:41</span>
+            <div class="dots"><span></span><span></span><span></span></div>
+          </div>
+          <div class="scrn">
+            <div class="em em-dark">
+              <div class="em-head" style="padding:14px 18px 12px;">
+                <div class="brand">
+                  <div class="mk"></div>
+                  <div>
+                    <div class="name" style="font-size:11px;color:#fff;">ГосЛог Проверка</div>
+                    <span class="sub" style="font-size:7.5px;color:rgba(255,255,255,0.5);">Risk Bulletin</span>
+                  </div>
+                </div>
+              </div>
+              <div class="em-body" style="padding:16px 18px;">
+                <div class="eyebrow-em" style="font-size:8.5px;">RISK BULLETIN · w18</div>
+                <h1 class="eh" style="font-size:16px;line-height:1.2;color:#fff;">2 контрагента требуют действий</h1>
+                <div class="em-stats" style="grid-template-columns:1fr;margin:12px 0;background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.10);">
+                  <div class="cell" style="padding:10px 12px;border-right:0;border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <div class="lbl" style="font-size:7.5px;color:rgba(255,255,255,0.5);">Critical</div>
+                    <div class="val" style="color:#fca5a5;font-size:16px;">2</div>
+                  </div>
+                  <div class="cell" style="padding:10px 12px;border-right:0;border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <div class="lbl" style="font-size:7.5px;color:rgba(255,255,255,0.5);">High</div>
+                    <div class="val" style="color:#fcd34d;font-size:16px;">5</div>
+                  </div>
+                  <div class="cell" style="padding:10px 12px;border-right:0;">
+                    <div class="lbl" style="font-size:7.5px;color:rgba(255,255,255,0.5);">Clean</div>
+                    <div class="val" style="color:#86efac;font-size:16px;">26</div>
+                  </div>
+                </div>
+                <a class="em-cta" style="display:block;text-align:center;font-size:11px;padding:11px;background:#6d68db;">Открыть Risk Report</a>
+                <p style="font-size:10px;margin-top:10px;color:rgba(255,255,255,0.4);">5 high-risk · хронология · действия в одном PDF.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="anno-row" style="margin-top:14px;">
+          <div class="anno"><div class="dot">3</div><div><b class="ttl">Indigo +20% lightness</b>#4338CA → #6D68DB. Не используем чистый чёрный — фон #0C0E16.</div></div>
+        </div>
+        <div class="anno-row">
+          <div class="anno"><div class="dot">4</div><div><b class="ttl">Семантика → пастельные</b>danger #B91C1C → #FCA5A5 · ok → #86EFAC. AA-контраст на тёмном.</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Adaptive · Light + Dark</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">09 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 10 — SUBJECT LINE SYSTEM
+     ========================================================== -->
+<section data-screen-label="10 Subject Lines" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">10 / Subject Lines</span>
+  </div>
+  <div class="page-body">
+    <span class="eyebrow indigo">05 — Subject + preheader</span>
+    <h1 class="h1 mt-2" style="margin-top:6px;">Темы и прехедеры</h1>
+    <div class="cap" style="margin-top:4px;">Тема — обещание, прехедер — доказательство. Вместе ≤ 90 символов до обрезки в Gmail / Apple Mail.</div>
+
+    <div class="sec-head" style="margin-top:22px;">
+      <div class="left">
+        <span class="num">01</span>
+        <span class="title">Принципы</span>
+      </div>
+      <span class="meta">3 правила, без исключений</span>
+    </div>
+
+    <div class="spec-grid-3">
+      <div class="spec-card">
+        <div class="sl-eyebrow">Правило 01</div>
+        <div class="sl-name">Конкретное число</div>
+        <div class="body-sm" style="margin-top:6px;">«3 риска» лучше «несколько рисков». «4 часа» лучше «быстрее». Цифры останавливают взгляд.</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Правило 02</div>
+        <div class="sl-name">Глагол / событие</div>
+        <div class="body-sm" style="margin-top:6px;">«Проверили», «нашли», «отвергли». Тема описывает действие, а не категорию письма.</div>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Правило 03</div>
+        <div class="sl-name">Без CAPS, без !!!</div>
+        <div class="body-sm" style="margin-top:6px;">Никогда. Снижает доставляемость и убивает премиальность. Эмодзи — только функциональные (⚠ алерт).</div>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:22px;">
+      <div class="left">
+        <span class="num">02</span>
+        <span class="title">Матрица тем по шаблонам</span>
+      </div>
+      <span class="meta">эталоны + варианты A/B</span>
+    </div>
+
+    <table class="subj-tbl">
+      <thead>
+        <tr>
+          <th style="width:18%;">Шаблон</th>
+          <th>Тема + прехедер</th>
+          <th class="ch" style="width:14%;">Символы</th>
+          <th class="ch" style="width:10%;">CTR прогноз</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="nm">cold-01<br/>Cold outreach</td>
+          <td class="sl">Проверили вашего нового контрагента — нашли 3 риска
+            <span class="preh">Бесплатный экспресс-отчёт по ИНН за 2 минуты — без регистрации</span>
+          </td>
+          <td class="ch">52 / 64</td>
+          <td class="ch" style="color:var(--ok-ink);font-weight:600;">~7.2%</td>
+        </tr>
+        <tr>
+          <td class="nm">alert-weekly<br/>Risk digest</td>
+          <td class="sl">⚠ 2 critical · 5 high — ваш портфель за неделю
+            <span class="preh">ИП Смирнов вне реестра экспедиторов · ТрансКарго СЗ — банкротство</span>
+          </td>
+          <td class="ch">46 / 64</td>
+          <td class="ch" style="color:var(--ok-ink);font-weight:600;">~34%</td>
+        </tr>
+        <tr>
+          <td class="nm">case-balttrans<br/>Case study</td>
+          <td class="sl">Как «БалтТранс» отвергли 3 рисковых сделки в Q1
+            <span class="preh">2 дня → 4 часа на проверку контрагента · реальная история одного из вас</span>
+          </td>
+          <td class="ch">48 / 71</td>
+          <td class="ch" style="color:var(--ok-ink);font-weight:600;">~12%</td>
+        </tr>
+        <tr>
+          <td class="nm">trial-end-3d<br/>Upgrade</td>
+          <td class="sl">3 дня до окончания триала — и 14 проверок, которые вы сделали
+            <span class="preh">Сохраните историю проверок · скидка 20% на годовой Pro до 11 мая</span>
+          </td>
+          <td class="ch">62 / 67</td>
+          <td class="ch" style="color:var(--ok-ink);font-weight:600;">~22%</td>
+        </tr>
+        <tr>
+          <td class="nm">renewal-30d<br/>Renewal</td>
+          <td class="sl">Анна, Pro продлевается через 30 дней — вот что изменилось
+            <span class="preh">3 новых реестра · API v2 · экспорт в 1С — всё уже на вашем тарифе</span>
+          </td>
+          <td class="ch">54 / 64</td>
+          <td class="ch" style="color:var(--ok-ink);font-weight:600;">~28%</td>
+        </tr>
+        <tr>
+          <td class="nm">demo-thanks<br/>Post-demo</td>
+          <td class="sl">Спасибо за время — вот те 3 ИНН, которые мы проверили
+            <span class="preh">PDF-отчёты по обсуждаемым контрагентам внутри · 4 страницы каждый</span>
+          </td>
+          <td class="ch">53 / 67</td>
+          <td class="ch" style="color:var(--ok-ink);font-weight:600;">~58%</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+  <div class="run-foot">
+    <span>Subject Line System</span>
+    <span class="conf">Internal</span>
+    <span class="pgnum">10 · 11</span>
+  </div>
+</section>
+
+<!-- ==========================================================
+     SLIDE 11 — IMPLEMENTATION GUIDE
+     ========================================================== -->
+<section data-screen-label="11 Implementation" class="page spec-bg">
+  <div class="run-head">
+    <span class="brand"><span class="mark"></span>ГосЛог Проверка · Email System</span>
+    <span class="meta">11 / Implementation</span>
+  </div>
+  <div class="page-body">
+    <span class="eyebrow indigo">06 — Build & deliver</span>
+    <h1 class="h1 mt-2" style="margin-top:6px;">Реализация</h1>
+    <div class="cap" style="margin-top:4px;">Сравнение фреймворков, доставляемость, аутентификация. Рекомендация ГосЛог: MJML → ESP с DKIM/SPF/DMARC.</div>
+
+    <div class="sec-head" style="margin-top:22px;">
+      <div class="left">
+        <span class="num">01</span>
+        <span class="title">Технологии вёрстки</span>
+      </div>
+      <span class="meta">Рекомендация: MJML</span>
+    </div>
+
+    <table class="subj-tbl">
+      <thead>
+        <tr>
+          <th style="width:18%;">Стек</th>
+          <th>Outlook 2016+</th>
+          <th>Dark mode</th>
+          <th>Maintainability</th>
+          <th class="ch" style="width:60px;">Итог</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="nm">Raw HTML tables<br/>+ inline CSS</td>
+          <td><span class="badge ok" style="font-size:8pt;">Отл.</span></td>
+          <td><span class="badge warn" style="font-size:8pt;">Сред.</span></td>
+          <td><span class="badge bad" style="font-size:8pt;">Низк.</span></td>
+          <td class="ch" style="font-weight:700;">3.0/5</td>
+        </tr>
+        <tr style="background:var(--indigo-tint);">
+          <td class="nm"><b style="color:var(--ink);">MJML</b> <span class="badge info" style="font-size:7pt;">рекомендуется</span><br/>+ Nunjucks partials</td>
+          <td><span class="badge ok" style="font-size:8pt;">Отл.</span></td>
+          <td><span class="badge ok" style="font-size:8pt;">Отл.</span></td>
+          <td><span class="badge ok" style="font-size:8pt;">Отл.</span></td>
+          <td class="ch" style="font-weight:700;color:var(--indigo-2);">4.6/5</td>
+        </tr>
+        <tr>
+          <td class="nm">Maizzle<br/>Tailwind для email</td>
+          <td><span class="badge ok" style="font-size:8pt;">Хор.</span></td>
+          <td><span class="badge ok" style="font-size:8pt;">Отл.</span></td>
+          <td><span class="badge ok" style="font-size:8pt;">Отл.</span></td>
+          <td class="ch" style="font-weight:700;">4.3/5</td>
+        </tr>
+        <tr>
+          <td class="nm">React Email<br/>JSX → MJML/HTML</td>
+          <td><span class="badge warn" style="font-size:8pt;">Сред.</span></td>
+          <td><span class="badge ok" style="font-size:8pt;">Хор.</span></td>
+          <td><span class="badge ok" style="font-size:8pt;">Отл.</span></td>
+          <td class="ch" style="font-weight:700;">3.8/5</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="sec-head" style="margin-top:20px;">
+      <div class="left">
+        <span class="num">02</span>
+        <span class="title">Доставляемость</span>
+      </div>
+      <span class="meta">критические настройки</span>
+    </div>
+
+    <div class="spec-grid-2">
+      <div class="spec-card">
+        <div class="sl-eyebrow">Аутентификация</div>
+        <div class="sl-name">SPF · DKIM · DMARC</div>
+        <ul style="margin:8px 0 0;padding-left:16px;font-size:8.5pt;color:var(--ink-3);line-height:1.55;">
+          <li>SPF: <span class="mono">v=spf1 include:_spf.goslog.pro ~all</span></li>
+          <li>DKIM с ключом 2048 бит, ротация 6 мес</li>
+          <li>DMARC: <span class="mono">p=quarantine; pct=100</span></li>
+          <li>BIMI с подтверждённой VMC — фавикон в Gmail</li>
+        </ul>
+      </div>
+      <div class="spec-card">
+        <div class="sl-eyebrow">Подводные камни</div>
+        <div class="sl-name">Outlook 2016/2019 quirks</div>
+        <ul style="margin:8px 0 0;padding-left:16px;font-size:8.5pt;color:var(--ink-3);line-height:1.55;">
+          <li>Не использовать <span class="mono">background-image</span> — Outlook режет</li>
+          <li>Border-radius на CTA — VML fallback или принять квадрат</li>
+          <li>Только web-safe + кастомный fallback стек</li>
+          <li>Никаких <span class="mono">flex/grid</span> — только <span class="mono">&lt;table&gt;</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card outline" style="border:1px solid var(--hairline-md);background:#fff;border-radius:4px;padding:14px;margin-top:14px;">
+      <div class="row gap-4" style="display:flex;gap:18px;align-items:flex-start;">
+        <div style="flex:1;">
+          <div class="sl-eyebrow">Стек ГосЛог</div>
+          <ul style="margin:8px 0 0;padding-left:16px;font-size:8.5pt;color:var(--ink-3);line-height:1.55;">
+            <li>Шаблоны: <span class="mono">/emails/&lt;type&gt;.mjml</span></li>
+            <li>Дизайн-токены: <span class="mono">tokens.scss</span> (тот же индекс цветов, что в SPA)</li>
+            <li>Сборка: MJML CLI → HTML → Litmus QA → ESP</li>
+            <li>ESP: Mindbox · API-триггеры из CRM</li>
+          </ul>
+        </div>
+        <div style="width:1px;align-self:stretch;background:var(--border);"></div>
+        <div style="flex:1;">
+          <div class="sl-eyebrow">Не делать</div>
+          <ul style="margin:8px 0 0;padding-left:16px;font-size:8.5pt;color:var(--ink-3);line-height:1.55;">
+            <li>Не вставлять JS — половина клиентов вырежет</li>
+            <li>Без видео и GIF &gt; 600 КБ</li>
+            <li>Изображения — только как иллюстрация, не как layout</li>
+            <li>Никаких трекинговых пикселей вне ESP — попадание в спам</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="run-foot">
+    <span>Implementation Guide</span>
+    <span class="conf">Internal Use</span>
+    <span class="pgnum">11 · 11</span>
+  </div>
+</section>
+
+</deck-stage>
+
+</body>
+</html>
