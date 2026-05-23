@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { apiDashboard } from "@/api/endpoints";
+import { apiDashboard, apiLicense } from "@/api/endpoints";
 
 export function Overview() {
   const { data, isLoading, error } = useQuery({
@@ -55,6 +56,7 @@ export function Overview() {
         </div>
       </div>
 
+      <ActivationKeyCard />
       <DownloadCard />
 
       {!isPro && (
@@ -72,7 +74,96 @@ export function Overview() {
   );
 }
 
-// Заглушка для скачивания desktop приложения. До первого Release на GitHub
+// Ключ активации для desktop приложения. Генерируется по запросу через
+// /v1/license/issue-for-cabinet — привязан к текущему юзеру (cabinet auth
+// через cookie). Один ключ одноразовый, привязывается к device при вводе
+// в desktop. Можно сгенерировать новый — старый останется валидным до
+// первого использования.
+function ActivationKeyCard() {
+  const issue = useMutation({ mutationFn: () => apiLicense.issueForCabinet() });
+  const [copied, setCopied] = useState(false);
+
+  async function copyKey() {
+    if (!issue.data?.key) return;
+    try {
+      await navigator.clipboard.writeText(issue.data.key);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback — select all in input
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2 className="card__title">Ключ активации для desktop</h2>
+      <p style={{ margin: "0 0 16px", color: "var(--fg-2)" }}>
+        Скачайте Optimyzer (см. ниже), запустите, в Настройках вставьте ключ —
+        приложение узнает вас и применит ваш тариф.
+      </p>
+
+      {!issue.data && (
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => issue.mutate()}
+          disabled={issue.isPending}
+        >
+          {issue.isPending ? "Генерируем…" : "Получить ключ"}
+        </button>
+      )}
+
+      {issue.error && (
+        <div className="error-banner">Не удалось получить ключ: {issue.error.message}</div>
+      )}
+
+      {issue.data && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <code
+            style={{
+              flex: 1,
+              fontFamily: "var(--font-mono)",
+              fontSize: 16,
+              padding: "12px 16px",
+              background: "var(--bg-3, #f1f5f9)",
+              borderRadius: "var(--r)",
+              letterSpacing: "0.05em",
+              userSelect: "all",
+            }}
+          >
+            {issue.data.key}
+          </code>
+          <button type="button" className="btn" onClick={copyKey}>
+            {copied ? "Скопировано ✓" : "Скопировать"}
+          </button>
+        </div>
+      )}
+
+      {issue.data && (
+        <p style={{ marginTop: 8, fontSize: 12, color: "var(--fg-3)" }}>
+          Ключ одноразовый. Если потеряли —{" "}
+          <button
+            type="button"
+            onClick={() => issue.mutate()}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "var(--accent)",
+              cursor: "pointer",
+              padding: 0,
+              textDecoration: "underline",
+            }}
+          >
+            сгенерировать новый
+          </button>
+          .
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Заглушка для скачивания desktop приложения. До первого Release
 // показываем «скоро» вместо мёртвых ссылок.
 function DownloadCard() {
   return (

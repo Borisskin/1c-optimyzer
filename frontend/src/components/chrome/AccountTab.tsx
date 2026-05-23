@@ -52,7 +52,7 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
   const cache = useAccountStore((s) => s.cache);
   const accessToken = useAccountStore((s) => s.accessToken);
 
-  const [email, setEmail] = useState("");
+  const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,18 +61,18 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
   const used = Math.max(quotaTotal - remaining, 0);
   const pct = Math.min((used / quotaTotal) * 100, 100);
 
-  async function handleLinkEmail() {
-    const trimmed = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError(t.paywall.emailInvalid);
+  async function handleActivateKey() {
+    const trimmed = key.trim().toUpperCase();
+    if (trimmed.length < 10) {
+      setError(t.account.errors.keyNotFound);
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const fp = await computeFingerprint();
-      const resp = await cloud.lookupByEmail({
-        email: trimmed,
+      const resp = await cloud.activate({
+        key: trimmed,
         fingerprint: fp,
         deviceName: detectDeviceName(),
         platform: detectPlatform(),
@@ -92,16 +92,18 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
           proActive: resp.subscription.pro_active,
         },
       });
-      pushToast(t.paywall.emailLinked, "ok");
-      setEmail("");
+      pushToast(t.account.activatedToast, "ok");
+      setKey("");
     } catch (err) {
       const ce = err as CloudError;
       const msg =
-        ce.reason === "conflict"
-          ? t.account.errors.deviceLimit
-          : ce.reason === "network"
-            ? t.account.errors.network
-            : ce.message || t.account.errors.generic;
+        ce.reason === "not_found"
+          ? t.account.errors.keyNotFound
+          : ce.reason === "conflict"
+            ? t.account.errors.deviceLimit
+            : ce.reason === "network"
+              ? t.account.errors.network
+              : ce.message || t.account.errors.generic;
       setError(msg);
     } finally {
       setBusy(false);
@@ -141,32 +143,50 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
         )}
 
         {isAnonymous && (
-          <div className={styles.emailRow}>
-            <input
-              type="email"
-              className={styles.emailInput}
-              placeholder={t.paywall.emailPlaceholder}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={busy}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleLinkEmail();
-              }}
-            />
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={() => void handleLinkEmail()}
-              disabled={busy || !email.trim()}
-            >
-              {busy ? t.paywall.emailLinking : t.paywall.emailLink}
-            </button>
-          </div>
+          <>
+            <p className={styles.heroLead} style={{ marginBottom: 8 }}>
+              {t.account.keyHint}
+            </p>
+            <div className={styles.emailRow}>
+              <input
+                type="text"
+                className={styles.emailInput}
+                placeholder="OPTM-XXXX-XXXX-XXXX-XXXX"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                disabled={busy}
+                autoComplete="off"
+                spellCheck={false}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleActivateKey();
+                }}
+                style={{ fontFamily: "var(--font-mono, monospace)" }}
+              />
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => void handleActivateKey()}
+                disabled={busy || key.trim().length < 10}
+              >
+                {busy ? t.account.activating : t.account.activate}
+              </button>
+            </div>
+          </>
         )}
 
         {error && <div className={styles.errorBox}>{error}</div>}
 
         <div className={styles.heroActions}>
+          {isAnonymous && (
+            <a
+              href={cabinetUrl("/")}
+              target="_blank"
+              rel="noreferrer noopener"
+              className={styles.btnPrimary}
+            >
+              {t.account.openCabinet}
+            </a>
+          )}
           <a
             href={pricingUrl()}
             target="_blank"

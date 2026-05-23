@@ -14,9 +14,9 @@ interface Props {
 
 /**
  * Paywall modal. Сценарии:
- *   - not_authenticated → инлайн поле email + кнопка «Привязать».
- *     Server создаёт Free user (или находит существующий) → юзер сразу
- *     получает 5 AI/мес.
+ *   - not_authenticated → CTA «Открыть личный кабинет» + инлайн поле «Уже есть
+ *     ключ? Вставьте». Юзер идёт в cabinet, регистрируется через Yandex,
+ *     получает ключ OPTM-XXXX, копирует, вставляет — desktop активирован.
  *   - free_limit_exceeded / credits_depleted → CTA «Перейти на Pro» / «Купить
  *     кредиты» через cabinet.
  */
@@ -24,7 +24,7 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
   const activate = useAccountStore((s) => s.activate);
   const pushToast = useAppStore((s) => s.pushToast);
 
-  const [email, setEmail] = useState("");
+  const [keyInput, setKeyInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +39,7 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
 
   useEffect(() => {
     if (!open) {
-      setEmail("");
+      setKeyInput("");
       setError(null);
     }
   }, [open]);
@@ -48,18 +48,18 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
 
   const isNotAuthenticated = reason === "not_authenticated";
 
-  async function submitEmail() {
-    const trimmed = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError(t.paywall.emailInvalid);
+  async function submitKey() {
+    const trimmed = keyInput.trim().toUpperCase();
+    if (trimmed.length < 10) {
+      setError(t.account.errors.keyNotFound);
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const fp = await computeFingerprint();
-      const resp = await cloud.lookupByEmail({
-        email: trimmed,
+      const resp = await cloud.activate({
+        key: trimmed,
         fingerprint: fp,
         deviceName: detectDeviceName(),
         platform: detectPlatform(),
@@ -79,16 +79,18 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
           proActive: resp.subscription.pro_active,
         },
       });
-      pushToast(t.paywall.emailLinked, "ok");
+      pushToast(t.account.activatedToast, "ok");
       onClose();
     } catch (err) {
       const ce = err as CloudError;
       setError(
-        ce.reason === "conflict"
-          ? t.account.errors.deviceLimit
-          : ce.reason === "network"
-            ? t.account.errors.network
-            : ce.message || t.account.errors.generic,
+        ce.reason === "not_found"
+          ? t.account.errors.keyNotFound
+          : ce.reason === "conflict"
+            ? t.account.errors.deviceLimit
+            : ce.reason === "network"
+              ? t.account.errors.network
+              : ce.message || t.account.errors.generic,
       );
     } finally {
       setBusy(false);
@@ -118,27 +120,41 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
         <p style={descStyle}>{description}</p>
 
         {isNotAuthenticated ? (
-          <div style={emailFormStyle}>
-            <input
-              type="email"
-              style={emailInputStyle}
-              placeholder={t.paywall.emailPlaceholder}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={busy}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void submitEmail();
-              }}
-            />
-            <button
-              type="button"
+          <div style={actionsStyle}>
+            <a
+              href={cabinetUrl("/")}
+              target="_blank"
+              rel="noreferrer noopener"
               style={primaryBtnStyle}
-              onClick={() => void submitEmail()}
-              disabled={busy || !email.trim()}
             >
-              {busy ? t.paywall.emailLinking : t.paywall.emailLink}
-            </button>
+              {t.paywall.openCabinetForKey}
+            </a>
+            <div style={dividerStyle}>
+              <span>{t.paywall.alreadyHaveKey}</span>
+            </div>
+            <div style={keyRowStyle}>
+              <input
+                type="text"
+                style={keyInputStyle}
+                placeholder="OPTM-XXXX-XXXX-XXXX-XXXX"
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                disabled={busy}
+                autoComplete="off"
+                spellCheck={false}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void submitKey();
+                }}
+              />
+              <button
+                type="button"
+                style={secondaryBtnStyle}
+                onClick={() => void submitKey()}
+                disabled={busy || keyInput.trim().length < 10}
+              >
+                {busy ? t.account.activating : t.account.activate}
+              </button>
+            </div>
             {error && <div style={errorStyle}>{error}</div>}
             <button type="button" style={linkBtnStyle} onClick={onClose}>
               {t.paywall.dismiss}
@@ -213,20 +229,33 @@ const descStyle: React.CSSProperties = {
 const actionsStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 8,
-};
-
-const emailFormStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
   gap: 10,
 };
 
-const emailInputStyle: React.CSSProperties = {
-  padding: "12px 14px",
+const dividerStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  margin: "8px 0 4px",
+  color: "#94a3b8",
+  fontSize: 12,
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.08em",
+  fontWeight: 600,
+};
+
+const keyRowStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+};
+
+const keyInputStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "10px 12px",
   border: "1px solid #cbd5e1",
   borderRadius: 8,
-  fontSize: 15,
+  fontFamily: '"JetBrains Mono", monospace',
+  fontSize: 13,
+  letterSpacing: "0.04em",
 };
 
 const primaryBtnStyle: React.CSSProperties = {
@@ -245,10 +274,14 @@ const primaryBtnStyle: React.CSSProperties = {
 };
 
 const secondaryBtnStyle: React.CSSProperties = {
-  ...primaryBtnStyle,
+  padding: "10px 16px",
   background: "#fff",
   color: "#0ea5a4",
   border: "1px solid #99f6e4",
+  borderRadius: 8,
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: "pointer",
 };
 
 const linkBtnStyle: React.CSSProperties = {
