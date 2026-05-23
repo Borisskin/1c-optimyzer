@@ -62,10 +62,13 @@
   }
   .hero-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    gap: 72px;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 96px;
     align-items: center;
     position: relative;
+  }
+  @media (max-width: 1200px) {
+    .hero-grid { gap: 64px; }
   }
   @media (max-width: 1024px) {
     .hero { padding-block: 64px 80px; }
@@ -139,13 +142,14 @@
   @keyframes shot-in { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
 
   .hero-shot {
-    transform: rotateY(-3deg) rotateX(2deg) rotate(1.5deg);
-    transform-origin: 30% 50%;
+    transform: rotateY(-2deg) rotateX(1deg);
+    transform-origin: 50% 50%;
     box-shadow: var(--shadow-xl);
     border-radius: 14px;
     overflow: hidden;
     background: #fff;
     border: 1px solid var(--border);
+    max-width: 100%;
   }
   .hero-shot .appwin-body img { display: block; width: 100%; }
 
@@ -539,7 +543,7 @@
     </nav>
     <div class="topnav-cta">
       <a class="btn btn-ghost btn-sm hide-mobile" href="https://account.optimyzer.pro" data-cabinet-link>Войти</a>
-      <a class="btn btn-primary btn-sm" href="/download">Скачать</a>
+      <a class="btn btn-primary btn-sm" href="https://account.optimyzer.pro" data-cabinet-link>Скачать</a>
     </div>
   </div>
 </header>
@@ -562,7 +566,7 @@
       </div>
 
       <div class="hero-cta">
-        <a class="btn btn-primary btn-lg" href="/download">
+        <a class="btn btn-primary btn-lg" href="https://account.optimyzer.pro" data-cabinet-link>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Скачать бесплатно
         </a>
@@ -801,7 +805,7 @@
           <li class="strong"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>5 AI-консультаций в месяц</li>
         </ul>
 
-        <a class="btn btn-secondary btn-block" href="/download">Скачать бесплатно</a>
+        <a class="btn btn-secondary btn-block" href="https://account.optimyzer.pro" data-cabinet-link>Скачать бесплатно</a>
       </div>
 
       <!-- Pro -->
@@ -931,7 +935,7 @@
       <div>
         <h5>Продукт</h5>
         <ul>
-          <li><a href="/download">Скачать</a></li>
+          <li><a href="https://account.optimyzer.pro" data-cabinet-link>Скачать</a></li>
           <li><a href="#pricing">Цены</a></li>
           <li><a href="https://github.com/anymasoft/1c-optimyzer/releases">Что нового</a></li>
           <li><a href="https://github.com/anymasoft/1c-optimyzer/blob/main/docs/roadmap.md">Roadmap</a></li>
