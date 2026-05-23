@@ -394,16 +394,31 @@ def _to_int(v: str | None) -> int | None:
 
 # ---------- SQL normalization ----------
 
+# В T-SQL префикс N перед строкой обозначает Unicode-литерал (NVARCHAR):
+# N'строка'. Без префикса в regex буква N оставалась в нормализованном
+# выводе мусором ("N?"), хотя смысл такой же что и обычная строка.
+# Захватываем N (или n) опционально вместе со строкой → ?.
+_STR_LITERAL = re.compile(r"[Nn]?'(?:[^']|'')*'")
+# Hex-литералы T-SQL: 0x01, 0xDEADBEEF. Без отдельной regex они оставались
+# как есть (1С-платформа использует 0x00000000 в CASE WHEN ... = 0x01).
+# ВАЖНО: hex обрабатываем ДО _NUM_LITERAL — иначе `\b\d+\b` поймает
+# первую цифру 0 из «0x01» и оставит «x01» в выводе.
+_HEX_LITERAL = re.compile(r"\b0[xX][0-9a-fA-F]+\b")
 _NUM_LITERAL = re.compile(r"\b\d+(?:\.\d+)?\b")
-_STR_LITERAL = re.compile(r"'(?:[^']|'')*'")
 _PARAM_REF = re.compile(r"@P\d+|@PN\d*")
 _WS = re.compile(r"\s+")
 
 
 def normalize_sql(sql: str) -> str:
-    """Простая нормализация SQL: literals → ?, params → ?, whitespace squash."""
+    """Простая нормализация SQL: literals → ?, params → ?, whitespace squash.
+
+    Покрывает: Unicode-строки (N'...'), обычные строки ('...'), hex-литералы
+    (0x...), числа, T-SQL параметры (@P1, @PN2). Порядок важен:
+    STR/HEX/NUM/PARAM (см. комментарии у regex).
+    """
     s = sql
     s = _STR_LITERAL.sub("?", s)
+    s = _HEX_LITERAL.sub("?", s)
     s = _NUM_LITERAL.sub("?", s)
     s = _PARAM_REF.sub("?", s)
     s = _WS.sub(" ", s).strip()
