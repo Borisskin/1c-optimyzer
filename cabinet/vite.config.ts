@@ -4,6 +4,8 @@ import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   plugins: [react()],
+  // Единый .env в корне проекта (см. ../.env.example).
+  envDir: "..",
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

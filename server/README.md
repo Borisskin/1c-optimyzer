@@ -13,13 +13,16 @@ Backend для web-кабинета, auth/billing/license activation. Подни
 
 ## Запуск локально
 
+Конфигурация — через единый `.env` в корне репозитория (см. `<repo>/.env.example`).
+
 ```bash
+# Один раз — скопировать env-шаблон и заполнить:
+cp ../.env.example ../.env                # из server/, или прямо в корне
+
 # из D:\1C-Optimyzer\server\
 python -m venv .venv
 . .venv/Scripts/activate                  # Windows
 pip install -e .[dev]
-
-cp .env.example .env                      # заполнить YANDEX_*, YOOKASSA_* по факту
 
 alembic upgrade head                      # создаст optimyzer.db (SQLite)
 uvicorn api.main:app --reload --port 8001
@@ -48,8 +51,10 @@ pytest --cov-report=html                  # html coverage в htmlcov/
 
 ## Конфигурация
 
-Все настройки через `.env` (см. `.env.example`). Pydantic Settings подтягивает
-их в `api.settings.Settings`. В коде — `from api.settings import settings`.
+Все настройки через единый `.env` в корне репозитория (см. `<repo>/.env.example`).
+Pydantic Settings подтягивает их в `api.settings.Settings` через абсолютный путь
+(`PROJECT_ROOT/.env` — резолвится один раз при импорте, независимо от cwd).
+В коде — `from api.settings import settings`.
 
 ## Деплой (заметка для будущего)
 

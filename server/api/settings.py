@@ -1,23 +1,32 @@
 """Application settings via pydantic-settings.
 
-Все значения тянутся из .env (см. .env.example). В тестах можно переопределять
-через monkeypatch или фикстуру `Settings()` с явными аргументами.
+Все значения тянутся из root `.env` (см. `<repo>/.env.example`). Один файл —
+общий для всех компонентов (server / cabinet / frontend / desktop backend).
+
+В тестах можно переопределять через monkeypatch или фикстуру `Settings()`
+с явными аргументами.
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Корень репозитория — два уровня вверх от server/api/settings.py.
+# Делаем абсолютный путь, чтобы env читался независимо от cwd.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
     """Global app settings."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

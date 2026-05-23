@@ -5,6 +5,8 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
+  // Единый .env в корне проекта (см. ../.env.example).
+  envDir: "..",
   server: {
     port: 1420,
     strictPort: true,
