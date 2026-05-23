@@ -397,7 +397,7 @@ function EmptyState({
         : archive.progress * 100;
     return (
       <div className={styles.empty}>
-        <Icon name="Refresh" size={22} color="var(--o-accent)" className="pulse" />
+        <Icon name="Refresh" size={22} color="var(--o-accent)" className="spin" />
         <div className={styles.empty_title}>{verb}</div>
         <div className={styles.empty_events}>
           {Math.floor(liveEvents).toLocaleString("ru-RU")}

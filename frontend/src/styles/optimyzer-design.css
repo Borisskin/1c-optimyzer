@@ -138,6 +138,19 @@ input {
 }
 .pulse { animation: pulse 1.6s ease-in-out infinite; }
 
+/* Вращающийся спиннер — для иконок загрузки (Refresh / Loader). Юзер
+   видит, что процесс идёт, не зависает. Прозрачность остаётся постоянной
+   (в отличие от .pulse), чтобы было ощущение «работы», а не «мерцания». */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 1s linear infinite;
+  transform-origin: center;
+  display: inline-flex;
+}
+
 @keyframes slide-in-right {
   from { transform: translateX(20px); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }

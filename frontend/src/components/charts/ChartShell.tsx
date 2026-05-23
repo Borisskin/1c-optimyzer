@@ -38,7 +38,7 @@ export function ChartShell({
     return (
       <div style={wrapStyle}>
         <div style={center}>
-          <Icon name="Refresh" size={18} color="var(--o-text-3)" className="pulse" />
+          <Icon name="Refresh" size={18} color="var(--o-text-3)" className="spin" />
           <div style={msgStyle("var(--o-text-3)")}>Загрузка…</div>
         </div>
       </div>
