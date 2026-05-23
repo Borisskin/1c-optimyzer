@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
 <link rel="stylesheet" href="styles.css" />
 <style>
   /* ========================================================
@@ -612,12 +613,15 @@
 <div class="login-shell">
   <div class="login-card" data-screen-label="00 Login">
     <a href="#" class="brand">
-      <span class="brand-mark">O</span>
-      <span class="brand-text"><span class="o-accent">O</span>ptimyzer</span>
+      <svg class="brand-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/><rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/><rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/><rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/></svg>
+      <span class="brand-text">Optimyzer</span>
     </a>
     <h1>Личный кабинет Optimyzer</h1>
     <p class="sub">Управление подпиской, кредитами, устройствами и историей платежей.</p>
 
+    <!-- TODO: заменить placeholder <span class="ya">Я</span> на официальный Yandex OAuth logo SVG
+         из их Brand Guidelines: https://yandex.ru/dev/id/doc/dg/concepts/design-yauth.html
+         Реализуется в Sales Sprint Phase 1 разработчиком. -->
     <button class="yandex-btn" onclick="document.body.classList.remove('logged-out'); document.getElementById('mode-logged').classList.add('on'); document.getElementById('mode-login').classList.remove('on');">
       <span class="ya">Я</span>
       Войти через Yandex
@@ -634,8 +638,8 @@
   <aside class="side" id="sidebar">
     <div class="side-brand">
       <a href="index.html" class="brand">
-        <span class="brand-mark">O</span>
-        <span class="brand-text"><span class="o-accent">O</span>ptimyzer</span>
+        <svg class="brand-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="#0EA5A4" stroke-width="6"/><rect x="19" y="36" width="6" height="12" rx="1.5" fill="#0F1B2D"/><rect x="29" y="28" width="6" height="20" rx="1.5" fill="#0F1B2D"/><rect x="39" y="20" width="6" height="28" rx="1.5" fill="#0EA5A4"/></svg>
+        <span class="brand-text">Optimyzer</span>
       </a>
     </div>
 
