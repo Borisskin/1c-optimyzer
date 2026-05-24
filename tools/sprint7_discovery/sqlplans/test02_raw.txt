@@ -1,0 +1,5 @@
+Microsoft SQL Server 2005 XML Showplan
+--------------------------------------
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.539" Build="15.0.2000.5"><BatchSequence><Batch><Statements><StmtSimple StatementText="SELECT TOP 100 t.[name], t.[create_date]&#xa;FROM sys.[tables] t&#xa;INNER JOIN sy
+
+(обработано строк: 1)
