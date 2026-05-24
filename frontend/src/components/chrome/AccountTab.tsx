@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAccountStore } from "@/store/accountStore";
 import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n/ru";
 import { cabinetUrl, cloud, CloudError, pricingUrl } from "@/api/cloud";
 import { computeFingerprint, detectDeviceName, detectPlatform } from "@/utils/fingerprint";
+import { triggerHeartbeat } from "@/hooks/useHeartbeat";
 import styles from "./AccountTab.module.css";
 
 /**
@@ -20,8 +21,15 @@ export function AccountTab() {
   const subscription = useAccountStore((s) => s.subscription);
   const cache = useAccountStore((s) => s.cache);
   const isProActive = useAccountStore((s) => s.isProActive());
-  const isOfflineTooLong = useAccountStore((s) => s.isOfflineTooLong());
+  const accessToken = useAccountStore((s) => s.accessToken);
   const signOut = useAccountStore((s) => s.signOut);
+
+  // При открытии вкладки — синхронизируемся с сервером (свежие квоты/кредиты).
+  useEffect(() => {
+    if (accessToken) {
+      void triggerHeartbeat();
+    }
+  }, [accessToken]);
 
   if (profile && isProActive) {
     return (
@@ -30,25 +38,17 @@ export function AccountTab() {
         displayName={profile.displayName}
         endsAt={subscription?.endsAt ?? ""}
         creditsRemaining={cache.creditsRemaining}
-        offline={isOfflineTooLong}
         onSignOut={signOut}
       />
     );
   }
 
-  // degraded — только когда РЕАЛЬНО deграднулись из Pro в Free из-за offline >7д.
-  // Просто Free-юзер (никогда не был Pro) — не degraded.
-  return (
-    <FreeState
-      degraded={!!(subscription && !isProActive && isOfflineTooLong)}
-      offline={isOfflineTooLong}
-    />
-  );
+  return <FreeState />;
 }
 
 // ---------- Free state ----------
 
-function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean }) {
+function FreeState() {
   const activate = useAccountStore((s) => s.activate);
   const pushToast = useAppStore((s) => s.pushToast);
   const cache = useAccountStore((s) => s.cache);
@@ -122,12 +122,6 @@ function FreeState({ degraded, offline }: { degraded: boolean; offline: boolean 
           <span className={isAnonymous ? styles.badgeMuted : styles.badgeFree}>
             {isAnonymous ? `НЕ ЗАРЕГИСТРИРОВАН · ${t.app.version}` : `FREE · ${t.app.version}`}
           </span>
-          {degraded && (
-            <span className={styles.badgeWarn}>{t.account.offlineDegraded}</span>
-          )}
-          {offline && !degraded && (
-            <span className={styles.badgeMuted}>{t.account.offlineWarn}</span>
-          )}
         </div>
         <p className={styles.heroLead}>
           {isAnonymous ? t.account.anonymousDescription : t.account.freeDescription}
@@ -211,14 +205,12 @@ function ProState({
   displayName,
   endsAt,
   creditsRemaining,
-  offline,
   onSignOut,
 }: {
   email: string;
   displayName: string | null;
   endsAt: string;
   creditsRemaining: number;
-  offline: boolean;
   onSignOut: () => void;
 }) {
   const formatted = endsAt
@@ -237,10 +229,6 @@ function ProState({
           <span className={styles.badgePro}>PRO</span>
         </div>
 
-        {offline && (
-          <div className={styles.warnBanner}>{t.account.offlineWarn}</div>
-        )}
-
         <dl className={styles.fields}>
           <dt>{t.account.fields.plan}</dt>
           <dd>Pro · 2 990 ₽/мес</dd>
@@ -249,7 +237,7 @@ function ProState({
           <dt>{t.account.fields.credits}</dt>
           <dd>{creditsRemaining}</dd>
           <dt>{t.account.fields.status}</dt>
-          <dd>{offline ? t.account.fields.statusOffline : t.account.fields.statusActive}</dd>
+          <dd>{t.account.fields.statusActive}</dd>
         </dl>
 
         <div className={styles.heroActions}>

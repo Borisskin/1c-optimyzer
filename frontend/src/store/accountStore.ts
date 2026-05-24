@@ -1,21 +1,28 @@
 /**
  * accountStore — состояние лицензии/аккаунта в desktop приложении.
  *
- * Хранит:
- *   • access_token (JWT для cloud API)
- *   • профиль (email, display_name)
- *   • подписка (plan, ends_at)
- *   • кеш heartbeat (ai_quota_remaining, credits_remaining)
+ * Архитектура: server = source of truth. Локально храним МИНИМУМ — только то,
+ * без чего юзер не может работать при старте:
  *
- * Персистентность: пока — localStorage. В Phase 2 переедет в OS keychain
- * через @tauri-apps/plugin-keyring (или custom Rust команду) — JWT в plaintext
- * на диске юзера не подарок.
+ *   • accessToken (JWT) — persisted в localStorage. Иначе при каждом запуске
+ *     нужен повторный login через Yandex. Подмена не страшна — сервер сам
+ *     декодирует JWT и проверяет подпись.
+ *   • deviceId — persisted. Нужен в headers некоторых cloud-запросов.
+ *
+ * Всё остальное (profile, subscription, ai_quota, credits) — мираж от сервера:
+ *   • Кеш в памяти (НЕ persisted).
+ *   • Загружается на старте через `reloadFromServer()`.
+ *   • Обновляется после каждого track-usage и периодически через useHeartbeat.
+ *   • При перезапуске десктопа кратко показываем skeleton, потом данные с сервера.
+ *
+ * Подмена в localStorage не даёт ничего: все billing-решения (AI explainer,
+ * credits spend) проверяются на сервере через checkUsage/trackUsage. Локальный
+ * plan='pro' от подмены не активирует Pro-фичи — сервер вернёт paywall.
  */
 
 import { create } from "zustand";
 
-const STORAGE_KEY = "optimyzer.account.v1";
-const MAX_OFFLINE_DAYS = 7; // graceful degradation: после 7 дней без heartbeat → Free
+const STORAGE_KEY = "optimyzer.account.v2"; // v2 — выкинули cache/profile/subscription из persist
 
 export type SubscriptionPlan = "free" | "pro";
 
@@ -38,54 +45,59 @@ export interface AccountCache {
 }
 
 export interface AccountState {
+  // Persisted (localStorage):
   accessToken: string | null;
   deviceId: string | null;
+
+  // In-memory only — отражение сервера:
   profile: AccountProfile | null;
   subscription: AccountSubscription | null;
   cache: AccountCache;
+  loading: boolean;
+
   // —— mutators
+  /** При старте приложения — перекладывает persisted token/deviceId в state. */
   hydrate: () => void;
+  /** После /v1/license/activate — кладёт token + сразу заполняет state с сервера. */
   activate: (payload: {
     accessToken: string;
     profile: AccountProfile;
     subscription: AccountSubscription;
     deviceId: string;
   }) => void;
+  /** Применить ответ /v1/license/heartbeat к локальному состоянию. */
   applyHeartbeat: (payload: {
     plan: SubscriptionPlan;
     endsAt: string;
     aiQuotaRemaining: number;
     creditsRemaining: number;
   }) => void;
-  /** После успешного trackUsage — локально декрементируем счётчик, чтобы UI не ждал heartbeat (24ч). */
-  applyUsageTracked: (billedAgainst: "free_quota" | "pro_quota" | "credits_balance") => void;
-  setOfflineDegradation: () => void;
   signOut: () => void;
+
   // —— derived
   isProActive: () => boolean;
-  isOfflineTooLong: () => boolean;
 }
 
 interface PersistShape {
   accessToken: string | null;
   deviceId: string | null;
-  profile: AccountProfile | null;
-  subscription: AccountSubscription | null;
-  cache: AccountCache;
 }
 
-function loadFromStorage(): PersistShape {
+function loadPersisted(): PersistShape {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaults();
+    if (!raw) return { accessToken: null, deviceId: null };
     const parsed = JSON.parse(raw) as PersistShape;
-    return { ...defaults(), ...parsed };
+    return {
+      accessToken: parsed.accessToken ?? null,
+      deviceId: parsed.deviceId ?? null,
+    };
   } catch {
-    return defaults();
+    return { accessToken: null, deviceId: null };
   }
 }
 
-function saveToStorage(value: PersistShape): void {
+function savePersisted(value: PersistShape): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
   } catch {
@@ -93,30 +105,33 @@ function saveToStorage(value: PersistShape): void {
   }
 }
 
-function defaults(): PersistShape {
+function emptyCache(): AccountCache {
   return {
-    accessToken: null,
-    deviceId: null,
-    profile: null,
-    subscription: null,
-    cache: {
-      aiQuotaRemaining: 5, // Free default
-      creditsRemaining: 0,
-      lastHeartbeatAt: null,
-    },
+    aiQuotaRemaining: 5, // дефолт пока сервер не ответил (соответствует Free)
+    creditsRemaining: 0,
+    lastHeartbeatAt: null,
   };
 }
 
 export const useAccountStore = create<AccountState>((set, get) => ({
-  ...defaults(),
+  accessToken: null,
+  deviceId: null,
+  profile: null,
+  subscription: null,
+  cache: emptyCache(),
+  loading: false,
 
   hydrate: () => {
-    const loaded = loadFromStorage();
-    set(loaded);
+    const persisted = loadPersisted();
+    set({
+      accessToken: persisted.accessToken,
+      deviceId: persisted.deviceId,
+    });
   },
 
   activate: ({ accessToken, profile, subscription, deviceId }) => {
-    const next: PersistShape = {
+    savePersisted({ accessToken, deviceId });
+    set({
       accessToken,
       deviceId,
       profile,
@@ -126,9 +141,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
         creditsRemaining: get().cache.creditsRemaining,
         lastHeartbeatAt: new Date().toISOString(),
       },
-    };
-    saveToStorage(next);
-    set(next);
+    });
   },
 
   applyHeartbeat: ({ plan, endsAt, aiQuotaRemaining, creditsRemaining }) => {
@@ -138,85 +151,38 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       endsAt,
       proActive: plan === "pro" && new Date(endsAt) > new Date(),
     };
-    const cache: AccountCache = {
-      aiQuotaRemaining,
-      creditsRemaining,
-      lastHeartbeatAt: new Date().toISOString(),
-    };
-    const next: PersistShape = {
-      accessToken: current.accessToken,
-      deviceId: current.deviceId,
-      profile: current.profile,
+    set({
       subscription,
-      cache,
-    };
-    saveToStorage(next);
-    set(next);
-  },
-
-  applyUsageTracked: (billedAgainst) => {
-    const current = get();
-    let nextAi = current.cache.aiQuotaRemaining;
-    let nextCredits = current.cache.creditsRemaining;
-    if (billedAgainst === "free_quota") {
-      // Free pool — decrement, не уходим ниже 0.
-      nextAi = Math.max(0, current.cache.aiQuotaRemaining - 1);
-    } else if (billedAgainst === "credits_balance") {
-      nextCredits = Math.max(0, current.cache.creditsRemaining - 1);
-    } // pro_quota — unlimited, не двигаем
-    const next: PersistShape = {
-      accessToken: current.accessToken,
-      deviceId: current.deviceId,
-      profile: current.profile,
-      subscription: current.subscription,
       cache: {
-        aiQuotaRemaining: nextAi,
-        creditsRemaining: nextCredits,
-        lastHeartbeatAt: current.cache.lastHeartbeatAt,
+        aiQuotaRemaining,
+        creditsRemaining,
+        lastHeartbeatAt: new Date().toISOString(),
       },
-    };
-    saveToStorage(next);
-    set(next);
-  },
-
-  setOfflineDegradation: () => {
-    const current = get();
-    if (!current.subscription) return;
-    const downgraded: AccountSubscription = {
-      ...current.subscription,
-      plan: "free",
-      proActive: false,
-    };
-    const next: PersistShape = {
-      accessToken: current.accessToken,
-      deviceId: current.deviceId,
+      // profile не трогаем — heartbeat его не возвращает; он подгружается через activate
+      // или может быть подгружен отдельно через /v1/auth/me при необходимости.
       profile: current.profile,
-      subscription: downgraded,
-      cache: current.cache,
-    };
-    saveToStorage(next);
-    set(next);
+    });
   },
 
   signOut: () => {
-    saveToStorage(defaults());
-    set(defaults());
+    savePersisted({ accessToken: null, deviceId: null });
+    set({
+      accessToken: null,
+      deviceId: null,
+      profile: null,
+      subscription: null,
+      cache: emptyCache(),
+      loading: false,
+    });
   },
 
   isProActive: () => {
     const s = get().subscription;
     return !!(s && s.proActive && new Date(s.endsAt) > new Date());
   },
-
-  isOfflineTooLong: () => {
-    const last = get().cache.lastHeartbeatAt;
-    if (!last) return false;
-    const ageMs = Date.now() - new Date(last).getTime();
-    return ageMs > MAX_OFFLINE_DAYS * 24 * 3600 * 1000;
-  },
 }));
 
-// Авто-hydrate при импорте модуля (один раз).
+// Авто-hydrate (token + deviceId) при импорте модуля (один раз).
 if (typeof window !== "undefined") {
   useAccountStore.getState().hydrate();
 }

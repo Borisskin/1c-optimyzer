@@ -4,6 +4,7 @@ import { Icon } from "@/components/icons/Icon";
 import { backend, type AiExplanationResult, type RuleClassifyResult } from "@/api/backend";
 import { cloud, CloudError } from "@/api/cloud";
 import { useAccountStore } from "@/store/accountStore";
+import { triggerHeartbeat } from "@/hooks/useHeartbeat";
 import { PaywallModal } from "@/components/overlays/PaywallModal";
 
 interface Props {
@@ -43,7 +44,6 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   }>({ open: false, reason: null, freeRemaining: null });
 
   const accessToken = useAccountStore((s) => s.accessToken);
-  const applyUsageTracked = useAccountStore((s) => s.applyUsageTracked);
 
   useEffect(() => {
     if (!archiveId || !targetId) return;
@@ -155,10 +155,11 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
           aiTokensInput: aiResult?.tokens_in ?? undefined,
           aiTokensOutput: aiResult?.tokens_out ?? undefined,
         })
-        .then((resp) => {
-          // Декрементируем локально, чтобы Settings показывал актуальный
-          // счётчик сразу — без ожидания следующего heartbeat (он раз в 24ч).
-          applyUsageTracked(resp.billed_against);
+        .then(() => {
+          // Сразу синхронизируемся с сервером — UI получит свежие
+          // ai_quota_remaining / credits_remaining без ожидания
+          // периодического heartbeat. Сервер = source of truth.
+          void triggerHeartbeat();
         })
         .catch((err) => {
           console.warn("Usage tracking failed:", (err as CloudError).message);
@@ -172,7 +173,6 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
     anatomyKind,
     targetId,
     anatomyData,
-    applyUsageTracked,
   ]);
 
   const hasRuleBody = Boolean(rule?.matched && rule.body);
