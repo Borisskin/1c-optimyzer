@@ -30,6 +30,9 @@
     "active": true,
     "targets": ["msi"],
     "icon": ["icons/icon.ico"],
-    "resources": []
+    "resources": [
+      "binaries/jre-21/**/*",
+      "binaries/bsl-ls/*.jar"
+    ]
   }
 }

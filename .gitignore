@@ -66,3 +66,8 @@ backend/tests/fixtures/real-archive/
 # скачанные JAR/binary, тестовые артефакты. Не часть продукта.
 # Отчёт — в docs/sales_sprint/OPENSOURCE_RESEARCH_REPORT.md.
 /research/
+
+# Sprint 6 bundled binaries — Eclipse Temurin JRE 21 + bsl-language-server JAR.
+# Скачиваются скриптом scripts/setup-bsl-ls-binaries.ps1 перед `tauri build`.
+# В git не коммитим (265 MB), но Tauri bundle.resources их подхватывает локально.
+/frontend/src-tauri/binaries/

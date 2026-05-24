@@ -6,7 +6,8 @@ mod sidecar;
 use serde_json::Value;
 use sidecar::SidecarHandle;
 use std::sync::Mutex;
-use tauri::{Manager, State};
+use tauri::path::BaseDirectory;
+use tauri::{AppHandle, Manager, State};
 
 struct AppState {
     sidecar: Mutex<Option<SidecarHandle>>,
@@ -45,6 +46,44 @@ fn classify_path(path: String) -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({ "kind": kind }))
 }
 
+#[derive(serde::Serialize)]
+struct BslLsPaths {
+    java_executable: String,
+    bsl_ls_jar: String,
+    available: bool,
+}
+
+/// Возвращает пути к bundled JRE 21 и bsl-language-server JAR.
+///
+/// Используется Python sidecar для запуска bsl-LS subprocess (WebSocket sidecar).
+/// Sprint 6 Phase A. Подробнее: docs/sales_sprint/SPRINT_6_PROMT.md.
+///
+/// `available=false` означает что файлы не нашлись в resource_dir — это нормально
+/// для dev-mode (npm run tauri dev) когда bundle.resources не копируются. В таком
+/// случае Python fallback на системный java + research/jar (для разработки).
+#[tauri::command]
+fn get_bsl_ls_paths(app: AppHandle) -> Result<BslLsPaths, String> {
+    let java_rel = "binaries/jre-21/bin/java.exe";
+    let jar_rel = "binaries/bsl-ls/bsl-language-server-0.29.0-exec.jar";
+
+    let java_path = app
+        .path()
+        .resolve(java_rel, BaseDirectory::Resource)
+        .map_err(|e| format!("resolve java: {e}"))?;
+    let jar_path = app
+        .path()
+        .resolve(jar_rel, BaseDirectory::Resource)
+        .map_err(|e| format!("resolve jar: {e}"))?;
+
+    let available = java_path.is_file() && jar_path.is_file();
+
+    Ok(BslLsPaths {
+        java_executable: java_path.to_string_lossy().into_owned(),
+        bsl_ls_jar: jar_path.to_string_lossy().into_owned(),
+        available,
+    })
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -61,7 +100,12 @@ fn main() {
             *state.sidecar.lock().unwrap() = Some(sidecar);
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![rpc_call, sidecar_status, classify_path])
+        .invoke_handler(tauri::generate_handler![
+            rpc_call,
+            sidecar_status,
+            classify_path,
+            get_bsl_ls_paths
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
