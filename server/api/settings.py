@@ -15,6 +15,7 @@ from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources import PydanticBaseSettingsSource
 
 # Корень репозитория — два уровня вверх от server/api/settings.py.
 # Делаем абсолютный путь, чтобы env читался независимо от cwd.
@@ -105,6 +106,32 @@ class Settings(BaseSettings):
     ai_model_business: str = "claude-opus-4-5-20250929"
     ai_max_tokens: int = 4000
     ai_request_timeout_s: int = 60
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Приоритет: init > .env > os.environ > secrets.
+
+        По умолчанию pydantic-settings даёт приоритет os.environ над .env.
+        Это ломает локальную разработку когда юзер случайно (или из старого
+        shell-сценария) проставил пустую env-переменную — она перебивает
+        значение из .env. Для desktop-проекта (один .env в корне — source
+        of truth) нам нужно обратное: .env > shell env.
+        """
+        del settings_cls, file_secret_settings  # not used
+        # Оставляем env_settings последним среди non-secret, чтобы system
+        # env мог проставить значение когда в .env поля нет вообще.
+        return (
+            init_settings,
+            dotenv_settings,
+            env_settings,
+        )
 
     @property
     def cors_origins_list(self) -> list[str]:
