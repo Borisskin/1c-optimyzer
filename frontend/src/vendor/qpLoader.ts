@@ -13,7 +13,7 @@
  * либо вручную: cp node_modules/html-query-plan/dist/qp.js public/vendor/
  */
 // Cache-buster версионируем по бампу при патче qp.js.
-const QP_SCRIPT_URL = "/vendor/qp.js?v=2";
+const QP_SCRIPT_URL = "/vendor/qp.js?v=3";
 
 interface QPGlobal {
   showPlan: (

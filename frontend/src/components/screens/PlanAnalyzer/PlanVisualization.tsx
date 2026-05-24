@@ -42,14 +42,36 @@ export function PlanVisualization({ planXml, onError }: Props) {
         if (cancelled) return;
         try {
           QP.showPlan(el, planXml, { jsTooltips: true });
-          // Диагностика: если showPlan не положил узлов — значит XSLT отдал
-          // пустой результат (известная проблема Chromium для SHOWPLAN XML).
-          // Показываем явную ошибку с raw-XML preview, чтобы юзер понимал.
+          // Detailed diagnostic: hwh визуализация выходит «пустой» (нулевая
+          // высота, qp-root отсутствует, инлайн стили перебивают и т.п.)
+          const qpRoot = el.querySelector(".qp-root");
+          const rect = el.getBoundingClientRect();
+          const innerLen = el.innerHTML.length;
+          // eslint-disable-next-line no-console
+          console.log("[PlanViz] showPlan done", {
+            children: el.children.length,
+            innerHtmlLen: innerLen,
+            qpRootFound: !!qpRoot,
+            qpRootRect: qpRoot ? qpRoot.getBoundingClientRect() : null,
+            containerRect: { w: rect.width, h: rect.height },
+          });
           if (el.children.length === 0) {
             const xmlPreview = planXml.slice(0, 200).replace(/\s+/g, " ");
             throw new Error(
-              `XSLT вернул пустое дерево. Возможно, XML без xmlns или Chromium ` +
-                `WebView2 заблокировал XSLT processing. Preview: ${xmlPreview}…`,
+              `XSLT вернул пустое дерево. Preview: ${xmlPreview}…`,
+            );
+          }
+          if (!qpRoot) {
+            throw new Error(
+              `XSLT отдал DOM (${innerLen} символов), но не нашли .qp-root — ` +
+                `возможно qp.css не загружен или XSLT template не сработал.`,
+            );
+          }
+          const qpRect = qpRoot.getBoundingClientRect();
+          if (qpRect.height < 10 || qpRect.width < 10) {
+            throw new Error(
+              `.qp-root найден, но имеет нулевые размеры (${qpRect.width}×` +
+                `${qpRect.height}px). CSS qp.css не применился или конфликтует.`,
             );
           }
         } catch (e) {
