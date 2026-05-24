@@ -67,7 +67,6 @@ export function PaywallModal({ open, reason, onClose, freeQuotaRemaining }: Prop
       });
       activate({
         accessToken: resp.access_token,
-        deviceId: resp.device.id,
         profile: {
           userId: resp.user.id,
           email: resp.user.email,

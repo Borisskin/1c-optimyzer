@@ -1,17 +1,17 @@
 /**
  * accountStore — состояние лицензии/аккаунта в desktop приложении.
  *
- * Архитектура: server = source of truth. Локально храним МИНИМУМ — только то,
- * без чего юзер не может работать при старте:
+ * Архитектура: server = source of truth. Локально храним МИНИМУМ — ровно
+ * одно поле, без которого юзер не может работать при старте:
  *
  *   • accessToken (JWT) — persisted в localStorage. Иначе при каждом запуске
  *     нужен повторный login через Yandex. Подмена не страшна — сервер сам
- *     декодирует JWT и проверяет подпись.
- *   • deviceId — persisted. Нужен в headers некоторых cloud-запросов.
+ *     декодирует JWT и проверяет подпись. device_id, user_id зашиты в сам
+ *     токен как JWT claims — отдельно их хранить не нужно.
  *
  * Всё остальное (profile, subscription, ai_quota, credits) — мираж от сервера:
  *   • Кеш в памяти (НЕ persisted).
- *   • Загружается на старте через `reloadFromServer()`.
+ *   • Загружается на старте через heartbeat.
  *   • Обновляется после каждого track-usage и периодически через useHeartbeat.
  *   • При перезапуске десктопа кратко показываем skeleton, потом данные с сервера.
  *
@@ -22,7 +22,7 @@
 
 import { create } from "zustand";
 
-const STORAGE_KEY = "optimyzer.account.v2"; // v2 — выкинули cache/profile/subscription из persist
+const STORAGE_KEY = "optimyzer.account.v3"; // v3 — только accessToken в персисте
 
 export type SubscriptionPlan = "free" | "pro";
 
@@ -47,7 +47,6 @@ export interface AccountCache {
 export interface AccountState {
   // Persisted (localStorage):
   accessToken: string | null;
-  deviceId: string | null;
 
   // In-memory only — отражение сервера:
   profile: AccountProfile | null;
@@ -56,14 +55,13 @@ export interface AccountState {
   loading: boolean;
 
   // —— mutators
-  /** При старте приложения — перекладывает persisted token/deviceId в state. */
+  /** При старте приложения — подтягивает persisted accessToken в state. */
   hydrate: () => void;
   /** После /v1/license/activate — кладёт token + сразу заполняет state с сервера. */
   activate: (payload: {
     accessToken: string;
     profile: AccountProfile;
     subscription: AccountSubscription;
-    deviceId: string;
   }) => void;
   /** Применить ответ /v1/license/heartbeat к локальному состоянию. */
   applyHeartbeat: (payload: {
@@ -80,20 +78,16 @@ export interface AccountState {
 
 interface PersistShape {
   accessToken: string | null;
-  deviceId: string | null;
 }
 
 function loadPersisted(): PersistShape {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { accessToken: null, deviceId: null };
+    if (!raw) return { accessToken: null };
     const parsed = JSON.parse(raw) as PersistShape;
-    return {
-      accessToken: parsed.accessToken ?? null,
-      deviceId: parsed.deviceId ?? null,
-    };
+    return { accessToken: parsed.accessToken ?? null };
   } catch {
-    return { accessToken: null, deviceId: null };
+    return { accessToken: null };
   }
 }
 
@@ -115,7 +109,6 @@ function emptyCache(): AccountCache {
 
 export const useAccountStore = create<AccountState>((set, get) => ({
   accessToken: null,
-  deviceId: null,
   profile: null,
   subscription: null,
   cache: emptyCache(),
@@ -123,17 +116,13 @@ export const useAccountStore = create<AccountState>((set, get) => ({
 
   hydrate: () => {
     const persisted = loadPersisted();
-    set({
-      accessToken: persisted.accessToken,
-      deviceId: persisted.deviceId,
-    });
+    set({ accessToken: persisted.accessToken });
   },
 
-  activate: ({ accessToken, profile, subscription, deviceId }) => {
-    savePersisted({ accessToken, deviceId });
+  activate: ({ accessToken, profile, subscription }) => {
+    savePersisted({ accessToken });
     set({
       accessToken,
-      deviceId,
       profile,
       subscription,
       cache: {
@@ -165,10 +154,9 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   },
 
   signOut: () => {
-    savePersisted({ accessToken: null, deviceId: null });
+    savePersisted({ accessToken: null });
     set({
       accessToken: null,
-      deviceId: null,
       profile: null,
       subscription: null,
       cache: emptyCache(),
@@ -182,7 +170,7 @@ export const useAccountStore = create<AccountState>((set, get) => ({
   },
 }));
 
-// Авто-hydrate (token + deviceId) при импорте модуля (один раз).
+// Авто-hydrate accessToken при импорте модуля (один раз).
 if (typeof window !== "undefined") {
   useAccountStore.getState().hydrate();
 }

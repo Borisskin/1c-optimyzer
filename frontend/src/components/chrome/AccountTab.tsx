@@ -82,7 +82,6 @@ function FreeState() {
       });
       activate({
         accessToken: resp.access_token,
-        deviceId: resp.device.id,
         profile: {
           userId: resp.user.id,
           email: resp.user.email,
