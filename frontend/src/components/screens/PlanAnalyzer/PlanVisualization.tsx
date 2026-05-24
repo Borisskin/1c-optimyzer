@@ -2,18 +2,19 @@
  * Sprint 7 Phase B — SSMS-style визуализация execution plan.
  *
  * Wraps html-query-plan v2.6.1 (MIT, Justin Pealing). qp.showPlan рендерит
- * SVG operator tree с tooltips (cost, rows, IO, predicates). Использует
+ * HTML/SVG operator tree с tooltips (cost, rows, IO, predicates). Использует
  * XSLT transformation от SHOWPLAN XML → HTML / SVG.
  *
- * CSS импортируется из node_modules — Vite разрешает относительный
- * url('qp_icons.png') автоматически.
+ * Загрузка qp.js и qp.css — через qpLoader (см. src/vendor/qpLoader.ts):
+ * Vite ESM-импорт qp.js ломает strict-mode `this`, а qp.css из node_modules
+ * Vite молча не подключает в lazy chunk. Поэтому грузим оба файла как
+ * static assets из public/vendor/.
  *
  * Re-rendering: на каждое изменение planXml — container.innerHTML="" + showPlan,
  * чтобы не аккумулировать узлы дерева в DOM.
  */
 
 import { useEffect, useRef, useState } from "react";
-import "html-query-plan/css/qp.css";
 import { loadQP } from "@/vendor/qpLoader";
 import styles from "./PlanVisualization.module.css";
 
@@ -42,52 +43,11 @@ export function PlanVisualization({ planXml, onError }: Props) {
         if (cancelled) return;
         try {
           QP.showPlan(el, planXml, { jsTooltips: true });
-          // Detailed diagnostic: hwh визуализация выходит «пустой» (нулевая
-          // высота, qp-root отсутствует, инлайн стили перебивают и т.п.)
-          const qpRoot = el.querySelector(".qp-root");
-          const rect = el.getBoundingClientRect();
-          const innerLen = el.innerHTML.length;
-          const qpNode = el.querySelector(".qp-node") as HTMLElement | null;
-          // Проверяем загружен ли qp.css по computed background-color у qp-node.
-          // qp.css задаёт background-color: #FFFFCC (light yellow). Если ничего
-          // не задано или прозрачно — CSS не приложился.
-          const qpNodeStyle = qpNode
-            ? window.getComputedStyle(qpNode)
-            : null;
-          const cssLoaded = qpNodeStyle
-            ? qpNodeStyle.backgroundColor !== "" &&
-              qpNodeStyle.backgroundColor !== "rgba(0, 0, 0, 0)"
-            : false;
-          // eslint-disable-next-line no-console
-          console.log("[PlanViz] showPlan done", {
-            children: el.children.length,
-            innerHtmlLen: innerLen,
-            qpRootFound: !!qpRoot,
-            qpRootRect: qpRoot ? qpRoot.getBoundingClientRect() : null,
-            containerRect: { w: rect.width, h: rect.height },
-            qpNodeCount: el.querySelectorAll(".qp-node").length,
-            qpNodeBg: qpNodeStyle?.backgroundColor ?? null,
-            qpNodeBorder: qpNodeStyle?.border ?? null,
-            cssLoaded,
-            htmlPreview: el.innerHTML.slice(0, 500),
-          });
+          // Sanity check — если XSLT отдал пустоту, дадим юзеру понять.
           if (el.children.length === 0) {
-            const xmlPreview = planXml.slice(0, 200).replace(/\s+/g, " ");
             throw new Error(
-              `XSLT вернул пустое дерево. Preview: ${xmlPreview}…`,
-            );
-          }
-          if (!qpRoot) {
-            throw new Error(
-              `XSLT отдал DOM (${innerLen} символов), но не нашли .qp-root — ` +
-                `возможно qp.css не загружен или XSLT template не сработал.`,
-            );
-          }
-          const qpRect = qpRoot.getBoundingClientRect();
-          if (qpRect.height < 10 || qpRect.width < 10) {
-            throw new Error(
-              `.qp-root найден, но имеет нулевые размеры (${qpRect.width}×` +
-                `${qpRect.height}px). CSS qp.css не применился или конфликтует.`,
+              "XSLT не сгенерировал visualization. Проверьте что plan XML " +
+                "содержит правильный namespace и SHOWPLAN structure.",
             );
           }
         } catch (e) {
