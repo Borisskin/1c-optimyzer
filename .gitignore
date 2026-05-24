@@ -68,6 +68,15 @@ backend/tests/fixtures/real-archive/
 /research/
 
 # Sprint 6 bundled binaries — Eclipse Temurin JRE 21 + bsl-language-server JAR.
-# Скачиваются скриптом scripts/setup-bsl-ls-binaries.ps1 перед `tauri build`.
-# В git не коммитим (265 MB), но Tauri bundle.resources их подхватывает локально.
+# Sprint 7 добавил PerformanceStudio CLI (planview.exe, ~96 МБ).
+# Скачиваются скриптами scripts/setup-bsl-ls-binaries.ps1 и
+# scripts/setup-planview-binary.ps1 перед `tauri build`.
 /frontend/src-tauri/binaries/
+
+# Sprint 7 — local toolchain не публикуется в репо.
+# .NET 10 SDK ставится user-mode через dotnet-install.ps1 (~700 МБ).
+/tools/dotnet-10/
+# Built CLI artifact (промежуточный, копируется в frontend/src-tauri/binaries/planview/).
+/tools/planview-built/
+# Кешированный download для скрипта setup-planview-binary.ps1.
+/tools/sprint7_discovery/PerformanceStudio-win-x64.zip

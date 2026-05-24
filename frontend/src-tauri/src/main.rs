@@ -84,6 +84,36 @@ fn get_bsl_ls_paths(app: AppHandle) -> Result<BslLsPaths, String> {
     })
 }
 
+#[derive(serde::Serialize)]
+struct PlanviewPath {
+    executable: String,
+    available: bool,
+}
+
+/// Возвращает путь к bundled PerformanceStudio CLI (PlanViewer.Cli.exe).
+///
+/// Используется Python sidecar для subprocess wrapper'а в `planview/cli.py`.
+/// Sprint 7 Phase A. Подробнее: docs/sales_sprint/SPRINT_7_PROMT.md.
+///
+/// `available=false` — бинарь не в resource_dir. Это нормально для dev-mode
+/// (`npm run tauri dev` не копирует bundle.resources). Sidecar fallback:
+/// repo-relative `frontend/src-tauri/binaries/planview/PlanViewer.Cli.exe`.
+#[tauri::command]
+fn get_planview_path(app: AppHandle) -> Result<PlanviewPath, String> {
+    let exe_rel = "binaries/planview/PlanViewer.Cli.exe";
+    let exe_path = app
+        .path()
+        .resolve(exe_rel, BaseDirectory::Resource)
+        .map_err(|e| format!("resolve planview exe: {e}"))?;
+
+    let available = exe_path.is_file();
+
+    Ok(PlanviewPath {
+        executable: exe_path.to_string_lossy().into_owned(),
+        available,
+    })
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -104,7 +134,8 @@ fn main() {
             rpc_call,
             sidecar_status,
             classify_path,
-            get_bsl_ls_paths
+            get_bsl_ls_paths,
+            get_planview_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

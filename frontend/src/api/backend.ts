@@ -520,6 +520,126 @@ export interface ConfigurationStatusResult {
   configuration?: ConfigurationInfo;
 }
 
+/* ---------------- Sprint 7 — Plan Analyzer ---------------- */
+
+/** Одно warning от PerformanceStudio CLI (или нативное из SQL Server engine).
+ *  Severity = "Info" | "Warning" | "Critical" (PerformanceStudio scheme),
+ *  отдельная от bsl-LS severity — у Plan Analyzer своя номенклатура (ADR-040). */
+export interface PlanWarning {
+  type: string;
+  severity: string;
+  message: string;
+  operator?: string | null;
+  node_id?: number | null;
+  max_benefit_percent?: number | null;
+  actionable_fix?: string | null;
+  is_legacy?: boolean;
+}
+
+export interface PlanMissingIndex {
+  table: string;
+  impact: number;
+  equality_columns: string[];
+  inequality_columns: string[];
+  include_columns: string[];
+  create_statement: string;
+}
+
+export interface PlanMemoryGrant {
+  requested_kb: number;
+  granted_kb: number;
+  max_used_kb: number;
+  grant_wait_ms: number;
+  feedback_adjusted?: string | null;
+  estimated_available_memory_grant_kb: number;
+  desired_kb: number;
+  serial_required_kb: number;
+}
+
+export interface PlanQueryTime {
+  cpu_time_ms: number;
+  elapsed_time_ms: number;
+  external_wait_ms: number;
+}
+
+export interface PlanOperator {
+  node_id: number;
+  physical_op: string;
+  logical_op: string;
+  cost_percent: number;
+  estimated_rows: number;
+  estimated_cost: number;
+  estimated_io: number;
+  estimated_cpu: number;
+  object_name?: string | null;
+  index_name?: string | null;
+  seek_predicates?: string | null;
+  predicate?: string | null;
+  parallel?: boolean;
+  actual_rows?: number | null;
+  actual_elapsed_ms?: number | null;
+  actual_cpu_ms?: number | null;
+  warnings?: PlanWarning[];
+  children?: PlanOperator[];
+}
+
+export interface PlanStatement {
+  statement_text: string;
+  statement_type: string;
+  estimated_cost: number;
+  estimated_rows: number;
+  optimization_level?: string | null;
+  early_abort_reason?: string | null;
+  cardinality_estimation_model?: number;
+  compile_time_ms?: number;
+  compile_memory_kb?: number;
+  cached_plan_size_kb?: number;
+  degree_of_parallelism?: number;
+  non_parallel_reason?: string | null;
+  query_hash?: string | null;
+  query_plan_hash?: string | null;
+  memory_grant?: PlanMemoryGrant | null;
+  query_time?: PlanQueryTime | null;
+  warnings: PlanWarning[];
+  missing_indexes: PlanMissingIndex[];
+  operator_tree?: PlanOperator | null;
+}
+
+export interface PlanAnalysisSummary {
+  total_statements: number;
+  total_warnings: number;
+  critical_warnings: number;
+  missing_indexes: number;
+  has_actual_stats: boolean;
+  max_estimated_cost: number;
+  warning_types: string[];
+}
+
+export interface PlanAnalysisResult {
+  plan_source: string;
+  sql_server_version?: string | null;
+  sql_server_build?: string | null;
+  statements: PlanStatement[];
+  summary: PlanAnalysisSummary;
+}
+
+export interface PlanAnalyzeResponse {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  hint?: string;
+  result?: PlanAnalysisResult;
+  file_name?: string;
+}
+
+export interface PlanAnalyzerStatus {
+  ok: boolean;
+  available: boolean;
+  binary_path: string | null;
+  version: string;
+  rules_count: number;
+}
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -665,6 +785,13 @@ export const backend = {
   bslLsAnalyze: (query_sdbl: string, enabled_rules?: string[]) =>
     rpc<BslLsAnalyzeResult>("bsl_ls.analyze", { query_sdbl, enabled_rules }),
   bslLsStatus: () => rpc<BslLsStatus>("bsl_ls.status"),
+
+  // Sprint 7 — Plan Analyzer (PerformanceStudio CLI + html-query-plan visualizer + AI)
+  planAnalyzerAnalyzeFile: (file_path: string, warnings_only = false) =>
+    rpc<PlanAnalyzeResponse>("plan_analyzer.analyze_file", { file_path, warnings_only }),
+  planAnalyzerAnalyzeXml: (plan_xml: string, warnings_only = false) =>
+    rpc<PlanAnalyzeResponse>("plan_analyzer.analyze_xml", { plan_xml, warnings_only }),
+  planAnalyzerStatus: () => rpc<PlanAnalyzerStatus>("plan_analyzer.status"),
 
   // Sprint 5 — Configuration metadata
   configurationConnect: (path: string) =>

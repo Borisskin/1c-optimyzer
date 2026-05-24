@@ -32,7 +32,8 @@
     "icon": ["icons/icon.ico"],
     "resources": [
       "binaries/jre-21/**/*",
-      "binaries/bsl-ls/*.jar"
+      "binaries/bsl-ls/*.jar",
+      "binaries/planview/**/*"
     ]
   }
 }

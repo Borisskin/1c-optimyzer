@@ -21,6 +21,7 @@ export type ScreenId =
   | "anatomy"
   | "deadlock-anatomy"
   | "query-analyzer"
+  | "plan-analyzer"
   | "dashboard"
   | "apdex"
   | "workbench"
