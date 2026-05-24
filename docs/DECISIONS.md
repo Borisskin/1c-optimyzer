@@ -511,3 +511,51 @@ def test_golden_case(...): ...
 
 **Consequences.** + Низкий порог входа для добавления regression case. + Git history meaningful. + Можно поделиться отдельным case (просто папкой). − Чуть больше файлов в репо (70 файлов для 35 cases). − Pytest `_collect_golden_cases()` бежит по файловой системе при каждом collection — но это <50ms на 35 кейсов.
 
+---
+
+## ADR-033 — bsl-language-server как primary SDBL analyzer
+
+**Status:** Accepted (Sprint 6, 2026-05-24)
+
+**Context.** Sprint 4-5 построил собственный regex-based + semantic rules валидатор SDBL. К Sprint 5 закрылась картина: regex фундаментально ограничен (нет scope tracking подзапросов, type chasing, virtual tables). False positives на типовых конфах — UX-killing. QueryAnalyzer спрятан из Sidebar до Sprint 6. См. OPENSOURCE_RESEARCH_REPORT.md.
+
+**Decision.** Полная интеграция **bsl-language-server v0.29.0** (LGPL-3.0) как primary источника SDBL диагностик. Наш Sprint 4-5 regex-валидатор остаётся как secondary (свёрнут в `<details>` legacy section).
+
+**Consequences.** + 19 production-grade SDBL rules из коробки. + Полная MDO type resolution через их Configuration модель. + Активное сообщество (1c-syntax). + LGPL-3.0 разрешает linking — наш код остаётся проприетарным. − Bundle size +265 MB (JRE 21 + JAR). − Java dependency в стеке. − JVM cold-start ~5-7 сек.
+
+---
+
+## ADR-034 — WebSocket sidecar architecture (vs CLI per-request)
+
+**Status:** Accepted (Sprint 6, 2026-05-24)
+
+**Context.** bsl-language-server поддерживает analyze (CLI), lsp (stdio), websocket (Tomcat) режимы. CLI per-request = cold-start 5-7s × каждый analyze — катастрофа UX. LSP stdio сложнее интегрировать с Python (asyncio + threading bridge).
+
+**Decision.** **WebSocket sidecar с lazy-start.** JVM запускается при ПЕРВОМ обращении к QueryAnalyzer, живёт до выхода backend'а. Auto-restart at crash, max 3 retry.
+
+**Consequences.** + Latency после warmup ~250-700ms (acceptable для interactive UX). + Юзеры не использующие фичу не платят memory cost. − 300-400 MB RAM постоянно когда активен. Реализация: `backend/src/optimyzer_backend/bsl_ls/{lifecycle,client,runtime}.py`.
+
+---
+
+## ADR-035 — Cloud AI orchestration через `/v1/ai/explain`
+
+**Status:** Accepted (Sprint 6, 2026-05-24)
+
+**Context.** AI explanation поверх bsl-LS диагностик — premium feature. Можно вызывать Anthropic API напрямую из desktop ИЛИ через наш cloud backend.
+
+**Decision.** **Через cloud backend** (`api.optimyzer.pro/v1/ai/explain`). В Sprint 6 — minimal без auth/caching, Phase 1 INFRA добавит JWT + cache + soft caps + multi-model routing.
+
+**Consequences.** + API key защищён на сервере. + Centralized caching для всех юзеров (Phase 1). + Multi-model routing (Sonnet Pro vs Opus Business). + Fine-tuning prompts без релиза desktop. + A/B тесты промптов. − Требуется интернет (но без него bsl-LS findings всё равно работают). − +50-100ms HTTPS round-trip (приемлемо при 2-4s Claude latency).
+
+---
+
+## ADR-036 — Bundled JRE 21 vs jlink vs GraalVM Native
+
+**Status:** Accepted (Sprint 6, 2026-05-24)
+
+**Context.** bsl-language-server требует JDK 21+ runtime. Options: bundled JRE (~150MB), jlink стрипнутая (~50MB), GraalVM Native (~80MB), system JRE.
+
+**Decision.** **Bundled полная Eclipse Temurin JRE 21** (~150 MB). Не jlink (риск missing modules в edge cases), не GraalVM (research показал что bsl-LS не имеет native-image config — 2-3 недельный отдельный проект). Не system JRE (80% юзеров 1С не имеют установленной Java).
+
+**Consequences.** + Гарантия запуска на любой Windows 11 без preinstalled Java. + Premium product = no compromises on reliability. − Installer вырастает с 50 MB до ~250 MB (acceptable trade-off). − Memory footprint при работе +300-400 MB. Future: возможно вернёмся к jlink (Sprint 8+) при стабильности.
+
