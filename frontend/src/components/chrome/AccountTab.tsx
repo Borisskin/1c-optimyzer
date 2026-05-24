@@ -36,9 +36,11 @@ export function AccountTab() {
     );
   }
 
+  // degraded — только когда РЕАЛЬНО deграднулись из Pro в Free из-за offline >7д.
+  // Просто Free-юзер (никогда не был Pro) — не degraded.
   return (
     <FreeState
-      degraded={!!(subscription && !isProActive)}
+      degraded={!!(subscription && !isProActive && isOfflineTooLong)}
       offline={isOfflineTooLong}
     />
   );
