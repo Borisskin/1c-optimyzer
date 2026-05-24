@@ -47,6 +47,17 @@ export function PlanVisualization({ planXml, onError }: Props) {
           const qpRoot = el.querySelector(".qp-root");
           const rect = el.getBoundingClientRect();
           const innerLen = el.innerHTML.length;
+          const qpNode = el.querySelector(".qp-node") as HTMLElement | null;
+          // Проверяем загружен ли qp.css по computed background-color у qp-node.
+          // qp.css задаёт background-color: #FFFFCC (light yellow). Если ничего
+          // не задано или прозрачно — CSS не приложился.
+          const qpNodeStyle = qpNode
+            ? window.getComputedStyle(qpNode)
+            : null;
+          const cssLoaded = qpNodeStyle
+            ? qpNodeStyle.backgroundColor !== "" &&
+              qpNodeStyle.backgroundColor !== "rgba(0, 0, 0, 0)"
+            : false;
           // eslint-disable-next-line no-console
           console.log("[PlanViz] showPlan done", {
             children: el.children.length,
@@ -54,6 +65,11 @@ export function PlanVisualization({ planXml, onError }: Props) {
             qpRootFound: !!qpRoot,
             qpRootRect: qpRoot ? qpRoot.getBoundingClientRect() : null,
             containerRect: { w: rect.width, h: rect.height },
+            qpNodeCount: el.querySelectorAll(".qp-node").length,
+            qpNodeBg: qpNodeStyle?.backgroundColor ?? null,
+            qpNodeBorder: qpNodeStyle?.border ?? null,
+            cssLoaded,
+            htmlPreview: el.innerHTML.slice(0, 500),
           });
           if (el.children.length === 0) {
             const xmlPreview = planXml.slice(0, 200).replace(/\s+/g, " ");
