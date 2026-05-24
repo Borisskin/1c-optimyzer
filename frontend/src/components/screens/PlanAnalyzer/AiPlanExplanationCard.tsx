@@ -26,6 +26,10 @@ interface Props {
   response: AiExplainPlanResponse | null;
   loading: boolean;
   error: string | null;
+  /** Показать idle-state с кнопкой запроса (если ни response/loading/error). */
+  showIdleButton?: boolean;
+  /** Колбек на клик «Получить AI-объяснение» — родитель вызывает analyze. */
+  onRequest?: () => void;
 }
 
 const SEV_LABEL: Record<PlanSeverity, string> = {
@@ -54,7 +58,33 @@ const IMPACT_CLASS: Record<AiPlanRecommendation["impact_estimate"], string> = {
   Low: styles.impactLow,
 };
 
-export function AiPlanExplanationCard({ response, loading, error }: Props) {
+export function AiPlanExplanationCard({
+  response,
+  loading,
+  error,
+  showIdleButton,
+  onRequest,
+}: Props) {
+  // Idle: ни response/loading/error и родитель просит показать кнопку.
+  if (showIdleButton && !response && !loading && !error) {
+    return (
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <div className={styles.title}>AI-объяснение плана</div>
+        </div>
+        <div className={styles.idleBody}>
+          <div className={styles.idleHint}>
+            AI разберёт план, выделит проблемные операторы и предложит индексы.
+            Один запрос = одна консультация (учитывается в квоте).
+          </div>
+          <button type="button" className={styles.idleButton} onClick={onRequest}>
+            Получить AI-объяснение
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className={styles.card}>

@@ -79,10 +79,8 @@ export function QueryAnalyzerScreen() {
       }
       if (bslLs.status === "fulfilled") {
         setBslLsResult(bslLs.value);
-        // Sprint 6: автоматический AI explain если есть grouped diagnostics.
-        if (bslLs.value.ok && bslLs.value.grouped && bslLs.value.grouped.length > 0) {
-          void requestAiExplanation(text, bslLs.value);
-        }
+        // AI больше не запускаем автоматически — пользователь жмёт кнопку
+        // в AiExplanationCard (экономия квоты и токенов).
       } else {
         setBslLsResult({ ok: false, error: "bsl_ls_unavailable", details: String(bslLs.reason) });
       }
@@ -248,14 +246,19 @@ export function QueryAnalyzerScreen() {
             />
           )}
 
-          {/* Sprint 6: AI structured explanation от Claude Sonnet */}
-          {(aiResult || aiLoading || aiError) && (
+          {/* AI explanation — idle с кнопкой когда есть bsl-LS diagnostics */}
+          {bslLsResult?.ok && bslLsResult.grouped && bslLsResult.grouped.length > 0 && (
             <div className={styles.aiSlot}>
               <AiExplanationCard
                 response={aiResult}
                 loading={aiLoading}
                 error={aiError}
                 onAcceptRewrite={onAcceptRewrite}
+                showIdleButton
+                onRequest={() => {
+                  if (aiLoading || aiResult) return;
+                  void requestAiExplanation(text, bslLsResult);
+                }}
               />
             </div>
           )}

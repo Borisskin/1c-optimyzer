@@ -306,6 +306,48 @@
   margin-bottom: 6px;
 }
 
+/* Idle state — кнопка «Получить AI-объяснение» вместо авто-генерации */
+
+.idleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 0 2px;
+}
+
+.idleHint {
+  font-size: 13px;
+  color: #4c1d95;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.idleButton {
+  align-self: flex-start;
+  padding: 8px 16px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.idleButton:hover {
+  background: #6d28d9;
+}
+
+.idleButton:active {
+  background: #5b21b6;
+}
+
+.idleButton:disabled {
+  background: #c4b5fd;
+  cursor: not-allowed;
+}
+
 .indexSql {
   margin: 0;
   padding: 8px 10px;

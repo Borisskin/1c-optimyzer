@@ -14,6 +14,9 @@ interface Props {
   loading: boolean;
   error: string | null;
   onAcceptRewrite?: (sdbl: string) => void;
+  /** Показать idle-state с кнопкой запроса (если нет response/loading/error). */
+  showIdleButton?: boolean;
+  onRequest?: () => void;
 }
 
 const SEV_LABEL = {
@@ -24,7 +27,33 @@ const SEV_LABEL = {
   Info: "ИНФО",
 } as const;
 
-export function AiExplanationCard({ response, loading, error, onAcceptRewrite }: Props) {
+export function AiExplanationCard({
+  response,
+  loading,
+  error,
+  onAcceptRewrite,
+  showIdleButton,
+  onRequest,
+}: Props) {
+  if (showIdleButton && !response && !loading && !error) {
+    return (
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <div className={styles.title}>AI объяснение</div>
+        </div>
+        <div className={styles.idleBody}>
+          <div className={styles.idleHint}>
+            AI разберёт диагностики bsl-LS, объяснит каждую проблему и предложит
+            переписать запрос. Один запрос = одна консультация (учитывается в квоте).
+          </div>
+          <button type="button" className={styles.idleButton} onClick={onRequest}>
+            Получить AI-объяснение
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className={styles.card}>
@@ -33,7 +62,7 @@ export function AiExplanationCard({ response, loading, error, onAcceptRewrite }:
         </div>
         <div className={styles.loading}>
           <div className={styles.spinner} />
-          <div>Claude Sonnet анализирует запрос…</div>
+          <div>AI анализирует запрос…</div>
         </div>
       </div>
     );
@@ -59,9 +88,7 @@ export function AiExplanationCard({ response, loading, error, onAcceptRewrite }:
     <div className={styles.card}>
       <div className={styles.header}>
         <div className={styles.title}>AI объяснение</div>
-        <div className={styles.meta}>
-          {response.model_used} · {response.duration_ms} мс
-        </div>
+        {/* model/latency скрыты — имплементационные детали не показываем юзеру */}
       </div>
 
       <div className={styles.summary}>{response.explanation_summary}</div>

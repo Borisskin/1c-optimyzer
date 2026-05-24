@@ -42,6 +42,16 @@ export function PlanVisualization({ planXml, onError }: Props) {
         if (cancelled) return;
         try {
           QP.showPlan(el, planXml, { jsTooltips: true });
+          // Диагностика: если showPlan не положил узлов — значит XSLT отдал
+          // пустой результат (известная проблема Chromium для SHOWPLAN XML).
+          // Показываем явную ошибку с raw-XML preview, чтобы юзер понимал.
+          if (el.children.length === 0) {
+            const xmlPreview = planXml.slice(0, 200).replace(/\s+/g, " ");
+            throw new Error(
+              `XSLT вернул пустое дерево. Возможно, XML без xmlns или Chromium ` +
+                `WebView2 заблокировал XSLT processing. Preview: ${xmlPreview}…`,
+            );
+          }
         } catch (e) {
           const msg = String(e);
           setError(msg);

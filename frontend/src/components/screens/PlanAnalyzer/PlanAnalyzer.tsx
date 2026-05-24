@@ -94,13 +94,17 @@ export function PlanAnalyzerScreen() {
       setResult(resp.result);
       setSourceLabel(source);
       setPlanXmlForViz(sourceXml);
-      // Phase C: автоматически запускаем AI explain если есть XML.
-      if (sourceXml) {
-        void requestAiExplanation(resp.result, sourceXml);
-      }
+      // AI больше не запускаем автоматически — пользователь жмёт кнопку
+      // в AiPlanExplanationCard (экономия квоты и токенов).
     },
-    [requestAiExplanation],
+    [],
   );
+
+  // Колбек для idle-кнопки в AiPlanExplanationCard.
+  const onRequestAi = useCallback(() => {
+    if (!result || !planXmlForViz || aiLoading || aiResponse) return;
+    void requestAiExplanation(result, planXmlForViz);
+  }, [result, planXmlForViz, aiLoading, aiResponse, requestAiExplanation]);
 
   const onPickFile = useCallback(
     async (filePath: string) => {
@@ -186,12 +190,14 @@ export function PlanAnalyzerScreen() {
 
         {result && summary && (
           <div className={styles.resultArea}>
-            {/* Phase C: AI explanation card (если есть plan XML) */}
-            {(aiResponse || aiLoading || aiError) && (
+            {/* AI explanation — idle с кнопкой пока юзер не запросил */}
+            {planXmlForViz && (
               <AiPlanExplanationCard
                 response={aiResponse}
                 loading={aiLoading}
                 error={aiError}
+                showIdleButton
+                onRequest={onRequestAi}
               />
             )}
 

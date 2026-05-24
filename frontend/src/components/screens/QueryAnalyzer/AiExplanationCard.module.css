@@ -5,6 +5,46 @@
   padding: 16px 18px;
 }
 
+.idleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 0 2px;
+}
+
+.idleHint {
+  font-size: 13px;
+  color: #075985;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.idleButton {
+  align-self: flex-start;
+  padding: 8px 16px;
+  background: #0284c7;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.idleButton:hover {
+  background: #0369a1;
+}
+
+.idleButton:active {
+  background: #075985;
+}
+
+.idleButton:disabled {
+  background: #bae6fd;
+  cursor: not-allowed;
+}
+
 .header {
   display: flex;
   align-items: center;
