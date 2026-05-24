@@ -57,6 +57,8 @@ export interface AccountState {
     aiQuotaRemaining: number;
     creditsRemaining: number;
   }) => void;
+  /** После успешного trackUsage — локально декрементируем счётчик, чтобы UI не ждал heartbeat (24ч). */
+  applyUsageTracked: (billedAgainst: "free_quota" | "pro_quota" | "credits_balance") => void;
   setOfflineDegradation: () => void;
   signOut: () => void;
   // —— derived
@@ -147,6 +149,31 @@ export const useAccountStore = create<AccountState>((set, get) => ({
       profile: current.profile,
       subscription,
       cache,
+    };
+    saveToStorage(next);
+    set(next);
+  },
+
+  applyUsageTracked: (billedAgainst) => {
+    const current = get();
+    let nextAi = current.cache.aiQuotaRemaining;
+    let nextCredits = current.cache.creditsRemaining;
+    if (billedAgainst === "free_quota") {
+      // Free pool — decrement, не уходим ниже 0.
+      nextAi = Math.max(0, current.cache.aiQuotaRemaining - 1);
+    } else if (billedAgainst === "credits_balance") {
+      nextCredits = Math.max(0, current.cache.creditsRemaining - 1);
+    } // pro_quota — unlimited, не двигаем
+    const next: PersistShape = {
+      accessToken: current.accessToken,
+      deviceId: current.deviceId,
+      profile: current.profile,
+      subscription: current.subscription,
+      cache: {
+        aiQuotaRemaining: nextAi,
+        creditsRemaining: nextCredits,
+        lastHeartbeatAt: current.cache.lastHeartbeatAt,
+      },
     };
     saveToStorage(next);
     set(next);

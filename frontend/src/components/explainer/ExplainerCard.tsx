@@ -43,6 +43,7 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   }>({ open: false, reason: null, freeRemaining: null });
 
   const accessToken = useAccountStore((s) => s.accessToken);
+  const applyUsageTracked = useAccountStore((s) => s.applyUsageTracked);
 
   useEffect(() => {
     if (!archiveId || !targetId) return;
@@ -154,6 +155,11 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
           aiTokensInput: aiResult?.tokens_in ?? undefined,
           aiTokensOutput: aiResult?.tokens_out ?? undefined,
         })
+        .then((resp) => {
+          // Декрементируем локально, чтобы Settings показывал актуальный
+          // счётчик сразу — без ожидания следующего heartbeat (он раз в 24ч).
+          applyUsageTracked(resp.billed_against);
+        })
         .catch((err) => {
           console.warn("Usage tracking failed:", (err as CloudError).message);
         });
@@ -166,6 +172,7 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
     anatomyKind,
     targetId,
     anatomyData,
+    applyUsageTracked,
   ]);
 
   const hasRuleBody = Boolean(rule?.matched && rule.body);
