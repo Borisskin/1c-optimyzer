@@ -14,16 +14,9 @@ interface Props {
 }
 
 export function MissingIndexes({ indexes }: Props) {
-  if (indexes.length === 0) {
-    return (
-      <div className={styles.indexesSection}>
-        <h3 className={styles.warningsTitle}>{t.planAnalyzer.missingIndexesTitle}</h3>
-        <div className={styles.empty}>
-          <div className={styles.emptyTitle}>{t.planAnalyzer.missingIndexesEmpty}</div>
-        </div>
-      </div>
-    );
-  }
+  // Пустую секцию не рендерим вообще — chip «индексов» в summary показывает
+  // когда они есть, а заглушка «Optimizer не предложил» дублировала пустоту.
+  if (indexes.length === 0) return null;
 
   return (
     <div className={styles.indexesSection}>

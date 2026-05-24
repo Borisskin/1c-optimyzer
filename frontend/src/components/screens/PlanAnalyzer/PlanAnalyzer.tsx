@@ -18,7 +18,7 @@ import {
   type PlanAnalyzeResponse,
   type PlanAnalyzerStatus,
 } from "@/api/backend";
-import { cloud, type AiExplainPlanResponse } from "@/api/cloud";
+import { cloud, CloudError, type AiExplainPlanResponse } from "@/api/cloud";
 import { t, format } from "@/i18n/ru";
 import { Icon } from "@/components/icons/Icon";
 import { useAppStore } from "@/store/appStore";
@@ -29,6 +29,40 @@ import { PlanStats } from "./PlanStats";
 import { PlanVisualization } from "./PlanVisualization";
 import { AiPlanExplanationCard } from "./AiPlanExplanationCard";
 import styles from "./PlanAnalyzer.module.css";
+
+/**
+ * Распознаёт типичные сценарии и даёт читаемое сообщение вместо
+ * raw "Failed to fetch" или JSON.stringify(detail). Используется в UI поверх
+ * AiPlanExplanationCard (errorBox).
+ */
+function formatAiError(e: unknown): string {
+  if (e instanceof CloudError) {
+    // Server вернул 503 с {detail: {error: "ai_not_configured"}}.
+    const payload = e.payload;
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "detail" in payload &&
+      typeof (payload as { detail: unknown }).detail === "object"
+    ) {
+      const det = (payload as { detail: Record<string, unknown> }).detail;
+      if (det && det.error === "ai_not_configured") {
+        return (
+          "AI отключён: ANTHROPIC_API_KEY не задан в .env. " +
+          "Добавьте ключ и перезапустите сервер."
+        );
+      }
+    }
+    if (e.reason === "network") {
+      return (
+        "Сервер AI недоступен (localhost:8001 не отвечает). " +
+        "Запустите server/ через start.bat и попробуйте снова."
+      );
+    }
+    return e.message;
+  }
+  return String(e);
+}
 
 export function PlanAnalyzerScreen() {
   const [busy, setBusy] = useState(false);
@@ -70,7 +104,7 @@ export function PlanAnalyzerScreen() {
         });
         setAiResponse(resp);
       } catch (e) {
-        setAiError(String(e));
+        setAiError(formatAiError(e));
       } finally {
         setAiLoading(false);
       }

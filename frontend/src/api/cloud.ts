@@ -136,16 +136,25 @@ async function request<T>(
       bodyJson && typeof bodyJson === "object" && bodyJson !== null && "detail" in bodyJson
         ? (bodyJson as { detail: unknown }).detail
         : null;
-    throw new CloudError(
-      typeof detail === "string"
-        ? detail
-        : detail
-          ? JSON.stringify(detail)
-          : `HTTP ${resp.status}`,
-      resp.status,
-      reason,
-      bodyJson,
-    );
+    // FastAPI HTTPException(detail={"error": "...", "message": "..."}) — извлекаем
+    // human-readable message из вложенного объекта. Иначе на UI вылезает
+    // JSON.stringify({error: "ai_not_configured", message: "..."}) → не читаемо.
+    let detailStr: string;
+    if (typeof detail === "string") {
+      detailStr = detail;
+    } else if (
+      detail &&
+      typeof detail === "object" &&
+      "message" in detail &&
+      typeof (detail as { message: unknown }).message === "string"
+    ) {
+      detailStr = (detail as { message: string }).message;
+    } else if (detail) {
+      detailStr = JSON.stringify(detail);
+    } else {
+      detailStr = `HTTP ${resp.status}`;
+    }
+    throw new CloudError(detailStr, resp.status, reason, bodyJson);
   }
   return bodyJson as T;
 }

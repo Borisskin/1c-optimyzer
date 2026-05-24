@@ -33,16 +33,9 @@ export function PlanWarnings({ warnings }: Props) {
     return [...warnings].sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
   }, [warnings]);
 
-  if (sorted.length === 0) {
-    return (
-      <div className={styles.warningsSection}>
-        <h3 className={styles.warningsTitle}>{t.planAnalyzer.warningsTitle}</h3>
-        <div className={styles.empty}>
-          <div className={styles.emptyTitle}>{t.planAnalyzer.warningsEmpty}</div>
-        </div>
-      </div>
-    );
-  }
+  // Пустую секцию не рендерим вообще — summary chip «Без проблем» в ResultHeader
+  // и так сообщает что warnings нет. Заглушка «Без предупреждений» была шумом.
+  if (sorted.length === 0) return null;
 
   return (
     <div className={styles.warningsSection}>
