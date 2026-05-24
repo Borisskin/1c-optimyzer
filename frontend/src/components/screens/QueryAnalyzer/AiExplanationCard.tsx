@@ -35,79 +35,80 @@ export function AiExplanationCard({
   showIdleButton,
   onRequest,
 }: Props) {
-  if (showIdleButton && !response && !loading && !error) {
-    return (
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <div className={styles.title}>AI объяснение</div>
-        </div>
-        <div className={styles.idleBody}>
-          <div className={styles.idleHint}>
-            AI разберёт диагностики bsl-LS, объяснит каждую проблему и предложит
-            переписать запрос. Один запрос = одна консультация (учитывается в квоте).
-          </div>
-          <button type="button" className={styles.idleButton} onClick={onRequest}>
-            Получить AI-объяснение
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Sprint 7 post-Phase F — collapse toggle (default COLLAPSED).
+  // Карточка занимает много места под редактором, юзеру удобнее видеть
+  // компактный header «AI объяснение [Развернуть]» и раскрывать по запросу.
+  // Симметрично AiPlanExplanationCard в PlanAnalyzer.
+  const [collapsed, setCollapsed] = useState(true);
 
-  if (loading) {
-    return (
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <div className={styles.title}>AI объяснение</div>
-        </div>
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <div>AI анализирует запрос…</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <div className={styles.title}>AI объяснение</div>
-        </div>
-        <div className={styles.errorBox}>
-          <div className={styles.errorTitle}>Не удалось получить AI explanation</div>
-          <div className={styles.errorDetail}>{error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!response) return null;
+  // Skip render если совсем нечего показывать.
+  const isIdle = showIdleButton && !response && !loading && !error;
+  if (!isIdle && !loading && !error && !response) return null;
 
   return (
     <div className={styles.card}>
       <div className={styles.header}>
         <div className={styles.title}>AI объяснение</div>
-        {/* model/latency скрыты — имплементационные детали не показываем юзеру */}
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? "Развернуть" : "Свернуть"}
+        </button>
       </div>
 
-      <div className={styles.summary}>{response.explanation_summary}</div>
+      {/* display:none сохраняет DOM (response state не теряется при свёртывании) */}
+      <div className={collapsed ? styles.bodyCollapsed : styles.body}>
+        {isIdle && (
+          <div className={styles.idleBody}>
+            <div className={styles.idleHint}>
+              AI разберёт диагностики bsl-LS, объяснит каждую проблему и предложит
+              переписать запрос. Один запрос = одна консультация (учитывается в квоте).
+            </div>
+            <button type="button" className={styles.idleButton} onClick={onRequest}>
+              Получить AI-объяснение
+            </button>
+          </div>
+        )}
 
-      {response.issues.length > 0 && (
-        <div className={styles.issues}>
-          {response.issues.map((issue, idx) => (
-            <IssueBlock key={idx} issue={issue} />
-          ))}
-        </div>
-      )}
+        {loading && (
+          <div className={styles.loading}>
+            <div className={styles.spinner} />
+            <div>AI анализирует запрос…</div>
+          </div>
+        )}
 
-      {response.suggested_rewrite.available && response.suggested_rewrite.sdbl && (
-        <RewriteBlock
-          sdbl={response.suggested_rewrite.sdbl}
-          reasoning={response.suggested_rewrite.reasoning ?? ""}
-          onAccept={onAcceptRewrite}
-        />
-      )}
+        {error && !loading && (
+          <div className={styles.errorBox}>
+            <div className={styles.errorTitle}>Не удалось получить AI explanation</div>
+            <div className={styles.errorDetail}>{error}</div>
+          </div>
+        )}
+
+        {response && !loading && !error && (
+          <>
+            <div className={styles.summary}>{response.explanation_summary}</div>
+
+            {response.issues.length > 0 && (
+              <div className={styles.issues}>
+                {response.issues.map((issue, idx) => (
+                  <IssueBlock key={idx} issue={issue} />
+                ))}
+              </div>
+            )}
+
+            {response.suggested_rewrite.available && response.suggested_rewrite.sdbl && (
+              <RewriteBlock
+                sdbl={response.suggested_rewrite.sdbl}
+                reasoning={response.suggested_rewrite.reasoning ?? ""}
+                onAccept={onAcceptRewrite}
+              />
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

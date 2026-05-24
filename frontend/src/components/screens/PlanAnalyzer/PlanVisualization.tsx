@@ -32,6 +32,11 @@ export function PlanVisualization({ planXml, onError }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [debug, setDebug] = useState<DebugInfo | null>(null);
+  // Sprint 7 post-Phase F — collapse toggle. Визуализация может быть большой
+  // (длинное дерево операторов в широком SVG); юзер должен мочь свернуть
+  // когда читает AI-объяснение или statement-card ниже. Default expanded —
+  // визуал это основной артефакт XML-импорта.
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -121,9 +126,26 @@ export function PlanVisualization({ planXml, onError }: Props) {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.title}>Визуализация плана (SSMS-style)</div>
-      <div ref={containerRef} className={styles.viz} />
+    <div className={`${styles.container} ${collapsed ? styles.containerCollapsed : ""}`}>
+      <div className={styles.titleBar}>
+        <div className={styles.title}>Визуализация плана (SSMS-style)</div>
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? "Развернуть" : "Свернуть"}
+        </button>
+      </div>
+      {/* display:none сохраняет рендеренный qp.js DOM (innerHTML не сбрасывается
+          при свёртывании — это критично, иначе пришлось бы пере-рендерить план
+          при каждом expand). */}
+      <div
+        ref={containerRef}
+        className={styles.viz}
+        style={collapsed ? { display: "none" } : undefined}
+      />
     </div>
   );
 }

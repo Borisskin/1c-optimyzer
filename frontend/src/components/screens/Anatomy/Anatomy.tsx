@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { backend, type OperationAnatomyResult } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
@@ -200,35 +200,34 @@ export function AnatomyScreen({ archiveId }: Props) {
             totalDurationMs={s.total_duration_ms ?? 0}
           />
 
+          {/* Top SQL — основной артефакт анализа операции, default expanded */}
           {data.top_sql.row_count > 0 && (
-            <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <SubTableRender
-                st={data.top_sql}
-                truncateCol="query"
-                title="Top SQL внутри операции"
-                defaultSortKey="total_duration_ms"
-              />
-            </div>
+            <CollapsibleSubTable
+              st={data.top_sql}
+              truncateCol="query"
+              title="Top SQL внутри операции"
+              defaultSortKey="total_duration_ms"
+            />
           )}
 
+          {/* Связанные исключения — обычно пусто, default collapsed */}
           {data.related_exceptions.row_count > 0 && (
-            <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <SubTableRender
-                st={data.related_exceptions}
-                title="Связанные исключения"
-                defaultSortKey="ts"
-              />
-            </div>
+            <CollapsibleSubTable
+              st={data.related_exceptions}
+              title="Связанные исключения"
+              defaultSortKey="ts"
+              defaultCollapsed
+            />
           )}
 
+          {/* Timeline — raw event log, debug-уровень, default collapsed */}
           {data.timeline.row_count > 0 && (
-            <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <SubTableRender
-                st={data.timeline}
-                title={`Timeline (${data.timeline.row_count} последних событий)`}
-                defaultSortKey="ts"
-              />
-            </div>
+            <CollapsibleSubTable
+              st={data.timeline}
+              title={`Timeline (${data.timeline.row_count} последних событий)`}
+              defaultSortKey="ts"
+              defaultCollapsed
+            />
           )}
         </>
       )}
@@ -357,6 +356,87 @@ function SubTableRender({
     </div>
   );
 }
+
+/**
+ * Sprint 7 post-Phase F — обёртка SubTableRender в collapsible-panel.
+ * Использует тот же SubTableRender внутри, но добавляет toggle-кнопку
+ * в panel_head и опциональный default-collapsed state.
+ */
+function CollapsibleSubTable({
+  st,
+  truncateCol,
+  title,
+  defaultSortKey,
+  defaultCollapsed = false,
+}: {
+  st: { columns: { name: string }[]; rows: unknown[][]; row_count?: number };
+  truncateCol?: string;
+  title: string;
+  defaultSortKey?: string;
+  defaultCollapsed?: boolean;
+}) {
+  return (
+    <PanelWithToggle title={title} defaultCollapsed={defaultCollapsed}>
+      <SubTableRender
+        st={st}
+        truncateCol={truncateCol}
+        defaultSortKey={defaultSortKey}
+      />
+    </PanelWithToggle>
+  );
+}
+
+/**
+ * Sprint 7 post-Phase F — inline panel-обёртка с collapse toggle.
+ * Symmetric с DeadlockAnatomy.PanelWithToggle (тот же визуал/поведение).
+ * Когда применять: secondary/debug-ish секции в анатомии операции.
+ */
+function PanelWithToggle({
+  title,
+  defaultCollapsed = false,
+  style,
+  children,
+}: {
+  title: string;
+  defaultCollapsed?: boolean;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  return (
+    <div
+      className={vshellStyles.panel}
+      style={{ marginTop: 12, ...style }}
+    >
+      <div className={vshellStyles.panel_head}>
+        <div className={vshellStyles.panel_title}>{title}</div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+          style={collapseBtnStyle}
+        >
+          {collapsed ? "Развернуть" : "Свернуть"}
+        </button>
+      </div>
+      {!collapsed && children}
+    </div>
+  );
+}
+
+const collapseBtnStyle: CSSProperties = {
+  marginLeft: "auto",
+  padding: "3px 10px",
+  background: "transparent",
+  border: "1px solid var(--o-border-2)",
+  color: "var(--o-text-2)",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 11,
+  fontWeight: 500,
+  whiteSpace: "nowrap",
+  fontFamily: "inherit",
+};
 
 const expandedCellStyle: CSSProperties = {
   background: "var(--o-subtle)",

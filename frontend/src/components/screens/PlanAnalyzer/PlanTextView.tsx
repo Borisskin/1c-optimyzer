@@ -13,6 +13,7 @@
  * UI: header с meta (источник, длительность), пустой/empty state, body с текстом.
  */
 
+import { useState } from "react";
 import styles from "./PlanTextView.module.css";
 
 interface Props {
@@ -26,6 +27,11 @@ interface Props {
 }
 
 export function PlanTextView({ planText, meta }: Props) {
+  // Sprint 7 post-Phase F — collapse toggle. План занимает много места
+  // (max-height: 600px), а юзеру он нужен не всегда — иногда хочется только
+  // прочитать AI-объяснение и SQL. Default expanded — это основной контент.
+  const [collapsed, setCollapsed] = useState(false);
+
   if (!planText.trim()) {
     return (
       <div className={styles.empty}>План пуст — нечего показать.</div>
@@ -50,14 +56,26 @@ export function PlanTextView({ planText, meta }: Props) {
             )}
           </div>
         )}
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? "Развернуть" : "Свернуть"}
+        </button>
       </div>
-      <div className={styles.hint}>
-        Это план в формате SHOWPLAN_TEXT — визуализация (SSMS-style дерево
-        с операторами) недоступна, потому что 1С пишет планы как текст, не XML.
-        Анализ через PerformanceStudio тоже не работает для текстового формата —
-        используйте AI-объяснение поверх.
-      </div>
-      <pre className={styles.body}>{planText}</pre>
+      {!collapsed && (
+        <>
+          <div className={styles.hint}>
+            Это план в формате SHOWPLAN_TEXT — визуализация (SSMS-style дерево
+            с операторами) недоступна, потому что 1С пишет планы как текст, не XML.
+            Анализ через PerformanceStudio тоже не работает для текстового формата —
+            используйте AI-объяснение поверх.
+          </div>
+          <pre className={styles.body}>{planText}</pre>
+        </>
+      )}
     </div>
   );
 }

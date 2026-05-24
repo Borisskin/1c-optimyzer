@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { backend, type DeadlockAnatomyResult, type ViewResult } from "@/api/backend";
 import { ViewShell } from "@/components/views/ViewShell";
@@ -163,14 +163,11 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
             )}
           </div>
 
-          {/* Lock graph */}
+          {/* Lock graph — главный визуал, default expanded */}
           {anatomy.parsed_extra.edges.length > 0 && (
-            <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-              <div className={vshellStyles.panel_head}>
-                <div className={vshellStyles.panel_title}>Граф блокировок</div>
-              </div>
+            <PanelWithToggle title="Граф блокировок" style={{ marginTop: 12 }}>
               <LockGraph edges={anatomy.parsed_extra.edges} />
-            </div>
+            </PanelWithToggle>
           )}
 
           {/* Participants */}
@@ -194,13 +191,11 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
             </div>
           </div>
 
-          {/* Resources */}
-          <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-            <div className={vshellStyles.panel_head}>
-              <div className={vshellStyles.panel_title}>
-                Ресурсы блокировки ({anatomy.parsed_extra.regions.length})
-              </div>
-            </div>
+          {/* Resources — default expanded */}
+          <PanelWithToggle
+            title={`Ресурсы блокировки (${anatomy.parsed_extra.regions.length})`}
+            style={{ marginTop: 12 }}
+          >
             {anatomy.parsed_extra.regions.length === 0 ? (
               <div className={vshellStyles.empty}>
                 В extra JSON нет полей Regions/Locks
@@ -223,7 +218,7 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
                 </tbody>
               </table>
             )}
-          </div>
+          </PanelWithToggle>
 
           {/* Surrounding events */}
           {anatomy.surrounding && anatomy.surrounding.row_count > 0 && (
@@ -234,15 +229,17 @@ export function DeadlockAnatomyScreen({ archiveId }: Props) {
             />
           )}
 
-          {/* Raw extra (collapsed by default would be nice; for now always visible) */}
-          <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-            <div className={vshellStyles.panel_head}>
-              <div className={vshellStyles.panel_title}>Полный extra payload (raw)</div>
-            </div>
+          {/* Raw extra — debug payload, default COLLAPSED.
+              Не нужен для типичного use case (юзер уже видел parsed выше). */}
+          <PanelWithToggle
+            title="Полный extra payload (raw)"
+            defaultCollapsed
+            style={{ marginTop: 12 }}
+          >
             <pre style={rawJsonStyle}>
               {JSON.stringify(anatomy.parsed_extra.raw_extra, null, 2)}
             </pre>
-          </div>
+          </PanelWithToggle>
         </>
       )}
     </ViewShell>
@@ -344,21 +341,25 @@ function SurroundingPanel({
     defaultSortKey: "ts",
     defaultSortDir: "asc",
   });
+  // Default collapsed — это вспомогательный «контекст вокруг», обычно юзер
+  // изучает сам дедлок (граф + ресурсы), а сюда лезет только если надо
+  // понять что происходило ±N сек вокруг.
   return (
-    <div className={vshellStyles.panel} style={{ marginTop: 12 }}>
-      <div className={vshellStyles.panel_head}>
-        <div className={vshellStyles.panel_title}>
-          События ±{windowSeconds}с ({rows.length})
-        </div>
-        {rows.length > 0 && (
+    <PanelWithToggle
+      title={`События ±${windowSeconds}с (${rows.length})`}
+      defaultCollapsed
+      style={{ marginTop: 12 }}
+      headerExtra={
+        rows.length > 0 ? (
           <TableFilter
             value={table.filter}
             onChange={table.setFilter}
             total={table.totalRows}
             visible={table.visibleRows}
           />
-        )}
-      </div>
+        ) : null
+      }
+    >
       <div className={vshellStyles.table_wrap}>
         <table className={vshellStyles.table}>
           <thead>
@@ -381,9 +382,66 @@ function SurroundingPanel({
           </tbody>
         </table>
       </div>
+    </PanelWithToggle>
+  );
+}
+
+/**
+ * Sprint 7 post-Phase F — inline panel-обёртка с collapse toggle.
+ *
+ * Применяется к secondary/debug секциям внутри анатомии. Использует
+ * существующие vshellStyles.panel/panel_head/panel_title чтобы сохранить
+ * visual consistency с остальным UI (background, border, header layout).
+ *
+ * Default expanded (defaultCollapsed=false). Кнопка «Свернуть»/«Развернуть»
+ * в правом углу panel_head. Текстовая, без disclosure triangles (memory rule).
+ */
+function PanelWithToggle({
+  title,
+  defaultCollapsed = false,
+  style,
+  headerExtra,
+  children,
+}: {
+  title: string;
+  defaultCollapsed?: boolean;
+  style?: CSSProperties;
+  headerExtra?: ReactNode;
+  children: ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  return (
+    <div className={vshellStyles.panel} style={style}>
+      <div className={vshellStyles.panel_head}>
+        <div className={vshellStyles.panel_title}>{title}</div>
+        {headerExtra}
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+          style={collapseBtnStyle}
+        >
+          {collapsed ? "Развернуть" : "Свернуть"}
+        </button>
+      </div>
+      {!collapsed && children}
     </div>
   );
 }
+
+const collapseBtnStyle: CSSProperties = {
+  marginLeft: "auto",
+  padding: "3px 10px",
+  background: "transparent",
+  border: "1px solid var(--o-border-2)",
+  color: "var(--o-text-2)",
+  borderRadius: 4,
+  cursor: "pointer",
+  fontSize: 11,
+  fontWeight: 500,
+  whiteSpace: "nowrap",
+  fontFamily: "inherit",
+};
 
 function LockGraph({ edges }: { edges: { waiter: string; blocker: string; resource: string }[] }) {
   // Берём уникальных участников

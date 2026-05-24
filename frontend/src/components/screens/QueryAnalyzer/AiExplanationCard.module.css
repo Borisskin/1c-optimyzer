@@ -67,6 +67,50 @@
   font-family: var(--font-mono, monospace);
 }
 
+/* Sprint 7 post-Phase F — collapse toggle (cyan/blue theme под branding). */
+.collapseToggle {
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid #bae6fd;
+  color: #075985;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.collapseToggle:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+/* Body wrapper для collapse. display:none сохраняет DOM (response не теряется). */
+.body {
+  display: block;
+}
+
+.bodyCollapsed {
+  display: none;
+}
+
+/* Когда body свёрнут — убираем border/padding у header чтобы он не висел
+   с разделителем в пустоту. :has() supported в WebView2 (Edge Chromium). */
+.card:has(.bodyCollapsed) .header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Тонкая компрессия card padding когда collapsed — иначе пустой блок
+   высоты header + padding. */
+.card:has(.bodyCollapsed) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 .loading {
   display: flex;
   align-items: center;

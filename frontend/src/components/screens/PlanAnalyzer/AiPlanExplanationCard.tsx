@@ -67,8 +67,9 @@ export function AiPlanExplanationCard({
 }: Props) {
   // Sprint 7 post-Phase F — collapse toggle. Карточка занимает много места,
   // юзер часто хочет её свернуть после прочтения ответа чтобы открыть план
-  // полностью. Default expanded — фича видна из коробки.
-  const [collapsed, setCollapsed] = useState(false);
+  // полностью. Default COLLAPSED по запросу Сергея — карточка большая
+  // и мешает видеть план/визуализацию; разворачивается одним кликом.
+  const [collapsed, setCollapsed] = useState(true);
 
   // Skip render полностью если нечего показывать (например response=null + не idle).
   const isIdle = showIdleButton && !response && !loading && !error;
