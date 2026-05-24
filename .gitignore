@@ -61,3 +61,8 @@ backend/tests/fixtures/real-archive/
 # Пустая папка-остаток от устаревшего дубликата (Sprint 3.5 hoist).
 # Windows handle не отпускает; исчезнет после ребута. Не трогаем git.
 /МоделированиеТЖ/
+
+# Opensource research workspace (Sprint 6 prep) — клоны чужих репо,
+# скачанные JAR/binary, тестовые артефакты. Не часть продукта.
+# Отчёт — в docs/sales_sprint/OPENSOURCE_RESEARCH_REPORT.md.
+/research/
