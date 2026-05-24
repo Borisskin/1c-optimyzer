@@ -11,7 +11,7 @@
  * В dev по умолчанию — http://127.0.0.1:8001.
  */
 
-const DEFAULT_BASE = "http://127.0.0.1:8001";
+const DEFAULT_BASE = "http://localhost:8001";
 
 function baseUrl(): string {
   // Vite exposes env vars prefixed VITE_*.
@@ -221,7 +221,7 @@ export function cabinetUrl(path = "/"): string {
   // В проде это account.optimyzer.pro. В dev — vite сервер на :5173.
   const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
     ?.VITE_CABINET_URL;
-  const base = (env && env.replace(/\/+$/, "")) || "http://127.0.0.1:5173";
+  const base = (env && env.replace(/\/+$/, "")) || "http://localhost:5173";
   return `${base}${path}`;
 }
 
