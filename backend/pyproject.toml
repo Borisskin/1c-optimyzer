@@ -18,6 +18,10 @@ dependencies = [
     "pyarrow>=15",
     "sqlparse>=0.4",
     "anthropic>=0.40",
+    # Sprint 6 — bsl-language-server adapter (WebSocket sidecar)
+    "websockets>=12,<14",
+    # Sprint 6 Phase F — T-SQL antipatterns detector (used in TopSQL + QueryAnalyzer T-SQL view)
+    "sqlglot>=30.8,<31",
 ]
 
 [project.optional-dependencies]
@@ -38,8 +42,18 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra -q"
+# Sprint 6 — integration тесты (JVM spawning) исключены из default запуска.
+# Запуск: `pytest -m integration` или `pytest tests/bsl_ls/test_integration.py`.
+addopts = "-ra -q -m 'not integration'"
 asyncio_mode = "auto"
+# Sprint 6 — bsl-LS adapter использует module-singleton client. asyncio.Event/Future
+# bound к loop, в котором созданы. И fixture, и test должны быть в ОДНОМ loop —
+# иначе reader_task в loop M ставит Event, который ждётся в loop F → deadlock.
+asyncio_default_fixture_loop_scope = "module"
+asyncio_default_test_loop_scope = "module"
+markers = [
+    "integration: реальный bsl-LS JVM (медленно, требует setup-bsl-ls-binaries.ps1)",
+]
 
 [tool.ruff]
 line-length = 100
