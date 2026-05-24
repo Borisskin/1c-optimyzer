@@ -1,19 +1,37 @@
 ﻿<#
 .SYNOPSIS
     Включает регистрацию SQL execution plans (planSQLText) в технологическом
-    журнале 1С — добавляет <plan/> в logcfg.xml.
+    журнале 1С — добавляет <plan><event>...</event></plan> в logcfg.xml.
+
+.IMPORTANT
+    KNOWN ISSUE на 2026-05-25: на 1С 8.3.27.1859 + MSSQL ни один из 6
+    проверенных синтаксисов logcfg (<plan/>, <plansql/>, <property name='*plan*'/>)
+    не активирует запись planSQLText. См. docs/sales_sprint/SPRINT_7_KNOWN_ISSUE_planSQLText.md
+    для деталей расследования и гипотез (SHOWPLAN permissions, изменения в 8.3.27,
+    Performance Studio Extension). Скрипт делает то что должно работать ПО ДОКУМЕНТАЦИИ;
+    если ты на 8.3.27 — после прогона убедись что planSQLText реально появился
+    в C:\1C-TechLog\rphost_*/.log, иначе нужна доп. диагностика.
 
 .DESCRIPTION
-    Idempotent patch для logcfg.xml: добавляет <plan/> элемент внутрь <log>,
-    если его ещё нет. После перезапуска ragent в DBMSSQL событиях ТЖ
-    появится поле planSQLText (текстовое представление execution plan).
+    ВАЖНО: ранее (Sprint 7 Phase D первая версия) скрипт вставлял пустой <plan/>.
+    Это БЕСПОЛЕЗНО: согласно ИТС, <plan> работает как контейнер-фильтр, ему нужен
+    вложенный <event> блок с критериями отбора, иначе планы для нулевого набора
+    событий = ни для чего. Версия 2 вставляет правильную структуру.
 
-    Шаги:
+    Idempotent patch для logcfg.xml:
       1. Backup logcfg.xml в logcfg.xml.backup.YYYYMMDD-HHMMSS
-      2. Проверка наличия <plan/> в namespace http://v8.1c.ru/v8/tech-log
-      3. Добавление <plan/> внутрь первого <log> элемента (sibling от <event>)
-      4. Save обратно в logcfg.xml (UTF-8 без BOM)
-      5. Restart "1C:Enterprise 8.3 Server Agent (x86-64)" (если -NoRestart не задан)
+      2. Detect конфликтные состояния (несколько <plan>, пустой <plan/>, мусорные
+         комментарии от предыдущих экспериментов). Если найдены — restore из
+         последнего backup'а (если есть), потом patch.
+      3. Если <plan> с правильным <event>DBMSSQL</event> уже есть — ничего не
+         меняем (idempotent).
+      4. Иначе добавляем правильный <plan><event>...</event></plan> внутрь <log>.
+      5. Save (UTF-8 без BOM, preserve original whitespace и комментарии).
+      6. Restart 1C Server Agent (если -NoRestart не задан).
+
+    Default фильтр в <plan><event>: DBMSSQL duration > 10 (100 мс). Это покрывает
+    тестовый сценарий tj-simulator кнопка 5 (запросы > 200мс) и не раздувает
+    архив до неприемлемых размеров на нормальной нагрузке.
 
     Запускать с admin elevation (правка Program Files + restart сервиса).
 
@@ -48,7 +66,13 @@
 param(
     [string]$LogcfgPath = "C:\Program Files\1cv8\conf\logcfg.xml",
     [switch]$NoRestart,
-    [switch]$DryRun
+    [switch]$DryRun,
+    # Длительность в сотых секунды (centiseconds). 10 = 100 мс, 100 = 1 сек.
+    # Меньше число — больше планов в архиве. На тестовой нагрузке 10 ОК.
+    [int]$DurationThreshold = 10,
+    # Принудительно восстановить из последнего backup перед patch'ем.
+    # Используется когда файл в chaos state (несколько <plan>, мусор-комментарии).
+    [switch]$Restore
 )
 
 $ErrorActionPreference = "Stop"
@@ -66,6 +90,8 @@ if (-not $currentUser.IsInRole([System.Security.Principal.WindowsBuiltInRole]::A
     $argList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"")
     if ($DryRun)    { $argList += "-DryRun" }
     if ($NoRestart) { $argList += "-NoRestart" }
+    if ($Restore)   { $argList += "-Restore" }
+    $argList += @("-DurationThreshold", $DurationThreshold)
     if ($LogcfgPath -ne "C:\Program Files\1cv8\conf\logcfg.xml") {
         $argList += @("-LogcfgPath", "`"$LogcfgPath`"")
     }
@@ -91,51 +117,146 @@ Write-Host "logcfg.xml: $LogcfgPath" -ForegroundColor Cyan
 $origSize = (Get-Item $LogcfgPath).Length
 Write-Host "  размер: $origSize байт"
 
-# === 2. Парсинг с учётом 1С namespace ===
-# PreserveWhitespace=true критично: без него XmlDocument теряет все отступы
-# и комментарии (точнее — теряет whitespace между элементами как nodes).
-# В результате save → весь файл в одну строку, гигантский diff. Хотим
-# сохранить оригинальное форматирование, изменив только нужное.
-$xml = New-Object System.Xml.XmlDocument
-$xml.PreserveWhitespace = $true
-$xml.Load($LogcfgPath)
-$ns = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
-$ns.AddNamespace("tl", "http://v8.1c.ru/v8/tech-log")
+# === 1.5. Если -Restore — восстановить из последнего backup перед patch ===
+$NS = "http://v8.1c.ru/v8/tech-log"
+function Restore-FromBackup {
+    param([string]$Target)
+    $backupDir = Split-Path $Target -Parent
+    $backupName = (Split-Path $Target -Leaf) + ".backup.*"
+    $latest = Get-ChildItem -Path $backupDir -Filter $backupName -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+    if (-not $latest) {
+        Write-Warning "Нет backup'ов для restore (искал $backupDir\$backupName)"
+        return $false
+    }
+    Write-Host "Восстанавливаю из backup: $($latest.Name) ($(($latest.Length)) байт)" -ForegroundColor Yellow
+    if (-not $DryRun) {
+        Copy-Item $latest.FullName $Target -Force
+    }
+    return $true
+}
 
-# Проверяем существующий <plan/> на любом уровне внутри <config>.
-$existingPlan = $xml.SelectSingleNode("//tl:plan", $ns)
-if ($existingPlan) {
-    Write-Host "<plan/> уже присутствует в logcfg.xml — изменений не требуется" -ForegroundColor Green
-    Write-Host "  parent: $($existingPlan.ParentNode.LocalName)"
+# === 2. Парсинг + detect конфликтного состояния ===
+# PreserveWhitespace=true критично: без него XmlDocument теряет все отступы
+# и комментарии. С ним мы можем редактировать только нужный участок.
+function Read-Logcfg([string]$Path) {
+    $doc = New-Object System.Xml.XmlDocument
+    $doc.PreserveWhitespace = $true
+    $doc.Load($Path)
+    return $doc
+}
+
+# local-name() XPath — независим от namespace prefix registration (выявленный
+# flapping баг XmlNamespaceManager на PS 5.1: иногда //tl:log возвращает null
+# даже когда `<log>` физически есть в файле). local-name() стабилен 100%.
+function Find-AllPlans([System.Xml.XmlDocument]$Doc) {
+    return $Doc.SelectNodes("//*[local-name()='plan']")
+}
+function Find-Log([System.Xml.XmlDocument]$Doc) {
+    return $Doc.SelectSingleNode("//*[local-name()='log']")
+}
+function Has-InnerEvent([System.Xml.XmlNode]$PlanNode) {
+    return ($PlanNode.SelectSingleNode("*[local-name()='event']") -ne $null)
+}
+
+$xml = Read-Logcfg $LogcfgPath
+
+$allPlans = Find-AllPlans $xml
+$planCount = if ($allPlans) { $allPlans.Count } else { 0 }
+Write-Host "  Найдено <plan> элементов: $planCount" -ForegroundColor Cyan
+
+# Определяем — есть ли уже правильный <plan> (с вложенным <event>).
+$validPlanExists = $false
+foreach ($p in $allPlans) {
+    if (Has-InnerEvent $p) {
+        $validPlanExists = $true
+        break
+    }
+}
+Write-Host "  Уже есть правильный <plan> с <event>: $validPlanExists" -ForegroundColor Cyan
+
+# Детектим chaos: > 1 plan, или есть только пустые <plan/>.
+$needsRestore = $Restore -or ($planCount -gt 1) -or ($planCount -ge 1 -and -not $validPlanExists)
+
+if ($needsRestore) {
+    Write-Host "Detected chaos в logcfg.xml — будет clean restore + patch" -ForegroundColor Yellow
+    if ($planCount -gt 1) { Write-Host "  причина: $planCount <plan> элементов (должен быть 1)" }
+    if ($planCount -ge 1 -and -not $validPlanExists) {
+        Write-Host "  причина: <plan> без вложенного <event> (пустой = бесполезный)"
+    }
+    if ($Restore) { Write-Host "  причина: явный -Restore флаг" }
+
+    if (-not (Restore-FromBackup $LogcfgPath)) {
+        Write-Error "Не могу восстановить — backup'а нет. Поправь файл вручную."
+        exit 6
+    }
+    # Перечитываем после restore
+    $xml = Read-Logcfg $LogcfgPath
+    $allPlans = Find-AllPlans $xml
+    $planCount = if ($allPlans) { $allPlans.Count } else { 0 }
+    Write-Host "  После restore <plan> элементов: $planCount" -ForegroundColor Cyan
+
+    $validPlanExists = $false
+    foreach ($p in $allPlans) {
+        if (Has-InnerEvent $p) { $validPlanExists = $true; break }
+    }
+}
+
+if ($validPlanExists) {
+    Write-Host "<plan> с вложенным <event> уже есть — изменений не требуется (idempotent)" -ForegroundColor Green
     exit 0
 }
 
-# Находим первый <log> — туда положим <plan/>.
-$logNode = $xml.SelectSingleNode("//tl:log", $ns)
+# Находим первый <log> — туда положим <plan>.
+$logNode = Find-Log $xml
+Write-Host "  <log> найден: $($logNode -ne $null)" -ForegroundColor Cyan
 if (-not $logNode) {
     Write-Error "<log> элемент не найден в logcfg.xml — структура неожиданная"
     exit 2
 }
 
-# === 3. Создаём <plan/> в том же namespace + leading whitespace ===
-# Существующий <log> заканчивается на "    </log>" с 4-space indent. Хочется
-# чтобы <plan/> встал в той же стилистике как соседние <event>: с newline
-# перед тегом и indent 8 spaces (sibling от <event>).
-$indent = $xml.CreateWhitespace("`n        ")
-$planElement = $xml.CreateElement("plan", "http://v8.1c.ru/v8/tech-log")
-$logNode.AppendChild($indent) | Out-Null
-$logNode.AppendChild($planElement) | Out-Null
-# Финальный newline + 4 spaces чтобы </log> остался на своей строке с indent.
-$tail = $xml.CreateWhitespace("`n    ")
-$logNode.AppendChild($tail) | Out-Null
+# === 3. Создаём правильный <plan><event>DBMSSQL duration>$DurationThreshold</event></plan> ===
+# Структура (per ИТС):
+#   <plan>
+#       <event>
+#           <eq property="name" value="DBMSSQL"/>
+#           <gt property="duration" value="$DurationThreshold"/>
+#       </event>
+#   </plan>
+$planElement = $xml.CreateElement("plan", $NS)
 
-Write-Host "Создан <plan/> внутри <log> (location='$($logNode.GetAttribute('location'))')" -ForegroundColor Yellow
+$eventElement = $xml.CreateElement("event", $NS)
+
+$eqElement = $xml.CreateElement("eq", $NS)
+$eqElement.SetAttribute("property", "name")
+$eqElement.SetAttribute("value", "DBMSSQL")
+$eventElement.AppendChild($xml.CreateWhitespace("`n                ")) | Out-Null
+$eventElement.AppendChild($eqElement) | Out-Null
+
+$gtElement = $xml.CreateElement("gt", $NS)
+$gtElement.SetAttribute("property", "duration")
+$gtElement.SetAttribute("value", "$DurationThreshold")
+$eventElement.AppendChild($xml.CreateWhitespace("`n                ")) | Out-Null
+$eventElement.AppendChild($gtElement) | Out-Null
+$eventElement.AppendChild($xml.CreateWhitespace("`n            ")) | Out-Null
+
+$planElement.AppendChild($xml.CreateWhitespace("`n            ")) | Out-Null
+$planElement.AppendChild($eventElement) | Out-Null
+$planElement.AppendChild($xml.CreateWhitespace("`n        ")) | Out-Null
+
+# Вставляем <plan> в <log> с leading whitespace (8 spaces — sibling от <event>).
+$logNode.AppendChild($xml.CreateWhitespace("`n        ")) | Out-Null
+$logNode.AppendChild($planElement) | Out-Null
+$logNode.AppendChild($xml.CreateWhitespace("`n    ")) | Out-Null
+
+Write-Host "Создан <plan> с <event>DBMSSQL duration>$DurationThreshold ($([math]::Round($DurationThreshold*10)) мс)</event>" -ForegroundColor Yellow
 
 if ($DryRun) {
-    Write-Host "" -ForegroundColor Cyan
+    Write-Host ""
     Write-Host "=== DRY RUN — изменения НЕ применены ===" -ForegroundColor Yellow
     Write-Host "Финальный фрагмент <log>:"
-    Write-Host $logNode.OuterXml.Substring(0, [Math]::Min(500, $logNode.OuterXml.Length)) -ForegroundColor Gray
+    Write-Host $logNode.OuterXml.Substring([Math]::Max(0, $logNode.OuterXml.Length - 800)) -ForegroundColor Gray
     exit 0
 }
 
