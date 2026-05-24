@@ -40,6 +40,11 @@ export function PlanTjImport({ onPick, busy }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickingId, setPickingId] = useState<number | null>(null);
+  // Auto-collapse: после выбора плана список сворачивается в bar, оставляя
+  // место для plan view внизу. Юзер кликает «Сменить» → bar исчезает,
+  // полный список возвращается. Без этого список 200 строк занимал
+  // полэкрана и сам план почти не было видно.
+  const [selectedItem, setSelectedItem] = useState<PlanAnalyzerTjItem | null>(null);
 
   const archiveId = archive?.archive_id ?? null;
 
@@ -49,6 +54,7 @@ export function PlanTjImport({ onPick, busy }: Props) {
       setItems(null);
       setHasPlans(null);
       setError(null);
+      setSelectedItem(null);  // archive switched → сбрасываем selection
       return;
     }
     let cancelled = false;
@@ -100,6 +106,8 @@ export function PlanTjImport({ onPick, busy }: Props) {
           duration_us: resp.duration_us ?? null,
           context: resp.context ?? null,
         });
+        // Auto-collapse — после успешного импорта сворачиваем список в bar
+        setSelectedItem(item);
       } catch (e) {
         setError(String(e));
       } finally {
@@ -170,6 +178,34 @@ export function PlanTjImport({ onPick, busy }: Props) {
           В архиве должны быть события — попробуйте перезагрузить или собрать
           архив за период когда были долгие SQL-запросы.
         </div>
+      </div>
+    );
+  }
+
+  // === Render: collapsed bar когда план уже выбран ===
+  // Список 200 строк занимает полэкрана, не оставляя места для самого
+  // плана внизу. После выбора показываем 1-строчный bar с info + кнопкой
+  // «Сменить» которая возвращает полный список.
+  if (selectedItem) {
+    return (
+      <div className={styles.collapsedBar}>
+        <div className={styles.collapsedInfo}>
+          <span className={styles.collapsedLabel}>Выбран:</span>
+          <span className={styles.collapsedTs}>{formatTs(selectedItem.ts)}</span>
+          <span className={styles.collapsedDuration}>
+            {formatDuration(selectedItem.duration_us)}
+          </span>
+          <span className={styles.collapsedSql} title={selectedItem.sql_preview}>
+            {selectedItem.sql_preview}
+          </span>
+        </div>
+        <button
+          type="button"
+          className={styles.collapsedButton}
+          onClick={() => setSelectedItem(null)}
+        >
+          Сменить план ({total})
+        </button>
       </div>
     );
   }
