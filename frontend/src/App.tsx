@@ -22,6 +22,7 @@ import { DeadlockAnatomyScreen } from "@/components/screens/DeadlockAnatomy/Dead
 // QueryAnalyzer экран скрыт до Sprint 6 — оставляем код и backend RPC,
 // но не импортируем компонент в App. См. docs/UI_INVENTORY_2026_05.md.
 // import { QueryAnalyzerScreen } from "@/components/screens/QueryAnalyzer/QueryAnalyzer";
+import { PlanAnalyzerScreen } from "@/components/screens/PlanAnalyzer/PlanAnalyzer";
 import { DevToolsScreen } from "@/components/screens/DevTools/DevTools";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
@@ -113,6 +114,11 @@ export function App() {
       // Ctrl+Q был зарезервирован за Query Analyzer, но раздел скрыт до
       // Sprint 6 (см. nav.ts). Шорткат тоже отключён, чтобы юзер случайно
       // не попадал на пустой routing-кейс.
+      // Sprint 7 — Ctrl+P открывает Анализ плана.
+      if (meta && (e.key === "p" || e.key === "P")) {
+        e.preventDefault();
+        useAppStore.getState().setScreen("plan-analyzer");
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -273,6 +279,8 @@ function renderScreen({
           {t.app.queryAnalyzerHiddenPlaceholder}
         </div>
       );
+    case "plan-analyzer":
+      return <PlanAnalyzerScreen />;
     case "dev-tools":
       return <DevToolsScreen />;
     default:

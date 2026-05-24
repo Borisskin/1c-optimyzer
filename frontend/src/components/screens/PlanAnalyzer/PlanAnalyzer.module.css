@@ -1,0 +1,584 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--o-bg);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 24px 8px;
+  gap: 24px;
+  flex-shrink: 0;
+}
+
+.titleBlock {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--o-text-1);
+}
+
+.subtitle {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--o-text-3);
+  max-width: 820px;
+}
+
+.statusBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--o-text-3);
+}
+
+.statusAvailable {
+  color: var(--o-ok, #16a34a);
+  font-weight: 500;
+}
+
+.statusUnavailable {
+  color: var(--o-warn);
+  font-weight: 500;
+}
+
+.binaryMissingBanner {
+  margin: 8px 24px;
+  padding: 12px 16px;
+  background: var(--o-warn-bg, #fff7ed);
+  border: 1px solid #fed7aa;
+  border-radius: var(--o-radius-md);
+  color: #7c2d12;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.binaryMissingTitle {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 16px;
+  min-height: 0;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* === Import section === */
+
+.importCard {
+  background: var(--o-panel);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-md);
+  padding: 14px;
+  flex-shrink: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--o-border);
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--o-text-3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--o-text-1);
+}
+
+.tabActive {
+  color: var(--o-accent);
+  border-bottom-color: var(--o-accent);
+  font-weight: 500;
+}
+
+.fileTab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pickButton {
+  background: var(--o-accent);
+  color: white;
+  border: none;
+  padding: 9px 18px;
+  border-radius: var(--o-radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+}
+
+.pickButton:hover:not(:disabled) {
+  background: var(--o-accent-hover);
+}
+
+.pickButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pickHint {
+  font-size: 12px;
+  color: var(--o-text-3);
+}
+
+.pasteTab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pasteArea {
+  min-height: 140px;
+  max-height: 280px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-sm);
+  resize: vertical;
+  background: var(--o-bg);
+  color: var(--o-text-1);
+}
+
+.pasteArea:focus {
+  outline: none;
+  border-color: var(--o-accent);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnPrimary {
+  background: var(--o-accent);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--o-radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--o-accent-hover);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: var(--o-panel);
+  border: 1px solid var(--o-border);
+  color: var(--o-text-1);
+  padding: 8px 14px;
+  border-radius: var(--o-radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background: var(--o-hover);
+}
+
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  padding: 8px 12px;
+  background: var(--o-err-bg);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: var(--o-radius-sm);
+  color: var(--o-err);
+  font-size: 12px;
+}
+
+/* === Result section === */
+
+.resultArea {
+  flex: 1 1 auto;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.resultHeader {
+  background: var(--o-panel);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-md);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.resultMeta {
+  font-size: 12px;
+  color: var(--o-text-3);
+}
+
+.resultMetaLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--o-text-mute);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.resultMetaValue {
+  font-size: 13px;
+  color: var(--o-text-1);
+  font-weight: 500;
+}
+
+/* Severity summary chips */
+
+.sevSummary {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sevChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.sevChipCritical {
+  background: #fef2f2;
+  color: #7f1d1d;
+  border-color: #fecaca;
+}
+
+.sevChipWarning {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+
+.sevChipInfo {
+  background: #f0f9ff;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.sevChipOK {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+/* Statement card */
+
+.statementCard {
+  background: var(--o-panel);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.statementHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statementLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--o-text-mute);
+  font-weight: 600;
+}
+
+.statementTextBlock {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--o-bg);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-sm);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--o-text-1);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.statCell {
+  display: flex;
+  flex-direction: column;
+}
+
+.statLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--o-text-mute);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.statValue {
+  font-size: 13px;
+  color: var(--o-text-1);
+  font-weight: 500;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Warnings list */
+
+.warningsSection {
+  border-top: 1px solid var(--o-border);
+  padding-top: 10px;
+}
+
+.warningsTitle {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--o-text-3);
+  margin: 0 0 8px;
+}
+
+.warningCard {
+  border: 1px solid;
+  border-radius: var(--o-radius-sm);
+  background: #fff;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.warningCard:last-child {
+  margin-bottom: 0;
+}
+
+.warningCardCritical {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.warningCardWarning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.warningCardInfo {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+
+.warningHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.warningType {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--o-text-1);
+}
+
+.warningOperator {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--o-text-3);
+}
+
+.warningMessage {
+  font-size: 12.5px;
+  color: var(--o-text-2);
+  line-height: 1.5;
+}
+
+.warningFix {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--o-radius-sm);
+  font-size: 12px;
+  color: var(--o-text-2);
+}
+
+.warningFixLabel {
+  font-weight: 600;
+  margin-right: 4px;
+  color: var(--o-text-1);
+}
+
+.warningBenefit {
+  font-size: 11px;
+  color: var(--o-text-3);
+  margin-left: auto;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Missing indexes section */
+
+.indexesSection {
+  border-top: 1px solid var(--o-border);
+  padding-top: 10px;
+}
+
+.indexCard {
+  border: 1px solid #99f6e4;
+  border-radius: var(--o-radius-sm);
+  background: #f0fdfa;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.indexCard:last-child {
+  margin-bottom: 0;
+}
+
+.indexHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.indexTable {
+  font-weight: 600;
+  font-size: 13px;
+  color: #0f766e;
+  font-family: var(--font-mono, monospace);
+}
+
+.indexImpact {
+  font-size: 11px;
+  font-weight: 600;
+  color: #134e4a;
+  padding: 2px 6px;
+  background: #ccfbf1;
+  border-radius: 3px;
+}
+
+.indexColumns {
+  font-size: 12px;
+  color: var(--o-text-2);
+  margin-bottom: 6px;
+}
+
+.indexColumnsLabel {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.indexCreateBlock {
+  margin: 0;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid #99f6e4;
+  border-radius: var(--o-radius-sm);
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+  color: #134e4a;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--o-text-mute);
+  background: var(--o-panel);
+  border: 1px dashed var(--o-border);
+  border-radius: var(--o-radius-md);
+}
+
+.emptyIcon {
+  margin-bottom: 8px;
+}
+
+.emptyTitle {
+  font-size: 14px;
+  color: var(--o-text-2);
+  margin-bottom: 4px;
+}
+
+.emptyHint {
+  font-size: 12px;
+  color: var(--o-text-mute);
+}
+
+/* === Phase B: Visualization slot (filled in PlanVisualization.tsx) === */
+.visualizationSlot {
+  background: var(--o-panel);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-md);
+  padding: 8px;
+  overflow: auto;
+  max-height: 600px;
+}
+
+/* === Phase C: AI explanation slot (filled in AiPlanExplanationCard.tsx) === */
+.aiSlot {
+  display: contents;
+}

@@ -31,6 +31,10 @@ export const NAV_ITEMS: NavItem[] = [
   // Cloud AI (Claude Sonnet 4.5) — structured explanation поверх диагностик.
   // См. docs/sales_sprint/SPRINT_6_PROMT.md.
   { id: "query-analyzer", label: t.sidebar.items.queryAnalyzer,  icon: "Code",          group: "analyze", enabled: true, shortcut: "Ctrl+Q" },
+  // Sprint 7 — анализ execution plans MS SQL Server (PerformanceStudio CLI +
+  // html-query-plan visualization + AI explanation). Главный premium-feature
+  // оправдывающий Pro 9 900 ₽/мес. См. docs/sales_sprint/SPRINT_7_PROMT.md.
+  { id: "plan-analyzer",  label: t.sidebar.items.planAnalyzer,   icon: "FileBarChart",  group: "analyze", enabled: true, shortcut: "Ctrl+P" },
   { id: "slow-queries",   label: t.sidebar.items.slowQueries,    icon: "Database",      group: "analyze", enabled: true, shortcut: "Ctrl+3" },
   { id: "locks",          label: t.sidebar.items.locksView,      icon: "Lock",          group: "analyze", enabled: true, shortcut: "Ctrl+4" },
   { id: "process-roles",  label: t.sidebar.items.processRoles,   icon: "Cluster",       group: "analyze", enabled: true, shortcut: "Ctrl+5" },

@@ -226,6 +226,18 @@ export const cloud = {
       body: JSON.stringify(payload),
     });
   },
+
+  // Sprint 7 Phase C — AI structured explanation поверх execution plan.
+  async aiExplainPlan(
+    payload: AiExplainPlanRequest,
+    token?: string | null,
+  ): Promise<AiExplainPlanResponse> {
+    return request<AiExplainPlanResponse>("/v1/ai/explain_plan", {
+      method: "POST",
+      token: token ?? undefined,
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 // ---------- Sprint 6 — AI types ----------
@@ -275,6 +287,55 @@ export interface AiExplainResponse {
   suggested_rewrite: AiSuggestedRewrite;
   model_used: string;
   duration_ms: number;
+}
+
+// ---------- Sprint 7 — Plan Analyzer AI types ----------
+
+export type PlanSeverity = "Info" | "Warning" | "Critical";
+
+export interface AiExplainPlanRequest {
+  sql_text: string;
+  plan_xml: string;
+  planview_warnings: unknown[];
+  missing_indexes: unknown[];
+  plan_summary?: Record<string, unknown> | null;
+  configuration_context?: AiExplainConfigContext;
+  related_tj_summary?: string | null;
+}
+
+export interface AiPlanHotspot {
+  operator_node_id?: number | null;
+  operator_type: string;
+  severity: PlanSeverity;
+  what: string;
+  why: string;
+  what_to_do: string;
+}
+
+export interface AiPlanRecommendation {
+  category: "index" | "query_rewrite" | "config" | "stats";
+  title: string;
+  description: string;
+  impact_estimate: "Critical" | "High" | "Medium" | "Low";
+}
+
+export interface AiPlanSuggestedIndex {
+  table: string;
+  columns: string[];
+  include: string[];
+  rationale: string;
+  impact_estimate: "Critical" | "High" | "Medium" | "Low";
+}
+
+export interface AiExplainPlanResponse {
+  summary: string;
+  overall_severity: PlanSeverity;
+  hotspots: AiPlanHotspot[];
+  recommendations: AiPlanRecommendation[];
+  suggested_indexes: AiPlanSuggestedIndex[];
+  model_used: string;
+  duration_ms: number;
+  plan_truncated: boolean;
 }
 
 export function cabinetUrl(path = "/"): string {
