@@ -462,9 +462,25 @@ function setContentsUsingXslt(container, xml, xslt) {
         var parser = new DOMParser();
         var xsltProcessor = new XSLTProcessor();
         xsltProcessor.importStylesheet(parser.parseFromString(xslt, "text/xml"));
-        var result = xsltProcessor.transformToFragment(parser.parseFromString(xml, "text/xml"), document);
+        var xmlDoc = parser.parseFromString(xml, "text/xml");
         container.innerHTML = "";
-        container.appendChild(result);
+        // Optimyzer patch (Sprint 7): Chromium/WebView2 issue — transformToFragment
+        // часто возвращает пустой DocumentFragment из-за strict namespace handling.
+        // Fallback на transformToDocument — даёт полный <html> документ, забираем
+        // body.children и копируем их в container.
+        var fragment = xsltProcessor.transformToFragment(xmlDoc, document);
+        if (fragment && fragment.childNodes && fragment.childNodes.length > 0) {
+            container.appendChild(fragment);
+        } else {
+            var doc = xsltProcessor.transformToDocument(xmlDoc);
+            if (doc && doc.body) {
+                while (doc.body.firstChild) {
+                    container.appendChild(doc.body.firstChild);
+                }
+            } else if (doc && doc.documentElement) {
+                container.appendChild(doc.documentElement);
+            }
+        }
     }
 }
 exports.setContentsUsingXslt = setContentsUsingXslt;

@@ -102,7 +102,10 @@ class Settings(BaseSettings):
 
     # --- Sprint 6: Cloud AI orchestration ---
     anthropic_api_key: str = ""
-    ai_model_default: str = "claude-sonnet-4-5-20250929"
+    # На время разработки — Haiku (дешевле, быстрее). Перед merge в prod
+    # поменять на claude-sonnet-4-5-20250929. Override через .env:
+    # AI_MODEL_DEFAULT=claude-sonnet-4-5-20250929
+    ai_model_default: str = "claude-haiku-4-5"
     ai_model_business: str = "claude-opus-4-5-20250929"
     ai_max_tokens: int = 4000
     ai_request_timeout_s: int = 60

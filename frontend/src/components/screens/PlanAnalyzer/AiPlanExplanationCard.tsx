@@ -63,7 +63,7 @@ export function AiPlanExplanationCard({ response, loading, error }: Props) {
         </div>
         <div className={styles.loading}>
           <div className={styles.spinner} />
-          <div>Claude Sonnet 4.5 анализирует план запроса…</div>
+          <div>AI анализирует план запроса…</div>
         </div>
       </div>
     );
@@ -92,9 +92,6 @@ export function AiPlanExplanationCard({ response, loading, error }: Props) {
         <div className={styles.meta}>
           <span className={`${styles.severityBadge} ${SEV_CLASS[response.overall_severity]}`}>
             {SEV_LABEL[response.overall_severity]}
-          </span>
-          <span>
-            {response.model_used} · {response.duration_ms} мс
           </span>
         </div>
       </div>
