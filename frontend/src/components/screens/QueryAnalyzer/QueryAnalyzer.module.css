@@ -161,11 +161,38 @@
 .findingsCol {
   display: flex;
   flex-direction: column;
-  background: var(--o-panel);
+  gap: 12px;
+  background: transparent;
+  overflow: auto;
+  min-height: 0;
+  padding: 0 4px;
+}
+
+.aiSlot {
+  margin-top: 0;
+}
+
+.legacyFindings {
+  margin-top: 4px;
   border: 1px solid var(--o-border);
   border-radius: var(--o-radius-md);
-  overflow: hidden;
-  min-height: 0;
+  background: var(--o-panel);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.legacyFindings > summary {
+  cursor: pointer;
+  color: var(--o-text-3);
+  padding: 6px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.legacyFindings > summary:hover {
+  color: var(--o-text-1);
 }
 
 .findingsHead {

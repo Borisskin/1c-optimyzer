@@ -215,7 +215,67 @@ export const cloud = {
       }),
     });
   },
+
+  // Sprint 6 Phase D — AI structured explanation поверх bsl-LS diagnostics.
+  // Sprint 6 endpoint работает без auth (localhost dev mode); Phase 1 INFRA
+  // позже добавит JWT, caching, multi-model routing.
+  async aiExplain(payload: AiExplainRequest, token?: string | null): Promise<AiExplainResponse> {
+    return request<AiExplainResponse>("/v1/ai/explain", {
+      method: "POST",
+      token: token ?? undefined,
+      body: JSON.stringify(payload),
+    });
+  },
 };
+
+// ---------- Sprint 6 — AI types ----------
+
+export interface AiExplainDiagnosticInput {
+  code: string;
+  message: string;
+  severity: "Blocker" | "Critical" | "Major" | "Minor" | "Info";
+  range_start_line: number;
+  range_start_char: number;
+  range_end_line: number;
+  range_end_char: number;
+  snippet: string;
+}
+
+export interface AiExplainConfigContext {
+  mdo_types_used?: string[];
+  tabular_sections_used?: string[];
+  registers_used?: string[];
+}
+
+export interface AiExplainRequest {
+  query_sdbl: string;
+  diagnostics: AiExplainDiagnosticInput[];
+  configuration_context?: AiExplainConfigContext;
+  related_tj_summary?: string | null;
+}
+
+export interface AiIssueExplanation {
+  title: string;
+  severity: "Blocker" | "Critical" | "Major" | "Minor" | "Info";
+  what: string;
+  why: string;
+  what_to_do: string;
+  linked_diagnostic_codes: string[];
+}
+
+export interface AiSuggestedRewrite {
+  available: boolean;
+  sdbl?: string | null;
+  reasoning?: string | null;
+}
+
+export interface AiExplainResponse {
+  explanation_summary: string;
+  issues: AiIssueExplanation[];
+  suggested_rewrite: AiSuggestedRewrite;
+  model_used: string;
+  duration_ms: number;
+}
 
 export function cabinetUrl(path = "/"): string {
   // В проде это account.optimyzer.pro. В dev — vite сервер на :5173.

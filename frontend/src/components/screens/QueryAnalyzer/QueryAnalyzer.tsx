@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { backend, type QAAnalyzeResult, type QAFinding, type QARewriteResult, type QAStatus } from "@/api/backend";
+import {
+  backend,
+  type BslLsAnalyzeResult,
+  type QAAnalyzeResult,
+  type QAFinding,
+  type QARewriteResult,
+  type QAStatus,
+} from "@/api/backend";
+import { cloud, type AiExplainResponse } from "@/api/cloud";
 import { t, format } from "@/i18n/ru";
 import { useAppStore } from "@/store/appStore";
 import { QueryEditor, type QueryEditorHandle } from "./QueryEditor";
@@ -7,6 +15,8 @@ import { FindingsList } from "./FindingsList";
 import { RewriteDiff } from "./RewriteDiff";
 import { ConfigurationBadge } from "./ConfigurationBadge";
 import { ConfigurationDialog } from "./ConfigurationDialog";
+import { BslLsFindings } from "./BslLsFindings";
+import { AiExplanationCard } from "./AiExplanationCard";
 import styles from "./QueryAnalyzer.module.css";
 
 export function QueryAnalyzerScreen() {
@@ -21,6 +31,12 @@ export function QueryAnalyzerScreen() {
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const editorRef = useRef<QueryEditorHandle | null>(null);
   const configStatus = useAppStore((s) => s.configurationStatus);
+
+  // Sprint 6 — bsl-language-server + cloud AI state.
+  const [bslLsResult, setBslLsResult] = useState<BslLsAnalyzeResult | null>(null);
+  const [aiResult, setAiResult] = useState<AiExplainResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const refreshAnalyzerStatus = useCallback(() => {
     backend.queryAnalyzerStatus().then(setStatus).catch(() => setStatus(null));
@@ -47,15 +63,63 @@ export function QueryAnalyzerScreen() {
     setRewriteResult(null);
     setSelectedFinding(null);
     setAnalyzing(true);
+    setBslLsResult(null);
+    setAiResult(null);
+    setAiError(null);
     try {
-      const r = await backend.queryAnalyzerAnalyze(text);
-      setResult(r);
-    } catch (e) {
-      setError(String(e));
+      // Sprint 6: запускаем legacy regex-валидатор + bsl-LS параллельно.
+      const [legacy, bslLs] = await Promise.allSettled([
+        backend.queryAnalyzerAnalyze(text),
+        backend.bslLsAnalyze(text),
+      ]);
+      if (legacy.status === "fulfilled") {
+        setResult(legacy.value);
+      } else {
+        setError(String(legacy.reason));
+      }
+      if (bslLs.status === "fulfilled") {
+        setBslLsResult(bslLs.value);
+        // Sprint 6: автоматический AI explain если есть grouped diagnostics.
+        if (bslLs.value.ok && bslLs.value.grouped && bslLs.value.grouped.length > 0) {
+          void requestAiExplanation(text, bslLs.value);
+        }
+      } else {
+        setBslLsResult({ ok: false, error: "bsl_ls_unavailable", details: String(bslLs.reason) });
+      }
     } finally {
       setAnalyzing(false);
     }
   }, [text]);
+
+  const requestAiExplanation = useCallback(
+    async (sdbl: string, bsl: BslLsAnalyzeResult) => {
+      if (!bsl.diagnostics) return;
+      setAiLoading(true);
+      setAiError(null);
+      try {
+        const ai = await cloud.aiExplain({
+          query_sdbl: sdbl,
+          diagnostics: bsl.diagnostics.map((d) => ({
+            code: d.code,
+            message: d.message,
+            severity: d.severity,
+            range_start_line: d.range.start.line,
+            range_start_char: d.range.start.character,
+            range_end_line: d.range.end.line,
+            range_end_char: d.range.end.character,
+            snippet: d.snippet ?? "",
+          })),
+          configuration_context: undefined,
+        });
+        setAiResult(ai);
+      } catch (e) {
+        setAiError(String(e));
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [],
+  );
 
   const onClear = useCallback(() => {
     setText("");
@@ -63,7 +127,28 @@ export function QueryAnalyzerScreen() {
     setRewriteResult(null);
     setError(null);
     setSelectedFinding(null);
+    setBslLsResult(null);
+    setAiResult(null);
+    setAiError(null);
   }, []);
+
+  const onAcceptRewrite = useCallback(
+    (sdbl: string) => {
+      setText(sdbl);
+      // Clear previous results — new query needs fresh analysis.
+      setResult(null);
+      setBslLsResult(null);
+      setAiResult(null);
+    },
+    [],
+  );
+
+  const onJumpToRange = useCallback(
+    (startLine: number, startChar: number, endLine: number, endChar: number) => {
+      editorRef.current?.scrollToRange(startLine, startChar, endLine, endChar);
+    },
+    [],
+  );
 
   const onRewrite = useCallback(async () => {
     if (!result || !text.trim()) return;
@@ -154,15 +239,44 @@ export function QueryAnalyzerScreen() {
         </div>
 
         <div className={styles.findingsCol}>
-          <div className={styles.findingsHead}>{t.queryAnalyzer.findingsTitle}</div>
-          {result && (
-            <FindingsList
-              findings={findings}
-              selectedRuleId={selectedFinding?.rule_id ?? null}
-              onSelect={onFindingSelect}
+          {/* Sprint 6: bsl-language-server findings (главный premium-feature) */}
+          {(bslLsResult || analyzing) && (
+            <BslLsFindings
+              result={bslLsResult}
+              loading={analyzing}
+              onSelectRange={onJumpToRange}
             />
           )}
-          {!result && <div className={styles.findingsEmpty}>—</div>}
+
+          {/* Sprint 6: AI structured explanation от Claude Sonnet */}
+          {(aiResult || aiLoading || aiError) && (
+            <div className={styles.aiSlot}>
+              <AiExplanationCard
+                response={aiResult}
+                loading={aiLoading}
+                error={aiError}
+                onAcceptRewrite={onAcceptRewrite}
+              />
+            </div>
+          )}
+
+          {/* Sprint 4 legacy regex findings (secondary, для backwards compat) */}
+          {result && findings.length > 0 && (
+            <details className={styles.legacyFindings}>
+              <summary>{t.queryAnalyzer.findingsTitle} (regex-валидатор)</summary>
+              <FindingsList
+                findings={findings}
+                selectedRuleId={selectedFinding?.rule_id ?? null}
+                onSelect={onFindingSelect}
+              />
+            </details>
+          )}
+
+          {!result && !bslLsResult && !analyzing && (
+            <div className={styles.findingsEmpty}>
+              Вставьте SDBL запрос и нажмите «Анализировать»
+            </div>
+          )}
         </div>
       </div>
 

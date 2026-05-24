@@ -1,0 +1,261 @@
+.card {
+  background: linear-gradient(135deg, #fff 0%, #f0f9ff 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #bae6fd;
+}
+
+.title {
+  font-weight: 700;
+  color: #075985;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.meta {
+  font-size: 11px;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #0ea5e9;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorBox {
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+}
+
+.errorTitle {
+  font-weight: 600;
+  color: #b91c1c;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.errorDetail {
+  font-size: 12px;
+  color: #7f1d1d;
+  font-family: var(--font-mono, monospace);
+}
+
+.summary {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #0f172a;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(186, 230, 253, 0.3);
+  border-radius: 6px;
+}
+
+.issues {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.issue {
+  border: 1px solid #e0f2fe;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.issueHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f0f9ff;
+}
+
+.issueHeader:hover {
+  background: #e0f2fe;
+}
+
+.issueTitle {
+  flex: 1;
+  font-weight: 600;
+  color: #075985;
+  font-size: 13px;
+}
+
+.expandIcon {
+  font-size: 18px;
+  color: #64748b;
+  font-weight: 700;
+  width: 16px;
+  text-align: center;
+}
+
+.issueBody {
+  padding: 10px 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.fieldLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.fieldText {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.sevBadge {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+
+.sevBlocker {
+  background: #fef2f2;
+  color: #7f1d1d;
+  border-color: #fecaca;
+}
+
+.sevCritical {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+
+.sevMajor {
+  background: #fefce8;
+  color: #854d0e;
+  border-color: #fde68a;
+}
+
+.sevMinor {
+  background: #f0f9ff;
+  color: #075985;
+  border-color: #bae6fd;
+}
+
+.sevInfo {
+  background: #f8fafc;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.linkedCodes {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.linkedChip {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  padding: 1px 5px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  color: #475569;
+}
+
+.rewrite {
+  margin-top: 10px;
+  border: 1px solid #99f6e4;
+  border-radius: 6px;
+  background: #f0fdfa;
+  overflow: hidden;
+}
+
+.rewriteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #ccfbf1;
+}
+
+.rewriteTitle {
+  font-weight: 600;
+  color: #0f766e;
+  font-size: 13px;
+}
+
+.acceptBtn {
+  background: #0ea5a4;
+  color: #fff;
+  border: none;
+  padding: 4px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.acceptBtn:hover {
+  background: #0d9488;
+}
+
+.rewriteCode {
+  margin: 0;
+  padding: 12px 14px;
+  background: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: #134e4a;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.rewriteReasoning {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #115e59;
+  border-top: 1px solid #99f6e4;
+  background: rgba(204, 251, 241, 0.5);
+}

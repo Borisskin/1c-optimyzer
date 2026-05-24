@@ -25,14 +25,12 @@ export const NAV_ITEMS: NavItem[] = [
   // ----- ANALYZE -----
   { id: "operations",     label: t.sidebar.items.operations,     icon: "Layers",        group: "analyze", enabled: true, shortcut: "Ctrl+1" },
   { id: "sql",            label: t.sidebar.items.sql,            icon: "Terminal",      group: "analyze", enabled: true, shortcut: "Ctrl+2" },
-  // Hidden until Sprint 6: «Анализ запроса» (Query Analyzer) скрыт из
-  // Sidebar до момента, когда у нас будет полноценный SDBL parser со
-  // scope tracking и type chasing. Текущий regex-based валидатор даёт
-  // false positives на запросах типовых конфигураций (ПустаяСсылка,
-  // стандартные реквизиты разных типов объектов, цепочки .Поле.Поле,
-  // подзапросы, JOIN с регистрами). См. docs/UI_INVENTORY_2026_05.md
-  // раздел «Query Analyzer: Sprint 6 reintroduction plan».
-  // { id: "query-analyzer", label: t.sidebar.items.queryAnalyzer,  icon: "Code",          group: "analyze", enabled: true, shortcut: "Ctrl+Q" },
+  // Sprint 6 — восстановлен из hidden через интеграцию с bsl-language-server
+  // (LGPL-3.0, 19 SDBL диагностик с полной MDO type resolution). Старый
+  // regex-валидатор остался как secondary, главный источник — bsl-LS sidecar.
+  // Cloud AI (Claude Sonnet 4.5) — structured explanation поверх диагностик.
+  // См. docs/sales_sprint/SPRINT_6_PROMT.md.
+  { id: "query-analyzer", label: t.sidebar.items.queryAnalyzer,  icon: "Code",          group: "analyze", enabled: true, shortcut: "Ctrl+Q" },
   { id: "slow-queries",   label: t.sidebar.items.slowQueries,    icon: "Database",      group: "analyze", enabled: true, shortcut: "Ctrl+3" },
   { id: "locks",          label: t.sidebar.items.locksView,      icon: "Lock",          group: "analyze", enabled: true, shortcut: "Ctrl+4" },
   { id: "process-roles",  label: t.sidebar.items.processRoles,   icon: "Cluster",       group: "analyze", enabled: true, shortcut: "Ctrl+5" },

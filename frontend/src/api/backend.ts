@@ -362,7 +362,73 @@ export interface SessionAnatomyResult {
   top_sql: SubTable;
 }
 
-// Sprint 4 — Query Analyzer
+// Sprint 6 — bsl-language-server adapter
+export type BslLsSeverity = "Blocker" | "Critical" | "Major" | "Minor" | "Info";
+
+export interface BslLsPosition {
+  line: number;
+  character: number;
+}
+
+export interface BslLsRange {
+  start: BslLsPosition;
+  end: BslLsPosition;
+}
+
+export interface BslLsDiagnostic {
+  code: string;
+  code_description_href: string | null;
+  message: string;
+  range: BslLsRange;
+  severity: BslLsSeverity;
+  source: string;
+  tags: string[];
+  snippet: string | null;
+}
+
+export interface BslLsDiagnosticGroup {
+  range: BslLsRange;
+  severity: BslLsSeverity;
+  codes: string[];
+  messages: string[];
+  snippet: string | null;
+  primary: BslLsDiagnostic;
+}
+
+export interface BslLsAnalyzeResult {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  hint?: string;
+  diagnostics?: BslLsDiagnostic[];
+  grouped?: BslLsDiagnosticGroup[];
+  parse_success?: boolean;
+  analysis_duration_ms?: number;
+  bsl_ls_version?: string;
+  configuration_root?: string | null;
+  configuration_connected?: boolean;
+}
+
+export interface BslLsStatus {
+  ok: boolean;
+  binaries_available: boolean;
+  binaries_source: string | null;
+  binaries_error: string | null;
+  configuration_connected: boolean;
+  configuration_root: string | null;
+  configuration_info: {
+    name: string;
+    synonym_ru: string;
+    vendor: string;
+    version: string;
+    source_path: string;
+    indexed_at: string;
+    object_count: number;
+  } | null;
+  bsl_ls_version: string;
+}
+
+// Sprint 4 — Query Analyzer (legacy regex-based, остаётся как secondary)
 export interface QAFinding {
   source: "native" | "bsl-language-server";
   rule_id: string;
@@ -594,6 +660,11 @@ export const backend = {
     force_refresh = false,
   ) => rpc<QARewriteResult>("query_analyzer.rewrite", { query_text, findings, force_refresh }),
   queryAnalyzerStatus: () => rpc<QAStatus>("query_analyzer.status"),
+
+  // Sprint 6 — bsl-language-server adapter (production-grade SDBL analyzer)
+  bslLsAnalyze: (query_sdbl: string, enabled_rules?: string[]) =>
+    rpc<BslLsAnalyzeResult>("bsl_ls.analyze", { query_sdbl, enabled_rules }),
+  bslLsStatus: () => rpc<BslLsStatus>("bsl_ls.status"),
 
   // Sprint 5 — Configuration metadata
   configurationConnect: (path: string) =>
