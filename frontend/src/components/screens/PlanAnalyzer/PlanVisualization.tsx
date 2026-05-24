@@ -38,11 +38,16 @@ export function PlanVisualization({ planXml, onError }: Props) {
     let cancelled = false;
     el.innerHTML = "";
     setError(null);
+    // Strip UTF-8 BOM (0xFEFF) если есть — Tauri fs::read_to_string иногда
+        // его не убирает, а DOMParser в некоторых WebView версиях из-за BOM
+        // тихо отдаёт пустой документ → XSLT возвращает пустоту → visualization
+        // пустая. Лучше всегда чистить.
+    const cleanXml = planXml.charCodeAt(0) === 0xfeff ? planXml.slice(1) : planXml;
     loadQP()
       .then((QP) => {
         if (cancelled) return;
         try {
-          QP.showPlan(el, planXml, { jsTooltips: true });
+          QP.showPlan(el, cleanXml, { jsTooltips: true });
           // Sanity check — если XSLT отдал пустоту, дадим юзеру понять.
           if (el.children.length === 0) {
             throw new Error(

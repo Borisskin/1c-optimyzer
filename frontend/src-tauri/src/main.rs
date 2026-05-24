@@ -75,6 +75,11 @@ fn read_plan_text_file(path: String) -> Result<String, String> {
     let mut file = std::fs::File::open(p).map_err(|e| format!("open: {e}"))?;
     let mut buf = String::with_capacity(meta.len() as usize);
     file.read_to_string(&mut buf).map_err(|e| format!("read: {e}"))?;
+    // Strip UTF-8 BOM если есть — SSMS экспортирует .sqlplan с BOM,
+    // DOMParser в WebView2 на BOM иногда тихо возвращает пустой документ.
+    if buf.starts_with('\u{FEFF}') {
+        buf.drain(..'\u{FEFF}'.len_utf8());
+    }
     Ok(buf)
 }
 

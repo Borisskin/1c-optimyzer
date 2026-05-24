@@ -14,8 +14,11 @@
  * Файлы лежат в frontend/public/vendor/{qp.js,qp.css,qp_icons.png}.
  * Бамп `?v=N` при патче qp.js — для инвалидации browser cache.
  */
-const QP_SCRIPT_URL = "/vendor/qp.js?v=5";
-const QP_STYLE_URL = "/vendor/qp.css?v=1";
+// Версия в имени файла (не query) — WebView2 агрессивно кеширует /vendor/qp.js
+// на disk, и ?v=N может быть проигнорирован. Меняем path → cache miss гарантирован.
+// При обновлении qp.js / qp.css или patch'е — бамп: qp.v6.js → qp.v7.js.
+const QP_SCRIPT_URL = "/vendor/qp.v6.js";
+const QP_STYLE_URL = "/vendor/qp.v2.css";
 
 interface QPGlobal {
   showPlan: (
@@ -27,45 +30,62 @@ interface QPGlobal {
 
 let cachedPromise: Promise<QPGlobal> | null = null;
 
-function ensureStylesheet(): void {
+function ensureStylesheet(): Promise<void> {
   const id = "qp-stylesheet";
-  if (document.getElementById(id)) return;
-  const link = document.createElement("link");
-  link.id = id;
-  link.rel = "stylesheet";
-  link.href = QP_STYLE_URL;
-  document.head.appendChild(link);
+  const existing = document.getElementById(id) as HTMLLinkElement | null;
+  if (existing) {
+    // Если link уже есть, ждём что он применён. sheet ≠ null когда CSS загружен.
+    if ((existing as HTMLLinkElement & { sheet: unknown }).sheet) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => resolve(), { once: true });
+    });
+  }
+  return new Promise((resolve) => {
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = QP_STYLE_URL;
+    link.onload = () => resolve();
+    link.onerror = () => resolve(); // не блокируем, даже если CSS не загрузился
+    document.head.appendChild(link);
+  });
 }
 
 export function loadQP(): Promise<QPGlobal> {
   if (cachedPromise) return cachedPromise;
 
-  cachedPromise = new Promise<QPGlobal>((resolve, reject) => {
-    ensureStylesheet();
+  cachedPromise = (async (): Promise<QPGlobal> => {
+    // Сначала ждём CSS — иначе showPlan нарисует невидимые qp-node
+    // (CSS подтянется позже, но showPlan уже завершится).
+    await ensureStylesheet();
 
     const w = window as unknown as Record<string, unknown>;
     if (w.QP && typeof (w.QP as QPGlobal).showPlan === "function") {
-      resolve(w.QP as QPGlobal);
-      return;
+      return w.QP as QPGlobal;
     }
-    const script = document.createElement("script");
-    script.src = QP_SCRIPT_URL;
-    script.async = true;
-    script.onload = () => {
-      const QP = w.QP as QPGlobal | undefined;
-      if (!QP || typeof QP.showPlan !== "function") {
-        reject(
-          new Error(
-            "html-query-plan: window.QP.showPlan not available after script load",
-          ),
-        );
-        return;
-      }
-      resolve(QP);
-    };
-    script.onerror = () =>
-      reject(new Error(`Failed to load ${QP_SCRIPT_URL}`));
-    document.head.appendChild(script);
-  });
+    return new Promise<QPGlobal>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = QP_SCRIPT_URL;
+      script.async = true;
+      script.onload = () => {
+        const QP = w.QP as QPGlobal | undefined;
+        if (!QP || typeof QP.showPlan !== "function") {
+          reject(
+            new Error(
+              "html-query-plan: window.QP.showPlan not available after script load",
+            ),
+          );
+          return;
+        }
+        resolve(QP);
+      };
+      script.onerror = () =>
+        reject(new Error(`Failed to load ${QP_SCRIPT_URL}`));
+      document.head.appendChild(script);
+    });
+  })();
   return cachedPromise;
 }
