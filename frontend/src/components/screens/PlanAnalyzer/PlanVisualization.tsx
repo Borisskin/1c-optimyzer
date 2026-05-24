@@ -2,16 +2,13 @@
  * Sprint 7 Phase B — SSMS-style визуализация execution plan.
  *
  * Wraps html-query-plan v2.6.1 (MIT, Justin Pealing). qp.showPlan рендерит
- * HTML/SVG operator tree с tooltips (cost, rows, IO, predicates). Использует
- * XSLT transformation от SHOWPLAN XML → HTML / SVG.
+ * HTML/SVG operator tree с tooltips. Использует XSLT transformation от
+ * SHOWPLAN XML → HTML / SVG.
  *
- * Загрузка qp.js и qp.css — через qpLoader (см. src/vendor/qpLoader.ts):
- * Vite ESM-импорт qp.js ломает strict-mode `this`, а qp.css из node_modules
- * Vite молча не подключает в lazy chunk. Поэтому грузим оба файла как
- * static assets из public/vendor/.
+ * qp.js и qp.css inline-bundled через qpLoader — никаких external HTTP
+ * requests, никакого WebView2 cache. См. src/vendor/qpLoader.ts.
  *
- * Re-rendering: на каждое изменение planXml — container.innerHTML="" + showPlan,
- * чтобы не аккумулировать узлы дерева в DOM.
+ * Re-rendering: на каждое изменение planXml — container.innerHTML="" + showPlan.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -23,9 +20,18 @@ interface Props {
   onError?: (err: Error) => void;
 }
 
+interface DebugInfo {
+  childrenCount: number;
+  qpRootFound: boolean;
+  qpNodeCount: number;
+  qpNodeBg: string | null;
+  cssLoaded: boolean;
+}
+
 export function PlanVisualization({ planXml, onError }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [debug, setDebug] = useState<DebugInfo | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -33,26 +39,45 @@ export function PlanVisualization({ planXml, onError }: Props) {
     if (!planXml) {
       el.innerHTML = "";
       setError(null);
+      setDebug(null);
       return;
     }
     let cancelled = false;
     el.innerHTML = "";
     setError(null);
-    // Strip UTF-8 BOM (0xFEFF) если есть — Tauri fs::read_to_string иногда
-        // его не убирает, а DOMParser в некоторых WebView версиях из-за BOM
-        // тихо отдаёт пустой документ → XSLT возвращает пустоту → visualization
-        // пустая. Лучше всегда чистить.
-    const cleanXml = planXml.charCodeAt(0) === 0xfeff ? planXml.slice(1) : planXml;
+    setDebug(null);
+    // Strip UTF-8 BOM (0xFEFF). SSMS экспортирует .sqlplan с BOM, DOMParser
+    // в некоторых WebView версиях на BOM тихо отдаёт пустой документ.
+    const cleanXml =
+      planXml.charCodeAt(0) === 0xfeff ? planXml.slice(1) : planXml;
     loadQP()
       .then((QP) => {
         if (cancelled) return;
         try {
           QP.showPlan(el, cleanXml, { jsTooltips: true });
-          // Sanity check — если XSLT отдал пустоту, дадим юзеру понять.
+          const qpRoot = el.querySelector(".qp-root");
+          const qpNode = el.querySelector(".qp-node") as HTMLElement | null;
+          const cs = qpNode ? window.getComputedStyle(qpNode) : null;
+          const info: DebugInfo = {
+            childrenCount: el.children.length,
+            qpRootFound: !!qpRoot,
+            qpNodeCount: el.querySelectorAll(".qp-node").length,
+            qpNodeBg: cs?.backgroundColor ?? null,
+            cssLoaded:
+              cs?.backgroundColor === "rgb(255, 255, 204)" ||
+              cs?.backgroundColor === "#FFFFCC",
+          };
+          setDebug(info);
           if (el.children.length === 0) {
             throw new Error(
-              "XSLT не сгенерировал visualization. Проверьте что plan XML " +
-                "содержит правильный namespace и SHOWPLAN structure.",
+              "showPlan не положил ни одного child в container. " +
+                "XSLT вернул пустоту — возможно XML не SHOWPLAN или сломан.",
+            );
+          }
+          if (!qpRoot) {
+            throw new Error(
+              `showPlan создал ${el.children.length} children, но .qp-root не найден. ` +
+                "XSLT template не подошёл к XML.",
             );
           }
         } catch (e) {
@@ -63,7 +88,7 @@ export function PlanVisualization({ planXml, onError }: Props) {
       })
       .catch((e: Error) => {
         if (cancelled) return;
-        setError(e.message);
+        setError(`loadQP failed: ${e.message}`);
         onError?.(e);
       });
     return () => {
@@ -84,6 +109,13 @@ export function PlanVisualization({ planXml, onError }: Props) {
       <div className={styles.errorBox}>
         <div className={styles.errorTitle}>Не удалось отрендерить визуализацию</div>
         <div className={styles.errorDetail}>{error}</div>
+        {debug && (
+          <div className={styles.errorDetail} style={{ marginTop: 8 }}>
+            children={debug.childrenCount}, qp-root={debug.qpRootFound ? "✓" : "✗"},
+            nodes={debug.qpNodeCount}, bg={debug.qpNodeBg ?? "none"},
+            css={debug.cssLoaded ? "✓" : "✗"}
+          </div>
+        )}
       </div>
     );
   }
@@ -92,6 +124,22 @@ export function PlanVisualization({ planXml, onError }: Props) {
     <div className={styles.container}>
       <div className={styles.title}>Визуализация плана (SSMS-style)</div>
       <div ref={containerRef} className={styles.viz} />
+      {/* Видимая диагностика — если что-то нерпавильно, юзер сразу видит */}
+      {debug && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: "4px 8px",
+            fontSize: 10,
+            color: "#94a3b8",
+            fontFamily: "monospace",
+            opacity: 0.6,
+          }}
+        >
+          dbg: children={debug.childrenCount}, qp-root={debug.qpRootFound ? "✓" : "✗"},
+          nodes={debug.qpNodeCount}, css={debug.cssLoaded ? "✓" : "✗"}, bg={debug.qpNodeBg}
+        </div>
+      )}
     </div>
   );
 }
