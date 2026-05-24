@@ -21,7 +21,10 @@ interface Props {
 export function ErrorsFeedScreen({ archiveId }: Props) {
   const filters = useAppStore((s) => s.filters);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
-  const [contextPresence, setContextPresence] = useState<ContextPresenceFilter>("any");
+  // По умолчанию «есть контекст» — обычно интересны именно бизнес-операции
+  // с контекстом, а не безконтекстный системный трафик 1С. Юзер всегда может
+  // переключить на «все» или «нет» через ContextFilter в шапке таблицы.
+  const [contextPresence, setContextPresence] = useState<ContextPresenceFilter>("with");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [limit, setLimit] = useState(500);
   // Фильтр по event_type — server-side. Это критично: при limit=10000 редкий

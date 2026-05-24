@@ -10,7 +10,7 @@
  * Phase C добавит AiPlanExplanationCard поверх warnings (Claude Sonnet 4.5).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   backend,
@@ -102,6 +102,21 @@ export function PlanAnalyzerScreen() {
   // если textPlan != null → render text view, иначе → render XML viz+stats.
   const [textPlan, setTextPlan] = useState<TextPlanState | null>(null);
   const pushToast = useAppStore((s) => s.pushToast);
+
+  // Sprint 7 Phase D fix — scroll to result после клика по плану из ТЖ.
+  // Список планов длинный (200 rows), без scroll юзер не видит что плана
+  // импортировался — выглядит как «ничего не происходит».
+  const resultAreaRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (textPlan && resultAreaRef.current) {
+      resultAreaRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [textPlan]);
+  useEffect(() => {
+    if (result && resultAreaRef.current) {
+      resultAreaRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [result]);
 
   // Status check — на mount узнаём доступен ли planview.exe.
   useEffect(() => {
@@ -339,7 +354,7 @@ export function PlanAnalyzerScreen() {
             визуализации (XSLT тоже нет), warnings/missing_indexes — пустые.
             Показываем только AI + PlanTextView + sql_text карточкой. */}
         {textPlan && (
-          <div className={styles.resultArea}>
+          <div className={styles.resultArea} ref={resultAreaRef}>
             <AiPlanExplanationCard
               response={aiResponse}
               loading={aiLoading}
@@ -364,7 +379,7 @@ export function PlanAnalyzerScreen() {
         )}
 
         {!textPlan && result && summary && (
-          <div className={styles.resultArea}>
+          <div className={styles.resultArea} ref={resultAreaRef}>
             {/* AI explanation — idle с кнопкой пока юзер не запросил */}
             {planXmlForViz && (
               <AiPlanExplanationCard
@@ -446,7 +461,12 @@ export function PlanAnalyzerScreen() {
           </div>
         )}
 
-        {!result && !error && !busy && (
+        {/* Empty state скрывается когда уже есть импортированный план в любом виде:
+            - textPlan (text-формат из ТЖ) — иначе после клика по строке списка
+              виден импортированный план ВВЕРХУ + дублирующая «Импортируйте план»
+              ВНИЗУ → юзер думает что ничего не произошло
+            - result (XML-формат от PerformanceStudio) — то же поведение */}
+        {!result && !textPlan && !error && !busy && (
           <div className={styles.empty}>
             <div className={styles.emptyIcon}>
               <Icon name="FileBarChart" size={28} color="var(--o-text-mute)" />
