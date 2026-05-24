@@ -330,6 +330,33 @@ class ConfigurationMetadataStore:
                 (key, value),
             )
 
+    def get_source_path(self) -> Path | None:
+        """Sprint 6 Phase C: путь к XML конфигурации для bsl-LS configurationRoot.
+
+        Возвращает Path к корню индексированной XML выгрузки (`C:\\BUFFER\\SCHEME` и т.п.)
+        или None если выгрузка не подключена / путь не существует.
+        """
+        raw = self.get_meta("source_path")
+        if not raw:
+            return None
+        path = Path(raw)
+        if not path.is_dir():
+            # Путь сохранён но папка удалена/перемещена — graceful degradation
+            return None
+        return path
+
+    def get_configuration_info(self) -> dict[str, str]:
+        """Sprint 6 Phase C: метаданные подключённой конфы для UI badge."""
+        return {
+            "name": self.get_meta("config_name") or "",
+            "synonym_ru": self.get_meta("config_synonym_ru") or "",
+            "vendor": self.get_meta("config_vendor") or "",
+            "version": self.get_meta("config_version") or "",
+            "source_path": self.get_meta("source_path") or "",
+            "indexed_at": self.get_meta("indexed_at") or "",
+            "object_count": self.count_objects(),
+        }
+
     # ---- stats / counts ----
 
     def is_indexed(self) -> bool:

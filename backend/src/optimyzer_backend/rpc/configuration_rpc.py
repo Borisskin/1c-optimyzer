@@ -67,6 +67,10 @@ def configuration_connect_rpc(path: str) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
+    # Sprint 6 Phase C: уведомить bsl-LS sidecar о новом configurationRoot.
+    # No-op если JVM ещё не запущена (configRoot применится при первом analyze).
+    _notify_bsl_ls_configuration_changed()
+
     return {
         "ok": True,
         "status": result["status"],
@@ -76,6 +80,16 @@ def configuration_connect_rpc(path: str) -> dict[str, Any]:
         "indexed_at": store.get_meta("indexed_at") or "",
         "source_path": str(p),
     }
+
+
+def _notify_bsl_ls_configuration_changed() -> None:
+    """Триггерит bsl_ls.reload_configuration если bsl-LS подключён."""
+    try:
+        from optimyzer_backend.rpc.bsl_ls_rpc import reload_configuration_rpc
+
+        reload_configuration_rpc()
+    except Exception:  # noqa: BLE001 — никогда не ломаем connect из-за reload
+        pass
 
 
 @rpc("configuration.status")
