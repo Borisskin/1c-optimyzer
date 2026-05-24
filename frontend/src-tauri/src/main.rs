@@ -46,6 +46,38 @@ fn classify_path(path: String) -> Result<serde_json::Value, String> {
     Ok(serde_json::json!({ "kind": kind }))
 }
 
+/// Sprint 7 Phase B — читает содержимое .sqlplan файла как UTF-8 string.
+///
+/// Используется PlanAnalyzer screen для передачи raw XML в
+/// html-query-plan visualization. Tauri fs plugin scope в default не
+/// разрешает чтение произвольных путей, поэтому удобнее иметь явный
+/// command (юзер уже выбрал файл через dialog — путь доверенный).
+///
+/// Safety: для произвольного path читаем максимум 32 МБ — для защиты
+/// от случайной попытки прочитать большой бинарь.
+#[tauri::command]
+fn read_plan_text_file(path: String) -> Result<String, String> {
+    use std::io::Read;
+    const MAX_BYTES: u64 = 32 * 1024 * 1024;
+
+    let p = std::path::Path::new(&path);
+    if !p.is_file() {
+        return Err(format!("file not found: {path}"));
+    }
+    let meta = std::fs::metadata(p).map_err(|e| format!("metadata: {e}"))?;
+    if meta.len() > MAX_BYTES {
+        return Err(format!(
+            "file too large: {} bytes (max {})",
+            meta.len(),
+            MAX_BYTES
+        ));
+    }
+    let mut file = std::fs::File::open(p).map_err(|e| format!("open: {e}"))?;
+    let mut buf = String::with_capacity(meta.len() as usize);
+    file.read_to_string(&mut buf).map_err(|e| format!("read: {e}"))?;
+    Ok(buf)
+}
+
 #[derive(serde::Serialize)]
 struct BslLsPaths {
     java_executable: String,
@@ -135,7 +167,8 @@ fn main() {
             sidecar_status,
             classify_path,
             get_bsl_ls_paths,
-            get_planview_path
+            get_planview_path,
+            read_plan_text_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

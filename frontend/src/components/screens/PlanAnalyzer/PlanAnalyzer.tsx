@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   backend,
   type PlanAnalysisResult,
@@ -24,6 +25,7 @@ import { PlanImport } from "./PlanImport";
 import { PlanWarnings } from "./PlanWarnings";
 import { MissingIndexes } from "./MissingIndexes";
 import { PlanStats } from "./PlanStats";
+import { PlanVisualization } from "./PlanVisualization";
 import styles from "./PlanAnalyzer.module.css";
 
 export function PlanAnalyzerScreen() {
@@ -64,12 +66,16 @@ export function PlanAnalyzerScreen() {
       setBusy(true);
       setError(null);
       try {
-        const resp = await backend.planAnalyzerAnalyzeFile(filePath);
-        // Имя файла из path (последний segment).
+        // Параллельно: backend analyze + tauri read file.
+        // analyze идёт через PerformanceStudio (warnings + missing_indexes),
+        // raw XML нужен для html-query-plan visualization (Phase B).
+        // read_plan_text_file — custom Tauri command в main.rs (Phase B).
+        const [resp, rawXml] = await Promise.all([
+          backend.planAnalyzerAnalyzeFile(filePath),
+          invoke<string>("read_plan_text_file", { path: filePath }).catch(() => null),
+        ]);
         const name = filePath.split(/[\\/]/).pop() ?? filePath;
-        // Для Phase B visualization нужен plan XML — читаем файл через
-        // Tauri fs plugin. Пока в Phase A — null, Phase B добавит чтение.
-        handleResponse(resp, name, null);
+        handleResponse(resp, name, rawXml);
         pushToast(format(t.planAnalyzer.fileImportToast, { name }), "info");
       } catch (e) {
         setError(format(t.planAnalyzer.analysisFailed, { detail: String(e) }));
@@ -139,6 +145,9 @@ export function PlanAnalyzerScreen() {
 
         {result && summary && (
           <div className={styles.resultArea}>
+            {/* Phase B: SSMS-style visualization (html-query-plan) */}
+            {planXmlForViz && <PlanVisualization planXml={planXmlForViz} />}
+
             <div className={styles.resultHeader}>
               <div className={styles.resultMeta}>
                 <div className={styles.resultMetaLabel}>{t.planAnalyzer.sourceLabel}</div>
@@ -219,8 +228,6 @@ export function PlanAnalyzerScreen() {
         )}
       </div>
 
-      {/* Phase B placeholder: PlanVisualization будет тут */}
-      {planXmlForViz && <input type="hidden" value={planXmlForViz} />}
     </div>
   );
 }
