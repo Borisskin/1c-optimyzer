@@ -1,10 +1,12 @@
 /**
- * Sprint 7 Phase A — импорт .sqlplan файла или paste plan XML.
+ * Sprint 7 Phase A+D — импорт .sqlplan файла, paste plan XML, или импорт
+ * текстового плана из загруженного архива ТЖ (DBMSSQL.planSQLText).
  *
- * UI: два режима через tabs.
- *   1. "Файл" — Tauri dialog picker (frontend/src-tauri/dragDrop тоже работает,
- *      обрабатывается через listen('tauri://drag-drop') на уровне screen).
- *   2. "XML" — textarea для paste plan XML напрямую.
+ * UI: три режима через tabs.
+ *   1. "Файл" — Tauri dialog picker (XML format → PerformanceStudio CLI + viz)
+ *   2. "XML" — textarea для paste plan XML напрямую (XML format → same)
+ *   3. "Из архива ТЖ" — список DBMSSQL событий из загруженного архива с plan_text
+ *      (text format → пропускаем CLI, только text view + AI explanation)
  */
 
 import { useState } from "react";
@@ -12,16 +14,27 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Icon } from "@/components/icons/Icon";
 import { t } from "@/i18n/ru";
 import styles from "./PlanAnalyzer.module.css";
+import { PlanTjImport } from "./PlanTjImport";
 
-type Tab = "file" | "paste";
+type Tab = "file" | "paste" | "tj";
+
+interface TjPlanPayload {
+  event_id: number;
+  sql_text: string;
+  plan_text: string;
+  ts: string | null;
+  duration_us: number | null;
+  context: string | null;
+}
 
 interface Props {
   onPickFile: (filePath: string) => void;
   onPasteXml: (xml: string) => void;
+  onPickTjPlan: (payload: TjPlanPayload) => void;
   busy: boolean;
 }
 
-export function PlanImport({ onPickFile, onPasteXml, busy }: Props) {
+export function PlanImport({ onPickFile, onPasteXml, onPickTjPlan, busy }: Props) {
   const [tab, setTab] = useState<Tab>("file");
   const [pasteText, setPasteText] = useState("");
   const [pickError, setPickError] = useState<string | null>(null);
@@ -65,9 +78,16 @@ export function PlanImport({ onPickFile, onPasteXml, busy }: Props) {
         >
           {t.planAnalyzer.importTabPaste}
         </button>
+        <button
+          type="button"
+          className={`${styles.tab} ${tab === "tj" ? styles.tabActive : ""}`}
+          onClick={() => setTab("tj")}
+        >
+          Из архива ТЖ
+        </button>
       </div>
 
-      {tab === "file" ? (
+      {tab === "file" && (
         <div className={styles.fileTab}>
           <button
             type="button"
@@ -82,7 +102,9 @@ export function PlanImport({ onPickFile, onPasteXml, busy }: Props) {
           <div className={styles.pickHint}>{t.planAnalyzer.pickFileHint}</div>
           {pickError && <div className={styles.error}>{pickError}</div>}
         </div>
-      ) : (
+      )}
+
+      {tab === "paste" && (
         <div className={styles.pasteTab}>
           <textarea
             className={styles.pasteArea}
@@ -112,6 +134,8 @@ export function PlanImport({ onPickFile, onPasteXml, busy }: Props) {
           </div>
         </div>
       )}
+
+      {tab === "tj" && <PlanTjImport onPick={onPickTjPlan} busy={busy} />}
     </div>
   );
 }

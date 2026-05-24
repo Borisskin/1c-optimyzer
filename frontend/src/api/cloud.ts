@@ -304,7 +304,13 @@ export type PlanSeverity = "Info" | "Warning" | "Critical";
 
 export interface AiExplainPlanRequest {
   sql_text: string;
+  // План в одном из двух форматов: XML (.sqlplan от SSMS) или text (SHOWPLAN_TEXT
+  // от 1С planSQLText). Поле называется plan_xml для backward-compat — в text
+  // режиме сюда передаётся текст плана (сервер смотрит на plan_format чтобы
+  // понять как интерпретировать). См. Sprint 7 ADR-038.
   plan_xml: string;
+  /** "xml" по умолчанию (Phase B/C path), "text" — для Phase D ТЖ import. */
+  plan_format?: "xml" | "text";
   planview_warnings: unknown[];
   missing_indexes: unknown[];
   plan_summary?: Record<string, unknown> | null;

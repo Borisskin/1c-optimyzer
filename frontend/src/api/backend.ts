@@ -640,6 +640,39 @@ export interface PlanAnalyzerStatus {
   rules_count: number;
 }
 
+// Sprint 7 Phase D — TJ archive plan import
+export interface PlanAnalyzerTjItem {
+  event_id: number;
+  ts: string | null;
+  duration_us: number | null;
+  sql_preview: string;
+  plan_size_bytes: number;
+  context: string | null;
+}
+
+export interface PlanAnalyzerTjListResponse {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  items?: PlanAnalyzerTjItem[];
+  total?: number;
+  // false → в архиве нет ни одного события с plan_text. UI показывает
+  // banner с инструкцией про <plan/> в logcfg.xml.
+  has_planSQLText?: boolean;
+}
+
+export interface PlanAnalyzerTjPlanResponse {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  event_id?: number;
+  sql_text?: string;
+  plan_text?: string;
+  ts?: string | null;
+  duration_us?: number | null;
+  context?: string | null;
+}
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -792,6 +825,11 @@ export const backend = {
   planAnalyzerAnalyzeXml: (plan_xml: string, warnings_only = false) =>
     rpc<PlanAnalyzeResponse>("plan_analyzer.analyze_xml", { plan_xml, warnings_only }),
   planAnalyzerStatus: () => rpc<PlanAnalyzerStatus>("plan_analyzer.status"),
+  // Sprint 7 Phase D — импорт планов из загруженного ТЖ архива
+  planAnalyzerListTjPlans: (archive_id: string, limit = 100, offset = 0) =>
+    rpc<PlanAnalyzerTjListResponse>("plan_analyzer.list_tj_plans", { archive_id, limit, offset }),
+  planAnalyzerGetTjPlan: (archive_id: string, event_id: number) =>
+    rpc<PlanAnalyzerTjPlanResponse>("plan_analyzer.get_tj_plan", { archive_id, event_id }),
 
   // Sprint 5 — Configuration metadata
   configurationConnect: (path: string) =>

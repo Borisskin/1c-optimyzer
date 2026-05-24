@@ -119,6 +119,10 @@ class ParsedEvent:
     sql_text: str | None = None
     sql_text_normalized: str | None = None
     sql_text_hash: str | None = None
+    # Sprint 7 Phase D — текстовый план выполнения от 1С (поле planSQLText
+    # в DBMSSQL события ТЖ). Заполнено только если в logcfg.xml добавлен
+    # элемент <plan/> и событие — DBMSSQL. См. docs/onboarding/enable-dbmssql-plans.md
+    plan_text: str | None = None
     rows_read: int | None = None
     rows_modified: int | None = None
     extra: dict[str, Any] = field(default_factory=dict)
@@ -145,6 +149,7 @@ class ParsedEvent:
             self.sql_text,
             self.sql_text_normalized,
             self.sql_text_hash,
+            self.plan_text,
             self.rows_read,
             self.rows_modified,
             _json.dumps(self.extra, ensure_ascii=False) if self.extra else None,
@@ -333,6 +338,7 @@ def interpret(
     sql_text: str | None = None
     sql_norm: str | None = None
     sql_hash: str | None = None
+    plan_text: str | None = None
     rows_read: int | None = None
     rows_modified: int | None = None
 
@@ -340,6 +346,11 @@ def interpret(
         sql_text = f.get("Sql")
         rows_read = _to_int(f.get("Rows"))
         rows_modified = _to_int(f.get("RowsAffected"))
+        # Sprint 7 Phase D — planSQLText появляется в DBMSSQL только если в
+        # logcfg.xml добавлен <plan/> (см. patch-logcfg-for-plans.ps1).
+        # Lexer уже снимает обрамляющие одинарные кавычки и обрабатывает
+        # escape '' внутри значения — приходит чистый текст плана.
+        plan_text = f.get("planSQLText") or None
         if sql_text:
             sql_norm = normalize_sql(sql_text)
             sql_hash = hashlib.blake2b(sql_norm.encode("utf-8"), digest_size=16).hexdigest()
@@ -357,6 +368,7 @@ def interpret(
         "Sql",
         "Rows",
         "RowsAffected",
+        "planSQLText",
     }
     extra = {k: v for k, v in f.items() if k not in known_keys}
 
@@ -375,6 +387,7 @@ def interpret(
         sql_text=sql_text,
         sql_text_normalized=sql_norm,
         sql_text_hash=sql_hash,
+        plan_text=plan_text,
         rows_read=rows_read,
         rows_modified=rows_modified,
         extra=extra,

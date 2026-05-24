@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS events (
     sql_text TEXT,
     sql_text_normalized TEXT,
     sql_text_hash VARCHAR(32),
+    plan_text TEXT,
     rows_read BIGINT,
     rows_modified BIGINT,
     extra JSON,
@@ -64,6 +65,7 @@ EVENT_COLUMNS = [
     "sql_text",
     "sql_text_normalized",
     "sql_text_hash",
+    "plan_text",
     "rows_read",
     "rows_modified",
     "extra",
@@ -105,6 +107,18 @@ def get_active_connection(archive_id: str) -> duckdb.DuckDBPyConnection | None:
 
 
 DEFAULT_BATCH_SIZE = 10_000
+
+
+def _migrate_plan_text(conn: duckdb.DuckDBPyConnection) -> None:
+    """Sprint 7 Phase D — idempotent add column plan_text.
+
+    Существующие архивы (созданные до Sprint 7) не имели этой колонки.
+    Backfill не делаем — старые архивы просто не содержали planSQLText
+    в исходном ТЖ. Новые архивы заполняются парсером tj_parser автоматически.
+    """
+    cols = {row[1] for row in conn.execute("PRAGMA table_info('events')").fetchall()}
+    if "plan_text" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN plan_text TEXT")
 
 
 def _migrate_context_normalized(conn: duckdb.DuckDBPyConnection) -> None:
@@ -219,6 +233,7 @@ class DuckDBStore:
             self._conn = duckdb.connect(str(self.db_path))
             self._conn.execute(SCHEMA_DDL)
             _migrate_context_normalized(self._conn)
+            _migrate_plan_text(self._conn)
             register_active_connection(self.archive_id, self._conn)
         return self._conn
 

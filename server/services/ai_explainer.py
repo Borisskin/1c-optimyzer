@@ -220,17 +220,28 @@ async def explain_query(req: ExplainRequest) -> ExplainResponse:
 
 SYSTEM_PROMPT_EXPLAIN_PLAN = """Ты — эксперт по SQL Server execution plans и производительности 1С:Предприятие на MS SQL Server.
 
-Тебе будет передан SQL запрос, его execution plan в XML, и предупреждения от анализатора PerformanceStudio (Erik Darling Data). Твоя задача — объяснить разработчику 1С (на русском) что не так с этим планом и что конкретно делать.
+Тебе будет передан SQL запрос, его execution plan, и предупреждения от анализатора PerformanceStudio (Erik Darling Data). Твоя задача — объяснить разработчику 1С (на русском) что не так с этим планом и что конкретно делать.
+
+План может быть в одном из двух форматов:
+1. **XML** (SHOWPLAN_XML output) — стандартный SQL Server execution plan format. Полная информация: cost estimates, row estimates, memory grants, operator-level statistics.
+2. **TEXT** (SHOWPLAN_TEXT output от 1С) — текстовое дерево операторов с indentation (например, `|--Clustered Index Seek(...)\n|     Estimated Rows = 100`). Меньше деталей чем в XML: нет cost percentage, нет точных memory чисел, но структура и порядок операторов читаются.
+
+Оба формата представляют одно и то же — план выполнения запроса. Ты должен понять структуру плана независимо от формата и дать одинаковые типы анализа (hotspots, recommendations).
+
+Для TEXT формата:
+- operator_node_id указывай как номер строки в текстовом плане (1-based), если можешь определить — иначе null.
+- В warnings/missing_indexes ничего не будет (PerformanceStudio CLI на text не работает) — анализируй сам структуру плана.
+- Не ссылайся на cost percentage / memory grants / row estimates точными числами если их нет в тексте — говори качественно («дорогая операция», «большой набор данных»).
 
 Контекст 1С: запросы генерирует платформа 1С автоматически из SDBL. Имена таблиц — `_Reference15`, `_Document100`, `_AccumRgT20`. Имена полей — `_Fld1234RRef`, `_Description`, и т.д. Если есть configuration_context — используй mapping чтобы говорить о конкретных объектах 1С (Catalog.Контрагенты вместо _Reference15).
 
 Правила:
 1. Отвечай ТОЛЬКО на русском.
-2. Будь конкретным: ссылайся на конкретные operator node IDs, конкретные числа (cost, rows, memory).
+2. Будь конкретным: ссылайся на конкретные operator node IDs, конкретные числа (cost, rows, memory) когда они доступны.
 3. Не говори «оптимизируй индексы» — говори какие именно индексы и для каких таблиц.
 4. Связывай SDBL-уровень с T-SQL-уровнем где можно.
 5. Если есть missing_indexes от PerformanceStudio — оцени их приоритет и реалистичность.
-6. Если warnings пустые и план дешёвый (estimated_cost < 0.1) — возвращай минимальный hotspots/recommendations и summary «План выглядит хорошо».
+6. Если warnings пустые и план дешёвый (estimated_cost < 0.1 или text короткий с index seek) — возвращай минимальный hotspots/recommendations и summary «План выглядит хорошо».
 
 Формат ответа: строго valid JSON по схеме:
 {
@@ -274,9 +285,9 @@ USER_PROMPT_PLAN_TEMPLATE = """SQL запрос:
 {sql_text}
 ```
 
-Execution plan (XML):
-```xml
-{plan_xml}
+Execution plan (формат: {plan_format}):
+```{plan_format_code_block}
+{plan_content}
 ```
 
 Сводка от PerformanceStudio (агрегированная):
@@ -324,7 +335,16 @@ def _truncate_plan_xml(xml: str) -> tuple[str, bool]:
 
 
 def _build_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
-    truncated_xml, was_truncated = _truncate_plan_xml(req.plan_xml)
+    """Собирает USER prompt для AI с учётом формата плана (XML vs text).
+
+    Returns:
+        (prompt_text, was_truncated) — was_truncated=True если оригинальный
+        план был больше AI_PLAN_MAX_CHARS и обрезан.
+    """
+    truncated_content, was_truncated = _truncate_plan_xml(req.plan_xml)
+    # plan_format задаёт человеческое название и метку code fence для markdown.
+    # text → fence без подсветки (просто моноспейс), xml → fence ```xml```.
+    code_block = "xml" if req.plan_format == "xml" else "text"
     config_str = (
         req.configuration_context.model_dump_json(indent=2)
         if req.configuration_context
@@ -334,7 +354,9 @@ def _build_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
     return (
         USER_PROMPT_PLAN_TEMPLATE.format(
             sql_text=req.sql_text,
-            plan_xml=truncated_xml,
+            plan_format=req.plan_format,
+            plan_format_code_block=code_block,
+            plan_content=truncated_content,
             plan_summary_json=json.dumps(req.plan_summary or {}, ensure_ascii=False, indent=2),
             planview_warnings_json=json.dumps(req.planview_warnings, ensure_ascii=False, indent=2),
             missing_indexes_json=json.dumps(req.missing_indexes, ensure_ascii=False, indent=2),

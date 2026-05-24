@@ -1,0 +1,240 @@
+/**
+ * Sprint 7 Phase D — импорт плана запроса из загруженного архива ТЖ.
+ *
+ * Flow:
+ *   1. Mount → backend.planAnalyzerListTjPlans(archive_id) → list событий
+ *   2. Юзер кликает строку → backend.planAnalyzerGetTjPlan(archive_id, event_id)
+ *      → передаём sql_text + plan_text родителю через onPick
+ *   3. Родитель показывает PlanTextView (D.6) + AI explanation
+ *
+ * Edge cases:
+ *   - Нет архива в appStore → empty state «Загрузите архив ТЖ через TopBar»
+ *   - Архив есть, но has_planSQLText=false → banner с инструкцией по <plan/>
+ *   - Архив есть, has_planSQLText=true, items пустой (фильтр? offset?) → empty hint
+ */
+
+import { useCallback, useEffect, useState } from "react";
+import { backend, type PlanAnalyzerTjItem } from "@/api/backend";
+import { useAppStore } from "@/store/appStore";
+import { Icon } from "@/components/icons/Icon";
+import styles from "./PlanTjImport.module.css";
+
+interface Props {
+  /** Колбек когда юзер выбрал план — родитель сам делает analyze + render. */
+  onPick: (payload: {
+    event_id: number;
+    sql_text: string;
+    plan_text: string;
+    ts: string | null;
+    duration_us: number | null;
+    context: string | null;
+  }) => void;
+  busy: boolean;
+}
+
+export function PlanTjImport({ onPick, busy }: Props) {
+  const archive = useAppStore((s) => s.archive);
+  const [items, setItems] = useState<PlanAnalyzerTjItem[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [hasPlans, setHasPlans] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pickingId, setPickingId] = useState<number | null>(null);
+
+  const archiveId = archive?.archive_id ?? null;
+
+  // Re-load list когда меняется активный архив.
+  useEffect(() => {
+    if (!archiveId) {
+      setItems(null);
+      setHasPlans(null);
+      setError(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    backend
+      .planAnalyzerListTjPlans(archiveId, 200, 0)
+      .then((resp) => {
+        if (cancelled) return;
+        if (!resp.ok) {
+          setError(resp.details ?? resp.error ?? "Ошибка загрузки планов");
+          setItems(null);
+          setHasPlans(null);
+          return;
+        }
+        setItems(resp.items ?? []);
+        setTotal(resp.total ?? 0);
+        setHasPlans(resp.has_planSQLText ?? false);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(String(e));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [archiveId]);
+
+  const onClickRow = useCallback(
+    async (item: PlanAnalyzerTjItem) => {
+      if (!archiveId || busy || pickingId !== null) return;
+      setPickingId(item.event_id);
+      setError(null);
+      try {
+        const resp = await backend.planAnalyzerGetTjPlan(archiveId, item.event_id);
+        if (!resp.ok) {
+          setError(resp.details ?? resp.error ?? "Ошибка получения плана");
+          return;
+        }
+        onPick({
+          event_id: resp.event_id ?? item.event_id,
+          sql_text: resp.sql_text ?? "",
+          plan_text: resp.plan_text ?? "",
+          ts: resp.ts ?? null,
+          duration_us: resp.duration_us ?? null,
+          context: resp.context ?? null,
+        });
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setPickingId(null);
+      }
+    },
+    [archiveId, busy, pickingId, onPick],
+  );
+
+  // === Render: нет архива ===
+  if (!archiveId) {
+    return (
+      <div className={styles.empty}>
+        <Icon name="Inbox" size={28} color="var(--o-text-mute)" />
+        <div className={styles.emptyTitle}>Архив ТЖ не загружен</div>
+        <div className={styles.emptyHint}>
+          Загрузите архив через TopBar (кнопка слева вверху), затем вернитесь сюда —
+          планы запросов из DBMSSQL событий появятся автоматически.
+        </div>
+      </div>
+    );
+  }
+
+  // === Render: ошибка ===
+  if (error) {
+    return (
+      <div className={styles.errorBox}>
+        <div className={styles.errorTitle}>Не удалось загрузить планы</div>
+        <div className={styles.errorDetail}>{error}</div>
+      </div>
+    );
+  }
+
+  // === Render: loading ===
+  if (loading || items === null) {
+    return <div className={styles.loading}>Загружаю список планов…</div>;
+  }
+
+  // === Render: архив есть, но <plan/> не настроен ===
+  if (hasPlans === false) {
+    return (
+      <div className={styles.noPlansBanner}>
+        <div className={styles.noPlansTitle}>В архиве нет планов запросов</div>
+        <div className={styles.noPlansHint}>
+          DBMSSQL события в этом архиве не содержат поле{" "}
+          <code className={styles.code}>planSQLText</code>. Чтобы планы появлялись,
+          добавьте элемент <code className={styles.code}>&lt;plan/&gt;</code> в{" "}
+          <code className={styles.code}>logcfg.xml</code> и перезапустите 1C Server
+          Agent — подробности в файле{" "}
+          <code className={styles.code}>docs/onboarding/enable-dbmssql-plans.md</code>{" "}
+          (или просто запустите скрипт{" "}
+          <code className={styles.code}>scripts/patch-logcfg-for-plans.ps1</code>).
+        </div>
+        <div className={styles.noPlansHintSecondary}>
+          После правки соберите новый архив ТЖ — старые архивы перепарсивать
+          не нужно (там физически нет planSQLText в исходниках).
+        </div>
+      </div>
+    );
+  }
+
+  // === Render: items пустые ===
+  if (items.length === 0) {
+    return (
+      <div className={styles.empty}>
+        <div className={styles.emptyTitle}>Нет DBMSSQL событий с планом</div>
+        <div className={styles.emptyHint}>
+          В архиве должны быть события — попробуйте перезагрузить или собрать
+          архив за период когда были долгие SQL-запросы.
+        </div>
+      </div>
+    );
+  }
+
+  // === Render: список планов ===
+  return (
+    <div className={styles.listContainer}>
+      <div className={styles.listHeader}>
+        Найдено планов: <strong>{total}</strong>
+        {total > items.length && ` (показано ${items.length})`}
+      </div>
+      <div className={styles.list}>
+        {items.map((it) => (
+          <button
+            key={it.event_id}
+            type="button"
+            className={`${styles.row} ${pickingId === it.event_id ? styles.rowLoading : ""}`}
+            onClick={() => onClickRow(it)}
+            disabled={busy || pickingId !== null}
+          >
+            <div className={styles.rowMeta}>
+              <span className={styles.rowTs}>{formatTs(it.ts)}</span>
+              <span className={styles.rowDuration}>{formatDuration(it.duration_us)}</span>
+              <span className={styles.rowPlanSize}>
+                план: {formatBytes(it.plan_size_bytes)}
+              </span>
+              {it.context && <span className={styles.rowContext}>{it.context}</span>}
+            </div>
+            <div className={styles.rowSql}>{it.sql_preview}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// === Format helpers ===
+
+function formatTs(ts: string | null): string {
+  if (!ts) return "—";
+  try {
+    const d = new Date(ts);
+    return d.toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return ts;
+  }
+}
+
+function formatDuration(us: number | null): string {
+  if (us === null || us === undefined) return "—";
+  // 1С duration_us в microseconds (с поправкой как в storage). Делим на 1000 → мс.
+  const ms = us / 1000;
+  if (ms < 1) return `${us} мкс`;
+  if (ms < 1000) return `${ms.toFixed(0)} мс`;
+  return `${(ms / 1000).toFixed(2)} с`;
+}
+
+function formatBytes(b: number): string {
+  if (b < 1024) return `${b} Б`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} КБ`;
+  return `${(b / 1024 / 1024).toFixed(2)} МБ`;
+}

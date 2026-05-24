@@ -28,7 +28,30 @@ import { MissingIndexes } from "./MissingIndexes";
 import { PlanStats } from "./PlanStats";
 import { PlanVisualization } from "./PlanVisualization";
 import { AiPlanExplanationCard } from "./AiPlanExplanationCard";
+import { PlanTextView } from "./PlanTextView";
 import styles from "./PlanAnalyzer.module.css";
+
+// Sprint 7 Phase D — text-format plan import payload (из tab «Из архива ТЖ»).
+interface TjPlanPayload {
+  event_id: number;
+  sql_text: string;
+  plan_text: string;
+  ts: string | null;
+  duration_us: number | null;
+  context: string | null;
+}
+
+// Внутренний state для text-format пути (отдельно от result/planXmlForViz).
+interface TextPlanState {
+  text: string;
+  sql_text: string;
+  source_label: string;
+  meta: {
+    ts: string | null;
+    duration_us: number | null;
+    context: string | null;
+  };
+}
 
 /**
  * Распознаёт типичные сценарии и даёт читаемое сообщение вместо
@@ -74,6 +97,10 @@ export function PlanAnalyzerScreen() {
   const [aiResponse, setAiResponse] = useState<AiExplainPlanResponse | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  // Sprint 7 Phase D — отдельный state для text format (из ТЖ архива).
+  // result/planXmlForViz используются для XML path. Они взаимоисключающие:
+  // если textPlan != null → render text view, иначе → render XML viz+stats.
+  const [textPlan, setTextPlan] = useState<TextPlanState | null>(null);
   const pushToast = useAppStore((s) => s.pushToast);
 
   // Status check — на mount узнаём доступен ли planview.exe.
@@ -98,9 +125,37 @@ export function PlanAnalyzerScreen() {
         const resp = await cloud.aiExplainPlan({
           sql_text: firstStmt.statement_text,
           plan_xml: planXml,
+          plan_format: "xml",
           planview_warnings: allWarnings,
           missing_indexes: allMissing,
           plan_summary: planResult.summary as unknown as Record<string, unknown>,
+        });
+        setAiResponse(resp);
+      } catch (e) {
+        setAiError(formatAiError(e));
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [],
+  );
+
+  // Sprint 7 Phase D — AI explanation для text-format плана.
+  // Отличается от requestAiExplanation тем что нет PerformanceStudio warnings
+  // и нет missing_indexes (CLI на text не работает). Передаём только SQL + text.
+  const requestAiExplanationText = useCallback(
+    async (state: TextPlanState) => {
+      setAiLoading(true);
+      setAiError(null);
+      setAiResponse(null);
+      try {
+        const resp = await cloud.aiExplainPlan({
+          sql_text: state.sql_text,
+          plan_xml: state.text,
+          plan_format: "text",
+          planview_warnings: [],
+          missing_indexes: [],
+          plan_summary: null,
         });
         setAiResponse(resp);
       } catch (e) {
@@ -126,6 +181,9 @@ export function PlanAnalyzerScreen() {
       setResult(resp.result);
       setSourceLabel(source);
       setPlanXmlForViz(sourceXml);
+      // Sprint 7 Phase D — переключаемся в XML-режим, гасим textPlan если был
+      // (например предыдущий импорт был из ТЖ, а сейчас юзер залил .sqlplan).
+      setTextPlan(null);
       // Сбрасываем AI-state предыдущего плана — иначе stale-card висит
       // поверх нового результата. Этот reset работает и при переключении
       // табов «Импорт файла» ↔ «Вставить XML», и при последовательных
@@ -139,11 +197,55 @@ export function PlanAnalyzerScreen() {
     [],
   );
 
+  // Sprint 7 Phase D — handler для tab «Из архива ТЖ».
+  // Text format не идёт через PerformanceStudio CLI (XSLT не поддерживает
+  // text), поэтому result/planXmlForViz сбрасываем и работаем через textPlan
+  // state + PlanTextView + AI (без warnings/missing_indexes).
+  const onPickTjPlan = useCallback(
+    (payload: TjPlanPayload) => {
+      const sourceLbl = `ТЖ архив · event #${payload.event_id}`;
+      setError(null);
+      setResult(null);
+      setPlanXmlForViz(null);
+      setSourceLabel(sourceLbl);
+      setTextPlan({
+        text: payload.plan_text,
+        sql_text: payload.sql_text,
+        source_label: sourceLbl,
+        meta: {
+          ts: payload.ts,
+          duration_us: payload.duration_us,
+          context: payload.context,
+        },
+      });
+      setAiResponse(null);
+      setAiError(null);
+      setAiLoading(false);
+      pushToast(`Импортирован план из ТЖ (event #${payload.event_id})`, "info");
+    },
+    [pushToast],
+  );
+
   // Колбек для idle-кнопки в AiPlanExplanationCard.
+  // Sprint 7 Phase D — distinguishing XML vs text path.
   const onRequestAi = useCallback(() => {
-    if (!result || !planXmlForViz || aiLoading || aiResponse) return;
-    void requestAiExplanation(result, planXmlForViz);
-  }, [result, planXmlForViz, aiLoading, aiResponse, requestAiExplanation]);
+    if (aiLoading || aiResponse) return;
+    if (textPlan) {
+      void requestAiExplanationText(textPlan);
+      return;
+    }
+    if (result && planXmlForViz) {
+      void requestAiExplanation(result, planXmlForViz);
+    }
+  }, [
+    result,
+    planXmlForViz,
+    textPlan,
+    aiLoading,
+    aiResponse,
+    requestAiExplanation,
+    requestAiExplanationText,
+  ]);
 
   const onPickFile = useCallback(
     async (filePath: string) => {
@@ -223,11 +325,45 @@ export function PlanAnalyzerScreen() {
       )}
 
       <div className={styles.body}>
-        <PlanImport onPickFile={onPickFile} onPasteXml={onPasteXml} busy={busy} />
+        <PlanImport
+          onPickFile={onPickFile}
+          onPasteXml={onPasteXml}
+          onPickTjPlan={onPickTjPlan}
+          busy={busy}
+        />
 
         {error && <div className={styles.error}>{error}</div>}
 
-        {result && summary && (
+        {/* Sprint 7 Phase D — text-format plan path (импорт из ТЖ архива).
+            Не имеет PerformanceStudio analysis (CLI не работает на text),
+            визуализации (XSLT тоже нет), warnings/missing_indexes — пустые.
+            Показываем только AI + PlanTextView + sql_text карточкой. */}
+        {textPlan && (
+          <div className={styles.resultArea}>
+            <AiPlanExplanationCard
+              response={aiResponse}
+              loading={aiLoading}
+              error={aiError}
+              showIdleButton
+              onRequest={onRequestAi}
+            />
+
+            <PlanTextView planText={textPlan.text} meta={textPlan.meta} />
+
+            {textPlan.sql_text && (
+              <div className={styles.statementCard}>
+                <div className={styles.statementHeader}>
+                  <span className={styles.statementLabel}>
+                    SQL запроса · {textPlan.source_label}
+                  </span>
+                </div>
+                <pre className={styles.statementTextBlock}>{textPlan.sql_text}</pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!textPlan && result && summary && (
           <div className={styles.resultArea}>
             {/* AI explanation — idle с кнопкой пока юзер не запросил */}
             {planXmlForViz && (

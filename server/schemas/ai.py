@@ -87,12 +87,20 @@ class PlanExplainRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     sql_text: str = Field(min_length=1, max_length=50000)
+    # Содержимое плана: либо SHOWPLAN_XML (от SSMS .sqlplan/paste), либо
+    # SHOWPLAN_TEXT (от 1С planSQLText в DBMSSQL ТЖ событиях). plan_format
+    # говорит как интерпретировать. Поле названо plan_xml исторически
+    # (Phase A/B/C), переименование сломало бы Sprint 6/7 clients.
     plan_xml: str = Field(min_length=1, max_length=500000)
+    plan_format: Literal["xml", "text"] = Field(
+        default="xml",
+        description="xml = SHOWPLAN_XML от SSMS, text = SHOWPLAN_TEXT от 1С (ТЖ).",
+    )
     planview_warnings: list[dict] = Field(default_factory=list, max_length=200)
     missing_indexes: list[dict] = Field(default_factory=list, max_length=50)
     plan_summary: Optional[dict] = Field(
         default=None,
-        description="Summary block от PerformanceStudio (total_warnings, max_estimated_cost, warning_types)",
+        description="Summary block от PerformanceStudio (total_warnings, max_estimated_cost, warning_types). Только для xml формата — для text не заполняется.",
     )
     configuration_context: Optional[ConfigurationContext] = None
     related_tj_summary: Optional[str] = Field(default=None, max_length=5000)
