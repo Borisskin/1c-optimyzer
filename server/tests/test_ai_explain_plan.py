@@ -307,3 +307,27 @@ class TestPromptBuilder:
         assert "XML" in sys_prompt
         assert "TEXT" in sys_prompt or "text" in sys_prompt
         assert "SHOWPLAN_TEXT" in sys_prompt
+
+
+class TestTruncatePlanXml:
+    """Тесты на _truncate_plan_xml — обрезка больших планов до AI_PLAN_MAX_CHARS."""
+
+    def test_under_max_returns_unchanged(self) -> None:
+        small = "<x>" + ("a" * 500) + "</x>"
+        result, truncated = ai_explainer._truncate_plan_xml(small)
+        assert result == small
+        assert truncated is False
+
+    def test_over_max_truncated_to_80_percent(self) -> None:
+        huge = "<x>" + ("a" * (ai_explainer.AI_PLAN_MAX_CHARS + 5_000)) + "</x>"
+        result, truncated = ai_explainer._truncate_plan_xml(huge)
+        assert truncated is True
+        # Контент короче оригинала, плюс есть TRUNCATED маркер.
+        assert len(result) < len(huge)
+        assert "TRUNCATED" in result
+
+    def test_truncated_keeps_original_size_in_marker(self) -> None:
+        huge = "x" * (ai_explainer.AI_PLAN_MAX_CHARS * 2)
+        result, _ = ai_explainer._truncate_plan_xml(huge)
+        # Маркер содержит оригинальный размер для трассировки.
+        assert str(len(huge)) in result

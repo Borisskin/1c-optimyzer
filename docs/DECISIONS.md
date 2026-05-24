@@ -559,3 +559,51 @@ def test_golden_case(...): ...
 
 **Consequences.** + Гарантия запуска на любой Windows 11 без preinstalled Java. + Premium product = no compromises on reliability. − Installer вырастает с 50 MB до ~250 MB (acceptable trade-off). − Memory footprint при работе +300-400 MB. Future: возможно вернёмся к jlink (Sprint 8+) при стабильности.
 
+---
+
+## ADR-037 — PerformanceStudio CLI собираем из source, не используем pre-built
+
+**Status:** Accepted (Sprint 7 Phase A, 2026-05-24)
+
+**Context.** Erik Darling Data PerformanceStudio (MIT) даёт 30 правил анализа SQL Server execution planов. На GitHub releases есть только source code — нет pre-built CLI бинаря для Windows. План Opus предполагал просто скачать готовый. Реальность: пришлось собирать.
+
+**Decision.** **Build from source локально** через `dotnet publish -c Release -r win-x64 --self-contained` при первой установке. .NET 10 SDK поставлен в `tools/dotnet-10/` (user-mode, не загрязняет глобальную систему). Скрипт `scripts/setup-planview-binary.ps1` автоматизирует процесс. Результат — `frontend/src-tauri/binaries/planview/planview.exe` (~96 MB self-contained).
+
+**Consequences.** + Мы контролируем версию (привязаны к v1.11.2 hashed commit). + Можем патчить (TD-Sprint8-A — object cycle bug). + Self-contained — нет dep на system .NET. − Setup time +5-10 минут при first install (build SDK на машине разработчика, не пользователя — Tauri bundle уже содержит готовый exe). − Bundle вырос с ожидаемых 30 MB до 96 MB (self-contained runtime). Альтернатива (framework-dependent) требовала бы .NET 10 install у пользователя → не приемлемо.
+
+---
+
+## ADR-038 — Text format planSQLText: lite view + AI, без XML конверсии
+
+**Status:** Accepted (Sprint 7 Phase D, 2026-05-24)
+
+**Context.** 1С пишет планы в DBMSSQL события ТЖ как **текст** (SHOWPLAN_TEXT output), а не XML. PerformanceStudio CLI и html-query-plan v2.6.1 оба требуют XML на входе. Опции для text format в UI: (A) конвертировать text → XML и пропускать через стандартный pipeline, (B) lite view — только PlanTextView + AI, без visualization и без warnings.
+
+**Decision.** **(B) lite view в Sprint 7.** Конвертация text → XML сложная (operator tree depth >10, 1С-specific extensions, нет известных OSS конвертеров) — выносится в TD-Sprint8-B для Sprint 8 research spike. В Sprint 7 для text плана: `PlanTextView.tsx` (`<pre>` блок с monospace + `white-space: pre` + horizontal scroll) + `AiPlanExplanationCard` (новый `plan_format: "text"` параметр).
+
+**Consequences.** + Простое MVP — text impport работает в день D.1. + AI понимает SHOWPLAN_TEXT отлично (Claude обучен на SQL Server документации). + Не блокируется на исследовании конвертера. − text plans не имеют SSMS-style визуализации (юзер видит только текст). − PerformanceStudio rules не работают (но они в любом случае дают мало value на упрощённом text plan). − Юзер должен понимать что это «lite»; для full functionality — экспорт того же запроса как .sqlplan из SSMS. UI banner в PlanTextView объясняет ограничение.
+
+---
+
+## ADR-039 — Plan Analyzer как отдельный screen, не интеграция в QueryAnalyzer
+
+**Status:** Accepted (Sprint 7 Phase A, 2026-05-24)
+
+**Context.** QueryAnalyzer (Sprint 6) анализирует SDBL код 1С → 19 диагностик от bsl-LS + AI explanation. Опции для Plan Analyzer (Sprint 7): (A) интегрировать как «View execution plan» tab в QueryAnalyzer, (B) отдельный screen в Sidebar (Ctrl+P).
+
+**Decision.** **(B) отдельный screen.** Источники input разные (SDBL код vs .sqlplan файл), pipeline анализа разный (bsl-LS+sqlglot vs PerformanceStudio+html-query-plan), AI prompt разный, output structure разный. Интеграция дала бы confusing UX («введите SDBL... или может .sqlplan?»).
+
+**Consequences.** + Чистая separation of concerns. + Каждый screen optimized под свой use case. + Можно показывать в Sidebar как отдельный шорткат — юзер видит что Optimyzer = много анализаторов. − Дублирование некоторых UI patterns (severity chips, AI card layout) — частично решено через shared components. + Будущие cross-screen integrations (например «View execution plan» button в QueryAnalyzer для outputs Top SQL) делаются явно через router navigation, не через embedded tabs.
+
+---
+
+## ADR-040 — PerformanceStudio severity (Critical/Warning/Info) сохраняем как есть
+
+**Status:** Accepted (Sprint 7 Phase A, 2026-05-24)
+
+**Context.** PerformanceStudio использует scheme {Critical, Warning, Info}. bsl-language-server использует scheme {Blocker, Critical, Major, Minor, Info}. AI explanation использует {Critical, High, Medium, Low} для impact_estimate. Опции: (A) унифицировать всё в одну схему, (B) сохранить per-domain.
+
+**Decision.** **(B) per-domain.** PerformanceStudio severity отображаются как есть (Critical/Warning/Info chips). bsl-LS severities как есть. AI impact_estimate как есть.
+
+**Consequences.** + Доверяем downstream tool — не делаем lossy mapping. + Severity имеет специфический смысл в каждом домене (PerfStudio Critical = «high estimated cost impact», bsl-LS Critical = «гарантированно бажный SDBL»). + UI рендерит native colors каждой схемы — нет confusion с маппингом. − Юзер видит 3 разных severity scheme в разных screens (но Sergey не считает это проблемой — screens используются раздельно). Альтернатива (унификация) — потеря semantic precision; не делаем.
+

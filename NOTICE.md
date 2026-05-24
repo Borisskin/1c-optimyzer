@@ -81,6 +81,21 @@ CLI собирается локально через скрипт `scripts/setup
 
 ---
 
+## .NET 10 Runtime (self-contained)
+
+- **Версия:** .NET 10.0 (10.0.300 SDK)
+- **License:** MIT
+- **Источник:** https://github.com/dotnet/runtime
+- **Автор:** Microsoft Corporation и .NET Foundation contributors
+- **Copyright:** © 2024-2026 .NET Foundation
+- **Использование в продукте:** runtime для запуска PerformanceStudio `planview.exe`. CLI собирается через `dotnet publish --self-contained -r win-x64`, поэтому необходимые .NET assemblies включены прямо в каталог `frontend/src-tauri/binaries/planview/` (Sprint 7 Phase A).
+- **Модификации:** отсутствуют — официальный Microsoft runtime, версия из публичного `dotnet-install.ps1`.
+- **SDK путь установки:** `tools/dotnet-10/` (user-mode, не глобально — не загрязняет систему пользователя; см. `scripts/setup-planview-binary.ps1`).
+
+Лицензия MIT разрешает коммерческое использование и распространение в составе третьих продуктов.
+
+---
+
 ## Лицензия 1C-Optimyzer
 
 Сам 1C-Optimyzer распространяется как **коммерческое программное обеспечение** anymasoft (Сергей Назаров).

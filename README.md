@@ -27,6 +27,8 @@
 - **Archive management** — список загруженных архивов с per-item и bulk удалением
 - **Live progress UI** — animated event counter (не замирает на больших файлах)
 - **Full ru-RU localization**
+- **Query Analyzer** — SDBL анализ через bsl-language-server (19 диагностик) + sqlglot T-SQL antipatterns + structured AI explanation на русском (Sprint 6, `Ctrl+Q`)
+- **Plan Analyzer** — анализ SQL Server execution plan через PerformanceStudio CLI (30 правил) + SSMS-style визуализация (html-query-plan) + AI объяснение на русском. Три пути импорта: `.sqlplan` файл, paste XML, автоэкстракт из ТЖ архива (`<plan/>` в logcfg.xml). Sprint 7, `Ctrl+P`.
 
 ## Architecture
 
