@@ -99,6 +99,13 @@ class Settings(BaseSettings):
     device_limit_free: int = 1
     device_limit_pro: int = 5
 
+    # --- Sprint 6: Cloud AI orchestration ---
+    anthropic_api_key: str = ""
+    ai_model_default: str = "claude-sonnet-4-5-20250929"
+    ai_model_business: str = "claude-opus-4-5-20250929"
+    ai_max_tokens: int = 4000
+    ai_request_timeout_s: int = 60
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]

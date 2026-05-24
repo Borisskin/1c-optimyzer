@@ -13,6 +13,7 @@ from slowapi.util import get_remote_address
 from api import __version__
 from api.routers import (
     admin,
+    ai,
     auth,
     credits,
     dashboard,
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
     app.include_router(telemetry.router)
     app.include_router(admin.router)
     app.include_router(webhooks.router)
+    app.include_router(ai.router)  # Sprint 6 — /v1/ai/explain
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:
