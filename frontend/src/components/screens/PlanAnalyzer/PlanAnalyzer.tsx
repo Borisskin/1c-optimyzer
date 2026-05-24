@@ -92,6 +92,13 @@ export function PlanAnalyzerScreen() {
       setResult(resp.result);
       setSourceLabel(source);
       setPlanXmlForViz(sourceXml);
+      // Сбрасываем AI-state предыдущего плана — иначе stale-card висит
+      // поверх нового результата. Этот reset работает и при переключении
+      // табов «Импорт файла» ↔ «Вставить XML», и при последовательных
+      // импортах в одном табе.
+      setAiResponse(null);
+      setAiError(null);
+      setAiLoading(false);
       // AI больше не запускаем автоматически — пользователь жмёт кнопку
       // в AiPlanExplanationCard (экономия квоты и токенов).
     },
