@@ -10,7 +10,7 @@
  * Phase C добавит AiPlanExplanationCard поверх warnings (Claude Sonnet 4.5).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   backend,
@@ -26,7 +26,9 @@ import { PlanImport } from "./PlanImport";
 import { PlanWarnings } from "./PlanWarnings";
 import { MissingIndexes } from "./MissingIndexes";
 import { PlanStats } from "./PlanStats";
-import { PlanVisualization } from "./PlanVisualization";
+const PlanVisualization = lazy(() =>
+  import("./PlanVisualization").then((m) => ({ default: m.PlanVisualization })),
+);
 import { AiPlanExplanationCard } from "./AiPlanExplanationCard";
 import styles from "./PlanAnalyzer.module.css";
 
@@ -194,7 +196,11 @@ export function PlanAnalyzerScreen() {
             )}
 
             {/* Phase B: SSMS-style visualization (html-query-plan) */}
-            {planXmlForViz && <PlanVisualization planXml={planXmlForViz} />}
+            {planXmlForViz && (
+              <Suspense fallback={<div style={{ padding: 16, opacity: 0.6 }}>Загрузка визуализатора…</div>}>
+                <PlanVisualization planXml={planXmlForViz} />
+              </Suspense>
+            )}
 
             <div className={styles.resultHeader}>
               <div className={styles.resultMeta}>

@@ -13,8 +13,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import * as QP from "html-query-plan";
 import "html-query-plan/css/qp.css";
+import { loadQP } from "@/vendor/qpLoader";
 import styles from "./PlanVisualization.module.css";
 
 interface Props {
@@ -34,17 +34,28 @@ export function PlanVisualization({ planXml, onError }: Props) {
       setError(null);
       return;
     }
-    try {
-      el.innerHTML = "";
-      // qp.showPlan(container, planXml, {jsTooltips: true})
-      // jsTooltips: true — современные tooltips через JS (вместо native title=)
-      QP.showPlan(el, planXml, { jsTooltips: true });
-      setError(null);
-    } catch (e) {
-      const msg = String(e);
-      setError(msg);
-      onError?.(e instanceof Error ? e : new Error(msg));
-    }
+    let cancelled = false;
+    el.innerHTML = "";
+    setError(null);
+    loadQP()
+      .then((QP) => {
+        if (cancelled) return;
+        try {
+          QP.showPlan(el, planXml, { jsTooltips: true });
+        } catch (e) {
+          const msg = String(e);
+          setError(msg);
+          onError?.(e instanceof Error ? e : new Error(msg));
+        }
+      })
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setError(e.message);
+        onError?.(e);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [planXml, onError]);
 
   if (!planXml) {
