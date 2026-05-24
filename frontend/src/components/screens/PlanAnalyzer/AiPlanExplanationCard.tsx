@@ -65,107 +65,112 @@ export function AiPlanExplanationCard({
   showIdleButton,
   onRequest,
 }: Props) {
-  // Idle: ни response/loading/error и родитель просит показать кнопку.
-  if (showIdleButton && !response && !loading && !error) {
-    return (
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <div className={styles.title}>AI-объяснение плана</div>
-        </div>
-        <div className={styles.idleBody}>
-          <div className={styles.idleHint}>
-            AI разберёт план, выделит проблемные операторы и предложит индексы.
-            Один запрос = одна консультация (учитывается в квоте).
-          </div>
-          <button type="button" className={styles.idleButton} onClick={onRequest}>
-            Получить AI-объяснение
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Sprint 7 post-Phase F — collapse toggle. Карточка занимает много места,
+  // юзер часто хочет её свернуть после прочтения ответа чтобы открыть план
+  // полностью. Default expanded — фича видна из коробки.
+  const [collapsed, setCollapsed] = useState(false);
 
-  if (loading) {
-    return (
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <div className={styles.title}>AI-объяснение плана</div>
-        </div>
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <div>AI анализирует план запроса…</div>
-        </div>
-      </div>
-    );
-  }
+  // Skip render полностью если нечего показывать (например response=null + не idle).
+  const isIdle = showIdleButton && !response && !loading && !error;
+  if (!isIdle && !loading && !error && !response) return null;
 
-  if (error) {
-    return (
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <div className={styles.title}>AI-объяснение плана</div>
-        </div>
-        <div className={styles.errorBox}>
-          <div className={styles.errorTitle}>Не удалось получить AI explanation</div>
-          <div className={styles.errorDetail}>{error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!response) return null;
+  // Subtitle для header — severity badge только когда есть response.
+  const headerMeta = response ? (
+    <span className={`${styles.severityBadge} ${SEV_CLASS[response.overall_severity]}`}>
+      {SEV_LABEL[response.overall_severity]}
+    </span>
+  ) : null;
 
   return (
     <div className={styles.card}>
       <div className={styles.header}>
         <div className={styles.title}>AI-объяснение плана</div>
         <div className={styles.meta}>
-          <span className={`${styles.severityBadge} ${SEV_CLASS[response.overall_severity]}`}>
-            {SEV_LABEL[response.overall_severity]}
-          </span>
+          {headerMeta}
+          <button
+            type="button"
+            className={styles.collapseToggle}
+            onClick={() => setCollapsed((v) => !v)}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? "Развернуть" : "Свернуть"}
+          </button>
         </div>
       </div>
 
-      {response.plan_truncated && (
-        <div className={styles.truncatedBanner}>
-          Plan XML был обрезан до 50&nbsp;000 символов для AI — объяснение может быть неполным.
-        </div>
-      )}
+      {/* display:none сохраняет DOM (response state не теряется при свёртывании) */}
+      <div className={collapsed ? styles.bodyCollapsed : styles.body}>
+        {isIdle && (
+          <div className={styles.idleBody}>
+            <div className={styles.idleHint}>
+              AI разберёт план, выделит проблемные операторы и предложит индексы.
+              Один запрос = одна консультация (учитывается в квоте).
+            </div>
+            <button type="button" className={styles.idleButton} onClick={onRequest}>
+              Получить AI-объяснение
+            </button>
+          </div>
+        )}
 
-      <div className={styles.summary}>{response.summary}</div>
+        {loading && (
+          <div className={styles.loading}>
+            <div className={styles.spinner} />
+            <div>AI анализирует план запроса…</div>
+          </div>
+        )}
 
-      {response.hotspots.length > 0 && (
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>
-            Проблемные операторы ({response.hotspots.length})
-          </h3>
-          {response.hotspots.map((h, idx) => (
-            <HotspotBlock key={idx} hotspot={h} />
-          ))}
-        </section>
-      )}
+        {error && !loading && (
+          <div className={styles.errorBox}>
+            <div className={styles.errorTitle}>Не удалось получить AI explanation</div>
+            <div className={styles.errorDetail}>{error}</div>
+          </div>
+        )}
 
-      {response.recommendations.length > 0 && (
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>
-            Рекомендации ({response.recommendations.length})
-          </h3>
-          {response.recommendations.map((r, idx) => (
-            <RecommendationBlock key={idx} rec={r} />
-          ))}
-        </section>
-      )}
+        {response && !loading && !error && (
+          <>
+            {response.plan_truncated && (
+              <div className={styles.truncatedBanner}>
+                Plan XML был обрезан до 50&nbsp;000 символов для AI — объяснение может быть неполным.
+              </div>
+            )}
 
-      {response.suggested_indexes.length > 0 && (
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>
-            Предложенные индексы ({response.suggested_indexes.length})
-          </h3>
-          {response.suggested_indexes.map((idx, i) => (
-            <SuggestedIndexBlock key={i} index={idx} />
-          ))}
-        </section>
-      )}
+            <div className={styles.summary}>{response.summary}</div>
+
+            {response.hotspots.length > 0 && (
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  Проблемные операторы ({response.hotspots.length})
+                </h3>
+                {response.hotspots.map((h, idx) => (
+                  <HotspotBlock key={idx} hotspot={h} />
+                ))}
+              </section>
+            )}
+
+            {response.recommendations.length > 0 && (
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  Рекомендации ({response.recommendations.length})
+                </h3>
+                {response.recommendations.map((r, idx) => (
+                  <RecommendationBlock key={idx} rec={r} />
+                ))}
+              </section>
+            )}
+
+            {response.suggested_indexes.length > 0 && (
+              <section className={styles.section}>
+                <h3 className={styles.sectionTitle}>
+                  Предложенные индексы ({response.suggested_indexes.length})
+                </h3>
+                {response.suggested_indexes.map((idx, i) => (
+                  <SuggestedIndexBlock key={i} index={idx} />
+                ))}
+              </section>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

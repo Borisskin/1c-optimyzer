@@ -30,6 +30,52 @@
   font-family: var(--font-mono, monospace);
 }
 
+/* Sprint 7 post-Phase F — collapse toggle для AI card.
+   Стиль в purple-theme чтобы вписаться в branding карточки. */
+.collapseToggle {
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid #ddd6fe;
+  color: #5b21b6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.collapseToggle:hover {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+
+/* Body wrapper для collapse. display:none сохраняет DOM (response не теряется). */
+.body {
+  display: block;
+}
+
+.bodyCollapsed {
+  display: none;
+}
+
+/* Когда body свёрнут — убираем border/padding у header чтобы он не висел
+   с разделителем в пустоту. :has() supported в WebView2 (Edge Chromium). */
+.card:has(.bodyCollapsed) .header {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* Тонкая компрессия card padding когда collapsed — иначе высота карточки
+   та же что и при expanded header без content (16px padding сверху + снизу
+   + ~30px header = высокий пустой блок). */
+.card:has(.bodyCollapsed) {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
 .severityBadge {
   font-size: 10px;
   letter-spacing: 0.04em;

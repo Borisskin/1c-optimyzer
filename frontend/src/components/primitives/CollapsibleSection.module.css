@@ -1,0 +1,83 @@
+/* Sprint 7 — reusable CollapsibleSection. Минимальный, без своего фона:
+   родительский компонент (AiPlanExplanationCard, etc.) сам задаёт background
+   и border. CollapsibleSection даёт только семантическую структуру
+   header + toggle + body. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* padding не задан — родитель сам решает spacing. Но горизонтально
+     равняем по содержимому: title слева, actions справа. */
+}
+
+.titleBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;  /* для truncate в child */
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--o-text-1);
+}
+
+.subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--o-text-3);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.toggleButton {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--o-border);
+  color: var(--o-text-2);
+  border-radius: var(--o-radius-sm);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+
+.toggleButton:hover {
+  background: var(--o-hover);
+  color: var(--o-text-1);
+  border-color: var(--o-text-3);
+}
+
+.body {
+  /* Содержимое видно. Родитель сам задаёт padding/spacing если нужно. */
+  display: block;
+}
+
+.bodyCollapsed {
+  /* display:none сохраняет DOM, но скрывает визуально и из layout flow.
+     Используем display:none вместо max-height:0 — последний приводит
+     к лагам на больших child-компонентах из-за пересчёта layout. */
+  display: none;
+}
