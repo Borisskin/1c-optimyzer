@@ -568,16 +568,6 @@
   color: var(--o-text-mute);
 }
 
-/* === Phase B: Visualization slot (filled in PlanVisualization.tsx) === */
-.visualizationSlot {
-  background: var(--o-panel);
-  border: 1px solid var(--o-border);
-  border-radius: var(--o-radius-md);
-  padding: 8px;
-  overflow: auto;
-  max-height: 600px;
-}
-
 /* === Phase C: AI explanation slot (filled in AiPlanExplanationCard.tsx) === */
 .aiSlot {
   display: contents;
