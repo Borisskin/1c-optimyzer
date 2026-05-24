@@ -124,22 +124,6 @@ export function PlanVisualization({ planXml, onError }: Props) {
     <div className={styles.container}>
       <div className={styles.title}>Визуализация плана (SSMS-style)</div>
       <div ref={containerRef} className={styles.viz} />
-      {/* Видимая диагностика — если что-то нерпавильно, юзер сразу видит */}
-      {debug && (
-        <div
-          style={{
-            marginTop: 8,
-            padding: "4px 8px",
-            fontSize: 10,
-            color: "#94a3b8",
-            fontFamily: "monospace",
-            opacity: 0.6,
-          }}
-        >
-          dbg: children={debug.childrenCount}, qp-root={debug.qpRootFound ? "✓" : "✗"},
-          nodes={debug.qpNodeCount}, css={debug.cssLoaded ? "✓" : "✗"}, bg={debug.qpNodeBg}
-        </div>
-      )}
     </div>
   );
 }

@@ -3,8 +3,12 @@
   border: 1px solid var(--o-border);
   border-radius: var(--o-radius-md);
   padding: 12px;
+  /* Высота определяется содержимым (qp.showPlan генерирует SVG/HTML дерево).
+     Жёсткий потолок 85vh защищает от гигантских планов (50+ узлов) — там
+     включается scroll внутри контейнера. Для типичных 1С-запросов
+     (3-10 узлов) высота естественно подстраивается. */
   overflow: auto;
-  max-height: 620px;
+  max-height: 85vh;
 }
 
 .title {
@@ -19,10 +23,11 @@
 }
 
 .viz {
-  /* html-query-plan генерирует SVG/HTML дерево. Внутренние стили — из qp.css. */
-  min-height: 200px;
+  /* html-query-plan генерирует SVG/HTML дерево. Внутренние стили — из qp.css.
+     Без overflow/max-height — пусть содержимое определяет высоту, родитель
+     .container лимитирует через max-height: 85vh. */
   display: block;
-  overflow: auto;
+  min-height: 80px;
 }
 
 /* Перебиваем некоторые стили qp.css которые конфликтуют с нашим темой:
