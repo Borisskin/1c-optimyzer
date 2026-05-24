@@ -18,6 +18,7 @@ import {
   type PlanAnalyzeResponse,
   type PlanAnalyzerStatus,
 } from "@/api/backend";
+import { cloud, type AiExplainPlanResponse } from "@/api/cloud";
 import { t, format } from "@/i18n/ru";
 import { Icon } from "@/components/icons/Icon";
 import { useAppStore } from "@/store/appStore";
@@ -26,6 +27,7 @@ import { PlanWarnings } from "./PlanWarnings";
 import { MissingIndexes } from "./MissingIndexes";
 import { PlanStats } from "./PlanStats";
 import { PlanVisualization } from "./PlanVisualization";
+import { AiPlanExplanationCard } from "./AiPlanExplanationCard";
 import styles from "./PlanAnalyzer.module.css";
 
 export function PlanAnalyzerScreen() {
@@ -35,6 +37,9 @@ export function PlanAnalyzerScreen() {
   const [sourceLabel, setSourceLabel] = useState<string | null>(null);
   const [status, setStatus] = useState<PlanAnalyzerStatus | null>(null);
   const [planXmlForViz, setPlanXmlForViz] = useState<string | null>(null);
+  const [aiResponse, setAiResponse] = useState<AiExplainPlanResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const pushToast = useAppStore((s) => s.pushToast);
 
   // Status check — на mount узнаём доступен ли planview.exe.
@@ -45,20 +50,54 @@ export function PlanAnalyzerScreen() {
       .catch(() => setStatus(null));
   }, []);
 
+  const requestAiExplanation = useCallback(
+    async (planResult: PlanAnalysisResult, planXml: string) => {
+      // AI explain работает только если есть оба: plan XML + хотя бы один statement.
+      const firstStmt = planResult.statements[0];
+      if (!firstStmt) return;
+      setAiLoading(true);
+      setAiError(null);
+      setAiResponse(null);
+      try {
+        const allWarnings = planResult.statements.flatMap((s) => s.warnings);
+        const allMissing = planResult.statements.flatMap((s) => s.missing_indexes);
+        const resp = await cloud.aiExplainPlan({
+          sql_text: firstStmt.statement_text,
+          plan_xml: planXml,
+          planview_warnings: allWarnings,
+          missing_indexes: allMissing,
+          plan_summary: planResult.summary as unknown as Record<string, unknown>,
+        });
+        setAiResponse(resp);
+      } catch (e) {
+        setAiError(String(e));
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [],
+  );
+
   const handleResponse = useCallback(
     (resp: PlanAnalyzeResponse, source: string, sourceXml: string | null) => {
       if (!resp.ok || !resp.result) {
         const msg = resp.details ?? resp.error ?? "unknown error";
         setError(format(t.planAnalyzer.analysisFailed, { detail: msg }));
         setResult(null);
+        setAiResponse(null);
+        setAiError(null);
         return;
       }
       setError(null);
       setResult(resp.result);
       setSourceLabel(source);
       setPlanXmlForViz(sourceXml);
+      // Phase C: автоматически запускаем AI explain если есть XML.
+      if (sourceXml) {
+        void requestAiExplanation(resp.result, sourceXml);
+      }
     },
-    [],
+    [requestAiExplanation],
   );
 
   const onPickFile = useCallback(
@@ -145,6 +184,15 @@ export function PlanAnalyzerScreen() {
 
         {result && summary && (
           <div className={styles.resultArea}>
+            {/* Phase C: AI explanation card (если есть plan XML) */}
+            {(aiResponse || aiLoading || aiError) && (
+              <AiPlanExplanationCard
+                response={aiResponse}
+                loading={aiLoading}
+                error={aiError}
+              />
+            )}
+
             {/* Phase B: SSMS-style visualization (html-query-plan) */}
             {planXmlForViz && <PlanVisualization planXml={planXmlForViz} />}
 
