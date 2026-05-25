@@ -15,11 +15,42 @@ Engine values:
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 from optimyzer_backend.rpc.dispatcher import rpc
 from optimyzer_backend.sql_antipatterns import detect_antipatterns
 from optimyzer_backend.sql_antipatterns.postgres._helpers import detect_1c_context
+
+# 1С на MSSQL всегда оборачивает SQL в sp_executesql:
+#   {call sp_executesql(N'SELECT ...', N'@P1 nvarchar(128)', N'%')}
+#   exec sp_executesql N'SELECT ...', N'@P1 nvarchar(128)', @P1=N'%'
+# Извлекаем первый аргумент (сам SQL) перед парсингом.
+_SP_EXECUTESQL_RE = re.compile(
+    r"""
+    (?:
+        \{call\s+sp_executesql\s*\(\s*   # ODBC: {call sp_executesql(
+        |
+        (?:exec(?:ute)?\s+)?sp_executesql\s+   # T-SQL: exec sp_executesql
+    )
+    N'((?:[^']|'')*)'   # первый аргумент: N'<sql>'
+    (?:\s*,|\s*\)|\s*$)  # дальше запятая или закрывающая скобка или конец
+    """,
+    re.IGNORECASE | re.VERBOSE | re.DOTALL,
+)
+
+
+def _unwrap_sp_executesql(sql: str) -> str:
+    """Извлекает тело SQL из exec sp_executesql / {call sp_executesql(...)}.
+
+    1С всегда передаёт запросы через sp_executesql — без этого sqlglot
+    получает обёртку вместо реального SQL и выдаёт parse_error БЛОКЕР.
+    """
+    stripped = sql.strip()
+    m = _SP_EXECUTESQL_RE.match(stripped)
+    if m:
+        return m.group(1).replace("''", "'")
+    return sql
 
 
 @rpc("sql_antipatterns.detect")
@@ -63,11 +94,14 @@ def detect_rpc(
     if engine not in ("mssql", "postgres"):
         return {"ok": False, "error": f"engine must be 'mssql' or 'postgres', got {engine!r}"}
 
-    findings = detect_antipatterns(sql, engine=engine, force_1c_context=force_1c_context)  # type: ignore[arg-type]
+    # 1С на MSSQL всегда оборачивает запросы в sp_executesql — извлекаем тело.
+    effective_sql = _unwrap_sp_executesql(sql) if engine == "mssql" else sql
+
+    findings = detect_antipatterns(effective_sql, engine=engine, force_1c_context=force_1c_context)  # type: ignore[arg-type]
     is_1c = (
         force_1c_context
         if force_1c_context is not None
-        else detect_1c_context(sql)
+        else detect_1c_context(effective_sql)
     )
 
     return {

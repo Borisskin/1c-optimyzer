@@ -135,6 +135,15 @@ export function PlanTjImport({ onPick, busy }: Props) {
     return m > 0 && p > 0;
   }, [countsByEngine]);
 
+  // Сортировка по длительности — самые медленные первыми.
+  // duration_us = null ставим в конец.
+  const sortedItems = useMemo(() => {
+    if (!items) return items;
+    return [...items].sort(
+      (a, b) => (b.duration_us ?? -1) - (a.duration_us ?? -1),
+    );
+  }, [items]);
+
   // === Render: нет архива ===
   if (!archiveId) {
     return (
@@ -264,7 +273,7 @@ export function PlanTjImport({ onPick, busy }: Props) {
         )}
       </div>
       <div className={styles.list}>
-        {items.map((it) => (
+        {(sortedItems ?? items).map((it) => (
           <button
             key={it.event_id}
             type="button"
