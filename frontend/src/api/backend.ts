@@ -748,8 +748,15 @@ export const backend = {
     filters?: ViewFiltersDto,
     sort_by = "total_duration_ms",
     limit = 100,
+    event_types?: string[],
   ) =>
-    rpc<ViewResult>("view_top_business_operations", { archive_id, filters, sort_by, limit }),
+    rpc<ViewResult>("view_top_business_operations", {
+      archive_id,
+      filters,
+      sort_by,
+      limit,
+      event_types,
+    }),
 
   // Operation / Session Anatomy (Sprint 3 Phase C)
   viewOperationAnatomy: (archive_id: string, operation: string) =>

@@ -141,11 +141,16 @@ def view_top_business_operations(
     filters: dict[str, Any] | None = None,
     sort_by: str = "total_duration_ms",
     limit: int = 100,
+    event_types: list[str] | None = None,
 ) -> dict[str, Any]:
     return _wrap(
         archive_id,
         lambda: top_business_operations(
-            archive_id, _filters_from_params(filters), sort_by=sort_by, limit=limit
+            archive_id,
+            _filters_from_params(filters),
+            sort_by=sort_by,
+            limit=limit,
+            event_types=event_types,
         ),
     )
 

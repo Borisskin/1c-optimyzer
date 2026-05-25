@@ -379,6 +379,7 @@ def top_business_operations(
     *,
     sort_by: str = "total_duration_ms",
     limit: int = 100,
+    event_types: list[str] | None = None,
 ) -> dict[str, Any]:
     """Аггрегация событий по `context_normalized` (Phase A normalization).
 
@@ -390,10 +391,25 @@ def top_business_operations(
           (если в архиве были DBMSSQL events с этим context)
         - lock_events / exception_events — для drill-down индикаторов
         - unique_sessions / process_roles — для понимания scope
+
+    `event_types` — multi-select фильтр (как в errors_feed). По умолчанию
+    NULL = считаем по всем событиям с Context (это даёт максимально полную
+    картину). 1С:Эксперт-методика рекомендует считать только по `CALL`
+    событиям (Apdex-pipe), поэтому UI имеет filter chips для типов.
+
+    Поле `event_types_breakdown` в ответе — counts по архиву БЕЗ применения
+    `event_types`-фильтра (чтобы UI мог переключать выбор без потери counts).
     """
-    where, params = filters.where_clause(
+    base_where, base_params = filters.where_clause(
         ["context_normalized IS NOT NULL", "context_normalized <> ''"]
     )
+    rows_where = base_where
+    rows_params = list(base_params)
+    if event_types:
+        placeholders = ",".join("?" for _ in event_types)
+        clause = f"event_type IN ({placeholders})"
+        rows_where = f"{base_where} AND {clause}" if base_where else clause
+        rows_params.extend(event_types)
 
     sort_column = {
         "total_duration_ms": "total_duration_ms",
@@ -420,17 +436,35 @@ def top_business_operations(
             MIN(ts) AS first_seen,
             MAX(ts) AS last_seen
         FROM events
-        {f"WHERE {where}" if where else ""}
+        {f"WHERE {rows_where}" if rows_where else ""}
         GROUP BY context_normalized
         ORDER BY {sort_column} DESC NULLS LAST
         LIMIT ?
     """
-    result = _execute(archive_id, sql, params + [limit])
+    result = _execute(archive_id, sql, rows_params + [limit])
     count_sql = f"""
         SELECT COUNT(DISTINCT context_normalized) FROM events
-        {f"WHERE {where}" if where else ""}
+        {f"WHERE {rows_where}" if rows_where else ""}
     """
-    result["total_rows"] = _count(archive_id, count_sql, params)
+    result["total_rows"] = _count(archive_id, count_sql, rows_params)
+
+    # Breakdown по типам — считаем без event_types-фильтра, чтобы UI мог
+    # переключать выбор без потери видимых counts остальных типов.
+    types_sql = f"""
+        SELECT event_type, COUNT(*) AS cnt FROM events
+        {f"WHERE {base_where}" if base_where else ""}
+        GROUP BY event_type
+        ORDER BY cnt DESC
+    """
+    try:
+        types_raw = _execute(archive_id, types_sql, base_params, max_rows=200)
+        result["event_types"] = [
+            [str(row[0]) if row[0] is not None else "", int(row[1] or 0)]
+            for row in (types_raw.get("rows") or [])
+            if row[0] is not None
+        ]
+    except SQLExecutionError:
+        result["event_types"] = []
     return result
 
 

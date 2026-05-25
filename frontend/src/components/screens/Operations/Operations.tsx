@@ -6,6 +6,7 @@ import { ViewShell } from "@/components/views/ViewShell";
 import { colIndex, useView } from "@/components/views/useView";
 import { useTableState } from "@/components/tables/useTableState";
 import { TableFilter } from "@/components/tables/TableFilter";
+import { EventTypeFilter } from "@/components/tables/EventTypeFilter";
 import { LimitSelector } from "@/components/tables/LimitSelector";
 import { useStickyTableHead } from "@/components/views/useStickyTableHead";
 import { filtersToDto, useAppStore } from "@/store/appStore";
@@ -21,14 +22,26 @@ export function OperationsScreen({ archiveId }: Props) {
   const setScreen = useAppStore((s) => s.setScreen);
   const setSelectedOperation = useAppStore((s) => s.setSelectedOperation);
   const [limit, setLimit] = useState(500);
+  // Sprint 7 post-Phase F — multi-select фильтр по event_type (как в ErrorsFeed).
+  // 1С:Эксперт-методика учит, что Apdex считается строго по CALL events.
+  // У нас по умолчанию включены ВСЕ типы с Context (полнее картина), но
+  // юзер может оставить только CALL для соответствия классической методике.
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+  const selectedTypesArr = useMemo(() => [...selectedTypes], [selectedTypes]);
   // Backend сортирует по total_duration_ms DESC и отдаёт топ-N (управляется
   // через LimitSelector). Клиентская sort/filter работает внутри этой выборки.
   const { data, loading, error } = useView(
     () =>
       archiveId
-        ? backend.viewTopBusinessOperations(archiveId, filtersToDto(filters), "total_duration_ms", limit)
+        ? backend.viewTopBusinessOperations(
+            archiveId,
+            filtersToDto(filters),
+            "total_duration_ms",
+            limit,
+            selectedTypesArr,
+          )
         : Promise.resolve({ ok: true, columns: [], rows: [], row_count: 0 }),
-    [archiveId, filters, limit],
+    [archiveId, filters, limit, selectedTypesArr.join("|")],
   );
 
   const idx = useMemo(() => colIndex(data?.columns), [data?.columns]);
@@ -50,6 +63,23 @@ export function OperationsScreen({ archiveId }: Props) {
     setSelectedOperation(operation);
     setScreen("anatomy");
   };
+
+  // Список доступных типов из архива — для chips. Сортировка severity-based.
+  const availableTypes = useMemo(() => {
+    const raw = (data as { event_types?: [string, number][] } | undefined)
+      ?.event_types ?? [];
+    const order = ["CALL", "SCALL", "DBMSSQL", "Context", "EXCPCNTX", "EXCP", "TLOCK", "TDEADLOCK"];
+    return [...raw]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => {
+        const ia = order.indexOf(a.value);
+        const ib = order.indexOf(b.value);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+        return a.value.localeCompare(b.value);
+      });
+  }, [data]);
 
   const { panelHeadRef, panelStyle } = useStickyTableHead<HTMLDivElement>();
 
@@ -80,15 +110,24 @@ export function OperationsScreen({ archiveId }: Props) {
               за {(data.executed_ms ?? 0).toFixed(0)} мс
             </div>
           )}
-          {data && data.rows && data.rows.length > 0 && (
-            <TableFilter
-              value={table.filter}
-              onChange={table.setFilter}
-              total={table.totalRows}
-              visible={table.visibleRows}
-              placeholder="Поиск по имени операции…"
-            />
-          )}
+          <div style={toolsGroup}>
+            {availableTypes.length > 0 && (
+              <EventTypeFilter
+                options={availableTypes}
+                selected={selectedTypes}
+                onChange={setSelectedTypes}
+              />
+            )}
+            {data && data.rows && data.rows.length > 0 && (
+              <TableFilter
+                value={table.filter}
+                onChange={table.setFilter}
+                total={table.totalRows}
+                visible={table.visibleRows}
+                placeholder="Поиск по имени операции…"
+              />
+            )}
+          </div>
         </div>
 
         {!archiveId && <EmptyArchiveHint what="чтобы увидеть топ бизнес-операций" />}
@@ -210,6 +249,13 @@ function excpStyle(n: number): CSSProperties | undefined {
 const opStyle: CSSProperties = {
   fontFamily: "var(--o-font-mono)",
   fontSize: 11.5,
+};
+
+const toolsGroup: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 10,
+  marginLeft: "auto",
 };
 
 const resetBtn: CSSProperties = {
