@@ -31,11 +31,17 @@ interface Props {
   onPickFile: (filePath: string) => void;
   onPasteXml: (xml: string) => void;
   onPickTjPlan: (payload: TjPlanPayload) => void;
+  onTabChange?: (tab: "file" | "paste" | "tj") => void;
   busy: boolean;
 }
 
-export function PlanImport({ onPickFile, onPasteXml, onPickTjPlan, busy }: Props) {
+export function PlanImport({ onPickFile, onPasteXml, onPickTjPlan, onTabChange, busy }: Props) {
   const [tab, setTab] = useState<Tab>("file");
+
+  const switchTab = (t: Tab) => {
+    setTab(t);
+    onTabChange?.(t);
+  };
   const [pasteText, setPasteText] = useState("");
   const [pickError, setPickError] = useState<string | null>(null);
 
@@ -67,21 +73,21 @@ export function PlanImport({ onPickFile, onPasteXml, onPickTjPlan, busy }: Props
         <button
           type="button"
           className={`${styles.tab} ${tab === "file" ? styles.tabActive : ""}`}
-          onClick={() => setTab("file")}
+          onClick={() => switchTab("file")}
         >
           {t.planAnalyzer.importTabFile}
         </button>
         <button
           type="button"
           className={`${styles.tab} ${tab === "paste" ? styles.tabActive : ""}`}
-          onClick={() => setTab("paste")}
+          onClick={() => switchTab("paste")}
         >
           {t.planAnalyzer.importTabPaste}
         </button>
         <button
           type="button"
           className={`${styles.tab} ${tab === "tj" ? styles.tabActive : ""}`}
-          onClick={() => setTab("tj")}
+          onClick={() => switchTab("tj")}
         >
           Из архива ТЖ
         </button>

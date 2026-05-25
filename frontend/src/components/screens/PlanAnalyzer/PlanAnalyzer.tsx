@@ -448,6 +448,33 @@ export function PlanAnalyzerScreen() {
     requestAiExplanationText,
   ]);
 
+  // Сброс состояния при смене таба — чтобы не показывался старый результат
+  // из предыдущего таба (например MSSQL .sqlplan под списком ТЖ).
+  const onTabChange = useCallback((tab: "file" | "paste" | "tj") => {
+    if (tab === "tj") {
+      // Переходим в ТЖ — сбрасываем XML-результат
+      setResult(null);
+      setPlanXmlForViz(null);
+      setSourceLabel(null);
+      setAiResponse(null);
+      setAiError(null);
+      setAiLoading(false);
+      setAntipatterns(null);
+      setAntipatternsEngine(null);
+      setIs1cContext(false);
+    } else {
+      // Переходим в file/paste — сбрасываем ТЖ-результат
+      setTextPlan(null);
+      setPev2PlanJson(null);
+      setAiResponse(null);
+      setAiError(null);
+      setAiLoading(false);
+      setAntipatterns(null);
+      setAntipatternsEngine(null);
+      setIs1cContext(false);
+    }
+  }, []);
+
   const onPickFile = useCallback(
     async (filePath: string) => {
       setBusy(true);
@@ -530,6 +557,7 @@ export function PlanAnalyzerScreen() {
           onPickFile={onPickFile}
           onPasteXml={onPasteXml}
           onPickTjPlan={onPickTjPlan}
+          onTabChange={onTabChange}
           busy={busy}
         />
 
