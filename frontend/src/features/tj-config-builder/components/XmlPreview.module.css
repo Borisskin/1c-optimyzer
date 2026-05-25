@@ -34,6 +34,8 @@
   border-bottom: 1px solid var(--o-border);
   background: var(--o-surface);
   flex-shrink: 0;
+  position: relative;   /* чтобы z-index работал */
+  z-index: 10;          /* выше .editor (position:relative без z-index) */
 }
 
 .title {
@@ -94,7 +96,7 @@
 .icon_btn[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
   background: var(--o-surface, #252526);
