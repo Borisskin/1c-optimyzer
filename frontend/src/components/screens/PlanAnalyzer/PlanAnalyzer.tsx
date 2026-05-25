@@ -17,6 +17,8 @@ import {
   type PlanAnalysisResult,
   type PlanAnalyzeResponse,
   type PlanAnalyzerStatus,
+  type PlanEngine as BackendPlanEngine,
+  type SqlAntipatternFinding,
 } from "@/api/backend";
 import { cloud, CloudError, type AiExplainPlanResponse } from "@/api/cloud";
 import { t, format } from "@/i18n/ru";
@@ -32,6 +34,7 @@ import { PlanTextView } from "./PlanTextView";
 import { PgPlanTextView } from "./views/PgPlanTextView";
 import { Pev2PlanVisualization } from "./views/Pev2PlanVisualization";
 import { detectPlanEngine, type PlanEngine } from "./utils/detectPlanEngine";
+import { SqlAntipatternsCard } from "./SqlAntipatternsCard";
 import styles from "./PlanAnalyzer.module.css";
 
 // Sprint 7 Phase D + Sprint 8 Phase B — text-format plan import payload
@@ -118,6 +121,17 @@ export function PlanAnalyzerScreen() {
   const [pev2PlanJson, setPev2PlanJson] = useState<string | null>(null);
   const [reExplainLoading, setReExplainLoading] = useState(false);
   const [reExplainError, setReExplainError] = useState<string | null>(null);
+  // Sprint 8 Phase C — SQL antipatterns. Запускаются параллельно с AI explain
+  // когда у нас есть sql_text + engine. Локальный sqlglot parser — быстро (<100ms).
+  const [antipatterns, setAntipatterns] = useState<SqlAntipatternFinding[] | null>(
+    null,
+  );
+  const [antipatternsLoading, setAntipatternsLoading] = useState(false);
+  const [antipatternsError, setAntipatternsError] = useState<string | null>(null);
+  const [antipatternsEngine, setAntipatternsEngine] = useState<BackendPlanEngine | null>(
+    null,
+  );
+  const [is1cContext, setIs1cContext] = useState(false);
   const pushToast = useAppStore((s) => s.pushToast);
 
   // Sprint 7 Phase D fix — scroll to result после клика по плану из ТЖ.
@@ -159,6 +173,39 @@ export function PlanAnalyzerScreen() {
       .catch(() => setHasPgConnection(false));
   }, []);
 
+  // Sprint 8 Phase C — параллельный запуск SQL antipatterns detection.
+  // Локальный sqlglot parser → быстро (<100ms на типичный запрос).
+  // Вызывается из обоих handler'ов: XML path и text path.
+  const runAntipatterns = useCallback(
+    async (sql: string, engine: BackendPlanEngine) => {
+      if (!sql || !sql.trim()) {
+        setAntipatterns(null);
+        setAntipatternsEngine(null);
+        setIs1cContext(false);
+        return;
+      }
+      setAntipatternsLoading(true);
+      setAntipatternsError(null);
+      setAntipatternsEngine(engine);
+      try {
+        const resp = await backend.sqlAntipatternsDetect(sql, engine);
+        if (!resp.ok) {
+          setAntipatternsError(resp.error ?? "Неизвестная ошибка");
+          setAntipatterns([]);
+          return;
+        }
+        setAntipatterns(resp.findings ?? []);
+        setIs1cContext(Boolean(resp.is_1c_context));
+      } catch (e) {
+        setAntipatternsError(String(e));
+        setAntipatterns([]);
+      } finally {
+        setAntipatternsLoading(false);
+      }
+    },
+    [],
+  );
+
   const requestAiExplanation = useCallback(
     async (planResult: PlanAnalysisResult, planXml: string) => {
       // AI explain работает только если есть оба: plan XML + хотя бы один statement.
@@ -177,6 +224,10 @@ export function PlanAnalyzerScreen() {
           planview_warnings: allWarnings,
           missing_indexes: allMissing,
           plan_summary: planResult.summary as unknown as Record<string, unknown>,
+          // Sprint 8 Phase C — передаём antipatterns в AI context (если уже найдены).
+          detected_antipatterns: antipatterns
+            ? antipatterns.map((f) => ({ ...f }))
+            : [],
         });
         setAiResponse(resp);
       } catch (e) {
@@ -185,7 +236,7 @@ export function PlanAnalyzerScreen() {
         setAiLoading(false);
       }
     },
-    [],
+    [antipatterns],
   );
 
   // Sprint 7 Phase D + Sprint 8 Phase B — AI explanation для text-format плана.
@@ -210,6 +261,10 @@ export function PlanAnalyzerScreen() {
           planview_warnings: [],
           missing_indexes: [],
           plan_summary: null,
+          // Sprint 8 Phase C — передаём antipatterns (особенно важно для PG).
+          detected_antipatterns: antipatterns
+            ? antipatterns.map((f) => ({ ...f }))
+            : [],
         });
         setAiResponse(resp);
       } catch (e) {
@@ -218,7 +273,7 @@ export function PlanAnalyzerScreen() {
         setAiLoading(false);
       }
     },
-    [],
+    [antipatterns],
   );
 
   const handleResponse = useCallback(
@@ -245,10 +300,20 @@ export function PlanAnalyzerScreen() {
       setAiResponse(null);
       setAiError(null);
       setAiLoading(false);
+      // Sprint 8 Phase C — параллельно запускаем antipatterns detection
+      // (быстро, локально). XML path = всегда MSSQL.
+      const firstStmt = resp.result.statements[0];
+      if (firstStmt?.statement_text) {
+        void runAntipatterns(firstStmt.statement_text, "mssql");
+      } else {
+        setAntipatterns(null);
+        setAntipatternsEngine(null);
+        setIs1cContext(false);
+      }
       // AI больше не запускаем автоматически — пользователь жмёт кнопку
       // в AiPlanExplanationCard (экономия квоты и токенов).
     },
-    [],
+    [runAntipatterns],
   );
 
   // Sprint 7 Phase D + Sprint 8 Phase B — handler для tab «Из архива ТЖ».
@@ -293,6 +358,15 @@ export function PlanAnalyzerScreen() {
       setAiResponse(null);
       setAiError(null);
       setAiLoading(false);
+      // Sprint 8 Phase C — antipatterns. engine="unknown" → skip (нет смысла
+      // парсить если мы не знаем диалект).
+      if (engine !== "unknown" && payload.sql_text) {
+        void runAntipatterns(payload.sql_text, engine);
+      } else {
+        setAntipatterns(null);
+        setAntipatternsEngine(null);
+        setIs1cContext(false);
+      }
       const engineLabel =
         engine === "postgres" ? "PostgreSQL" : engine === "mssql" ? "MS SQL" : "неизв. движок";
       pushToast(
@@ -345,7 +419,7 @@ export function PlanAnalyzerScreen() {
     } finally {
       setReExplainLoading(false);
     }
-  }, [textPlan, pushToast]);
+  }, [textPlan, pushToast, runAntipatterns]);
 
   // Колбек для idle-кнопки в AiPlanExplanationCard.
   // Sprint 7 Phase D — distinguishing XML vs text path.
@@ -471,6 +545,15 @@ export function PlanAnalyzerScreen() {
               onRequest={onRequestAi}
             />
 
+            {/* Sprint 8 Phase C — antipatterns (fast, local sqlglot) */}
+            <SqlAntipatternsCard
+              findings={antipatterns}
+              loading={antipatternsLoading}
+              error={antipatternsError}
+              engine={antipatternsEngine}
+              is1cContext={is1cContext}
+            />
+
             {textPlan.engine === "postgres" ? (
               <>
                 {/* Sprint 8 Phase B.5 — если уже получен JSON план — рендерим pev2.
@@ -549,6 +632,15 @@ export function PlanAnalyzerScreen() {
                 onRequest={onRequestAi}
               />
             )}
+
+            {/* Sprint 8 Phase C — antipatterns (fast, local sqlglot) */}
+            <SqlAntipatternsCard
+              findings={antipatterns}
+              loading={antipatternsLoading}
+              error={antipatternsError}
+              engine={antipatternsEngine}
+              is1cContext={is1cContext}
+            />
 
             {/* Phase B: SSMS-style visualization (html-query-plan) */}
             {planXmlForViz && <PlanVisualization planXml={planXmlForViz} />}

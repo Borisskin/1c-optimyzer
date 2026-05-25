@@ -113,6 +113,18 @@ class PlanExplainRequest(BaseModel):
     )
     configuration_context: Optional[ConfigurationContext] = None
     related_tj_summary: Optional[str] = Field(default=None, max_length=5000)
+    # Sprint 8 Phase C — antipatterns от sql_antipatterns engine (sqlglot).
+    # Передаются для дополнения AI explanation контекстом — AI не повторяет
+    # их в hotspots, но учитывает в recommendations и расширяет конкретикой плана.
+    detected_antipatterns: list[dict] = Field(
+        default_factory=list,
+        max_length=30,
+        description=(
+            "Уже обнаруженные локально антипаттерны (sqlglot). Передаются AI "
+            "для контекста. Формат: {code, title, severity, description, "
+            "rationale, recommendation}."
+        ),
+    )
 
 
 class PlanHotspot(BaseModel):

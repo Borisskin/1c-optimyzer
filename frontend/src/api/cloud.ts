@@ -324,6 +324,12 @@ export interface AiExplainPlanRequest {
   plan_summary?: Record<string, unknown> | null;
   configuration_context?: AiExplainConfigContext;
   related_tj_summary?: string | null;
+  /**
+   * Sprint 8 Phase C — антипаттерны, обнаруженные локально через sqlglot
+   * engine (backend.sqlAntipatternsDetect). Передаются AI как контекст —
+   * AI расширяет их конкретикой плана, не дублирует в hotspots.
+   */
+  detected_antipatterns?: Record<string, unknown>[];
 }
 
 export interface AiPlanHotspot {

@@ -664,3 +664,63 @@ def test_golden_case(...): ...
 
 **Consequences.** + Используем стандартный OS mechanism — пользователь может ревьюить/удалять через Credential Manager на Windows. + Backups / shared disks не leak пароль (SQLite файл не содержит plaintext). + Нет magic local encryption key который сам уязвим (как было бы в варианте B). + Cross-platform support (Windows/macOS/Linux) бесплатно через keyring abstraction. − На Linux нужен secret service daemon (gnome-keyring / KWallet); для headless server scenarios это требует setup. Для production desktop app — стандартный setup. − Нельзя экспортировать настройки между машинами как простой файл (но это и не требуется — каждый юзер настраивает локально).
 
+---
+
+## ADR-045 — sql_antipatterns module (новый, рядом с sql/), dialect-aware structure
+
+**Status:** Accepted (Sprint 8 Phase C, 2026-05-25)
+
+**Context.** Sprint 6 реализовал 9 T-SQL antipatterns в одном файле `backend/src/optimyzer_backend/sql/antipatterns.py`. Phase C нужно добавить 15 PG детекторов + dispatcher по engine. Опции структуры:
+- (A) Дописывать в существующий `sql/antipatterns.py` — файл разросся бы > 1000 строк, MSSQL и PG код перемешан
+- (B) Переименовать `sql/` → `sql_antipatterns/` (как предложил архитектор в Phase C промте) — но `sql/` содержит ещё anatomy.py, validator.py, executor.py, deadlock_anatomy.py и т.д., которые не имеют отношения к antipatterns
+- (C) Создать новый параллельный модуль `sql_antipatterns/` с подпапками `tsql/`, `postgres/`, `shared/` + backward-compat shim в `sql/antipatterns.py`
+
+**Decision.** **(C)** — новый модуль `sql_antipatterns/` с dialect-based структурой. Существующий `sql/antipatterns.py` остаётся как тонкий shim который делегирует в новый engine с `engine="mssql"`. Это сохраняет backward compat для Sprint 6 imports + чистая новая структура.
+
+**Consequences.** + Чистое разделение: `tsql/detectors.py` (9 T-SQL правил), `postgres/<detector>.py` (15 PG правил по файлу), `shared/` (заготовка для общих helpers), `engine.py` (dispatcher), `models.py` (SqlAntipattern + TSqlAntipattern alias). + Sprint 6 код продолжает работать через shim (25 legacy tests pass без изменений). + Каждый PG детектор в своём файле — легко расширять / тестировать индивидуально. − Один уровень indirection (shim) для Sprint 6 кода — минимальная стоимость в обмен на zero-risk migration.
+
+---
+
+## ADR-046 — 1С-context detection через regex heuristic (не proper parser)
+
+**Status:** Accepted (Sprint 8 Phase C, 2026-05-25)
+
+**Context.** Некоторые PG антипаттерны имеют другую интерпретацию в 1С-контексте: `_Description::mchar = '1'::mchar` — это нормально для 1С (extension типы), но в чистом PG это redundant cast. Нужен механизм определить — это 1С-генерируемый SQL или нет. Опции:
+- (A) Proper парсер бинаризации 1С таблиц — точно, но дорого и требует mapping configuration metadata
+- (B) Regex heuristic — быстро, false positive rate ~5%, но достаточно для большинства случаев
+- (C) Phase A configuration_context (если подключён) — accurate, но 90% юзеров не подключают конфу
+
+**Decision.** **(B) regex heuristic** + optional override через `force_1c_context` параметр. Pattern: `_(reference|document|accumrg|...)\d+` для таблиц, `(::|AS )(mchar|mvarchar|fulleq)` для типов. Если хоть один matched → `is_1c_context=True`.
+
+**Consequences.** + Быстро (~1ms на запрос) — не блокирует engine. + Работает без подключённой конфигурации (90% юзеров). + Можно override через RPC параметр для тестов / explicit control. − False positive если SQL случайно содержит таблицу с похожим именем (`_my_seq42`) — но шанс реально малый. − False negative для редких 1С таблиц с custom prefix — но эти кейсы можно расширять regex по мере обнаружения.
+
+---
+
+## ADR-047 — Параллельный flow antipatterns + AI: local fast + cloud slow
+
+**Status:** Accepted (Sprint 8 Phase C, 2026-05-25)
+
+**Context.** В PlanAnalyzer есть два источника анализа SQL: (1) AI cloud explanation (Claude Sonnet 4.5, 5-20 секунд), (2) local sqlglot antipatterns engine (< 100ms). Возможные UX:
+- (A) Sequential: сначала antipatterns, потом AI — UX медленный (юзер ждёт оба)
+- (B) Parallel: оба запускаются одновременно — antipatterns показываются мгновенно, AI приходит позже
+- (C) On-demand: antipatterns тоже по кнопке как AI — лишний клик
+
+**Decision.** **(B) Parallel.** При импорте плана сразу запускается `backend.sqlAntipatternsDetect(sql, engine)` (быстро, локально). AI остаётся на кнопке (квота / токены / latency). При нажатии кнопки AI получает уже найденные antipatterns в `detected_antipatterns` поле request — Claude использует их как context и НЕ дублирует в hotspots.
+
+**Consequences.** + Юзер сразу видит обнаруженные антипаттерны (визуальный feedback). + AI explanation качественнее — Claude фокусируется на специфике плана, не повторяет то что уже видно. + Меньше токенов в AI response (нет повторов). − Дополнительный API call к backend при импорте плана — но это локально, < 100ms. − Frontend dependency: antipatterns должны успеть до AI request — но AI на кнопке, так что race не возможен.
+
+---
+
+## ADR-048 — Sprint 8 закрыт без Phase D (planSQLText XML конвертер не нужен)
+
+**Status:** Accepted (Sprint 8 Phase C closure, 2026-05-25)
+
+**Context.** В Phase A был draft Phase D: «конвертировать planSQLText TEXT в SHOWPLAN_XML формат чтобы использовать existing PerformanceStudio CLI». После реализации Phase B стало понятно:
+- PG planSQLText — всегда **TEXT** или **JSON** (от PG EXPLAIN), не XML
+- pev2 нативно работает с JSON (через re-EXPLAIN) — даёт visual без conversion
+- PerformanceStudio CLI заточен под MSSQL XML — конвертация PG TEXT туда — это потеря semantic information
+
+**Decision.** Phase D **отменён**. Закрываем Sprint 8 тремя фазами (A + B + C) с тегом `v0.8.0-internal`. Для PG visual analysis используем (1) `PgPlanTextView` для TEXT format, (2) `Pev2PlanVisualization` после re-EXPLAIN для JSON. PerformanceStudio CLI остаётся только для MSSQL.
+
+**Consequences.** + Не тратим 1-2 недели на conversion который ничего не даёт. + Архитектура чище: каждый формат идёт через свой родной view. + Phase C может включать всё что было в Phase D scope (PG antipatterns engine был в обоих изначально). − Pev2 требует JSON (т.е. либо re-EXPLAIN, либо юзер вставляет EXPLAIN FORMAT JSON output) — для чистого TEXT мы остаёмся с line-by-line render. Это acceptable trade-off.
+

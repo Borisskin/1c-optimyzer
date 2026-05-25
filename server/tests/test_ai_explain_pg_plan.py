@@ -304,3 +304,126 @@ class TestPgPromptBuilder:
         assert "enable_mergejoin" in prompt
         assert "cpu_operator_cost" in prompt
         assert "lock_timeout" in prompt
+
+
+# ============================================================
+# Sprint 8 Phase C — detected_antipatterns integration
+# ============================================================
+
+
+class TestPgPromptAntipatternsIntegration:
+    """Phase C — antipatterns передаются в AI prompt как context."""
+
+    def test_empty_antipatterns_renders_as_no_list(self) -> None:
+        req = PlanExplainRequest(
+            sql_text="SELECT 1",
+            plan_xml=SAMPLE_PG_PLAN_TEXT,
+            plan_format="text",
+            engine="postgres",
+            planview_warnings=[],
+            missing_indexes=[],
+            detected_antipatterns=[],
+        )
+        prompt, _ = ai_explainer._build_pg_plan_user_prompt(req)
+        # "Уже обнаруженные локально антипаттерны:" + "нет" должно быть в prompt
+        assert "обнаруженные" in prompt
+        assert "нет" in prompt
+
+    def test_single_antipattern_rendered_in_prompt(self) -> None:
+        req = PlanExplainRequest(
+            sql_text="SELECT * FROM tbl OFFSET 50000 LIMIT 10",
+            plan_xml=SAMPLE_PG_PLAN_TEXT,
+            plan_format="text",
+            engine="postgres",
+            planview_warnings=[],
+            missing_indexes=[],
+            detected_antipatterns=[
+                {
+                    "code": "large_offset_pagination",
+                    "title": "Большое OFFSET значение (50000)",
+                    "severity": "Critical",
+                    "description": "OFFSET 50000 — PG прочитает и отбросит 50000 строк.",
+                    "rationale": "PG не имеет index skip для OFFSET.",
+                    "recommendation": "Используйте keyset pagination.",
+                    "is_1c_context_only": False,
+                }
+            ],
+        )
+        prompt, _ = ai_explainer._build_pg_plan_user_prompt(req)
+        # Каждое поле antipattern должно появиться в prompt
+        assert "large_offset_pagination" in prompt
+        assert "Critical" in prompt
+        assert "OFFSET 50000" in prompt
+        assert "keyset pagination" in prompt
+
+    def test_multiple_antipatterns_all_rendered(self) -> None:
+        req = PlanExplainRequest(
+            sql_text="DELETE FROM tbl",
+            plan_xml=SAMPLE_PG_PLAN_TEXT,
+            plan_format="text",
+            engine="postgres",
+            planview_warnings=[],
+            missing_indexes=[],
+            detected_antipatterns=[
+                {
+                    "code": "missing_where_on_update_delete",
+                    "title": "DELETE без WHERE",
+                    "severity": "Critical",
+                    "description": "DELETE FROM tbl без WHERE удалит ВСЕ строки.",
+                    "rationale": "TRUNCATE быстрее.",
+                    "recommendation": "Используйте TRUNCATE.",
+                    "is_1c_context_only": False,
+                },
+                {
+                    "code": "offset_without_limit",
+                    "title": "OFFSET без LIMIT",
+                    "severity": "Warning",
+                    "description": "...",
+                    "rationale": "...",
+                    "recommendation": "...",
+                    "is_1c_context_only": False,
+                },
+            ],
+        )
+        prompt, _ = ai_explainer._build_pg_plan_user_prompt(req)
+        assert "missing_where_on_update_delete" in prompt
+        assert "offset_without_limit" in prompt
+
+    def test_1c_context_marker_propagates_to_prompt(self) -> None:
+        req = PlanExplainRequest(
+            sql_text="SELECT _IDRRef FROM _Reference15",
+            plan_xml=SAMPLE_PG_PLAN_TEXT,
+            plan_format="text",
+            engine="postgres",
+            planview_warnings=[],
+            missing_indexes=[],
+            detected_antipatterns=[
+                {
+                    "code": "mchar_vs_text_comparison",
+                    "title": "Mixed mchar/text",
+                    "severity": "Warning",
+                    "description": "...",
+                    "rationale": "...",
+                    "recommendation": "...",
+                    "is_1c_context_only": True,
+                }
+            ],
+        )
+        prompt, _ = ai_explainer._build_pg_plan_user_prompt(req)
+        assert "1С-context" in prompt or "1С" in prompt
+
+
+class TestPgSystemPromptPhaseC:
+    """Phase C — SYSTEM prompt PG расширен инструкцией про detected_antipatterns."""
+
+    def test_system_prompt_mentions_detected_antipatterns_section(self) -> None:
+        sp = ai_explainer.SYSTEM_PROMPT_EXPLAIN_PG_PLAN
+        assert "detected_antipatterns" in sp or "Detected SQL Antipatterns" in sp
+
+    def test_system_prompt_instructs_not_to_duplicate_antipatterns(self) -> None:
+        sp = ai_explainer.SYSTEM_PROMPT_EXPLAIN_PG_PLAN
+        # Должна быть инструкция не дублировать antipatterns в hotspots
+        markers = ["НЕ дублируй", "Не повторяй", "не повторяй", "уже найдены"]
+        assert any(m in sp for m in markers), (
+            "PG SYSTEM prompt должен инструктировать НЕ дублировать antipatterns"
+        )
