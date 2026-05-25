@@ -19,6 +19,7 @@ from optimyzer_backend.rpc import bsl_ls_rpc  # noqa: F401  — Sprint 6 bsl-LS 
 from optimyzer_backend.rpc import plan_analyzer_rpc  # noqa: F401  — Sprint 7 Plan Analyzer
 from optimyzer_backend.rpc import pg_rpc  # noqa: F401  — Sprint 8 Phase B PG connections + re-EXPLAIN
 from optimyzer_backend.rpc import sql_antipatterns_rpc  # noqa: F401  — Sprint 8 Phase C SQL antipatterns
+from optimyzer_backend.rpc import logcfg_rpc  # noqa: F401  — Sprint 10 TJ Config Builder
 
 
 def _err(code: int, message: str, request_id: Any = None, data: Any = None) -> dict:

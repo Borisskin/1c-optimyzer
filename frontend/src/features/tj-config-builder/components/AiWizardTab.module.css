@@ -42,6 +42,41 @@
   color: var(--o-text-3);
 }
 
+/* ---- Примеры ---- */
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.examples_label {
+  font-size: 11px;
+  color: var(--o-text-3);
+  flex-shrink: 0;
+}
+
+.example_chip {
+  padding: 3px 8px;
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius);
+  background: none;
+  color: var(--o-text-3);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 80ms, border-color 80ms;
+  text-align: left;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.example_chip:hover {
+  color: var(--o-text-1);
+  border-color: var(--o-accent);
+}
+
 .form_row {
   display: flex;
   align-items: flex-end;

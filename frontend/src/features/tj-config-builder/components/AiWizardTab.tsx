@@ -15,6 +15,15 @@ interface Props {
 
 type Status = "idle" | "loading" | "done" | "error";
 
+// Типичные описания проблем для вдохновения юзера
+const EXAMPLE_PROMPTS = [
+  "Тормозит проведение документов в обед",
+  "Дедлоки при работе 50 пользователей",
+  "1С на PostgreSQL медленно работает с регистрами",
+  "Закрытие месяца идёт несколько часов",
+  "Не понимаю где медленно — нужен общий обзор",
+];
+
 function formatAiError(e: unknown): string {
   if (e instanceof CloudError) {
     if (e.reason === "network") {
@@ -87,6 +96,20 @@ export function AiWizardTab({ platformVersion, onApply }: Props) {
           rows={4}
           maxLength={2000}
         />
+        {/* Примеры описаний — клик подставляет в textarea */}
+        <div className={styles.examples}>
+          <span className={styles.examples_label}>Примеры:</span>
+          {EXAMPLE_PROMPTS.map((example) => (
+            <button
+              key={example}
+              className={styles.example_chip}
+              onClick={() => setDescription(example)}
+              title={example}
+            >
+              {example}
+            </button>
+          ))}
+        </div>
         <div className={styles.form_row}>
           <div className={styles.field_group}>
             <label className={styles.field_label} htmlFor="tj-ai-dbms">

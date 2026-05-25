@@ -22,7 +22,7 @@ type ActiveTab = "builder" | "ai";
 export function TjConfigBuilderScreen() {
   const [config, setConfig] = useState<LogcfgConfig>({ ...DEFAULT_LOGCFG_CONFIG });
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("builder");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("ai");
 
   // Определяем версию платформы при монтировании (best-effort, не блокирует UI)
   const [platformVersion, setPlatformVersion] = useState<string | null>(null);
@@ -97,20 +97,20 @@ export function TjConfigBuilderScreen() {
         <button
           className={[
             styles.tab,
-            activeTab === "builder" ? styles.tab_active : "",
-          ].join(" ")}
-          onClick={() => setActiveTab("builder")}
-        >
-          Графический конструктор
-        </button>
-        <button
-          className={[
-            styles.tab,
             activeTab === "ai" ? styles.tab_active : "",
           ].join(" ")}
           onClick={() => setActiveTab("ai")}
         >
           AI-мастер
+        </button>
+        <button
+          className={[
+            styles.tab,
+            activeTab === "builder" ? styles.tab_active : "",
+          ].join(" ")}
+          onClick={() => setActiveTab("builder")}
+        >
+          Графический конструктор
         </button>
       </div>
 
