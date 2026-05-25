@@ -1,0 +1,12 @@
+Limit  (cost=24.44..36.60 rows=1 width=8) (actual time=0.019..0.020 rows=1.00 loops=1)
+  Output: '1'::bigint
+  Buffers: shared hit=8
+  ->  Index Scan using pg_class_relname_nsp_index on pg_catalog.pg_class  (cost=0.12..12.28 rows=1 width=8) (actual time=0.017..0.017 rows=1.00 loops=1)
+        Output: '1'::bigint
+        Index Cond: ((pg_class.relname = 'ibversion'::name) AND (pg_class.relnamespace = ANY (ARRAY['2200'::oid, pg_my_temp_schema()])))
+        Filter: ((pg_class.relkind = 'r'::""char"") AND pg_table_is_visible(pg_class.oid))
+        Index Searches: 1
+        Buffers: shared hit=8
+Query Identifier: 371000189573531325
+Planning Time: 0.070 ms
+Execution Time: 0.030 ms

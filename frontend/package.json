@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "lint:css": "pwsh ../scripts/check-css-tokens.ps1"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.2",

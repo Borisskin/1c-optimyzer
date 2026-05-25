@@ -1,0 +1,11 @@
+Index Only Scan using pg_proc_proname_args_nsp_index on pg_catalog.pg_proc  (cost=0.11..8.13 rows=1 width=4) (actual time=0.123..0.123 rows=1.00 loops=1)
+  Output: 1
+  Index Cond: (pg_proc.proname = 'datediff2'::name)
+  Heap Fetches: 0
+  Index Searches: 1
+  Buffers: shared hit=3
+Query Identifier: 524212415149747793
+Planning:
+  Buffers: shared hit=156
+Planning Time: 0.632 ms
+Execution Time: 0.156 ms

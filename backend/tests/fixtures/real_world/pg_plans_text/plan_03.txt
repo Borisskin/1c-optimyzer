@@ -1,0 +1,8 @@
+Seq Scan on public.ibversion  (cost=0.00..1.01 rows=1 width=8) (actual time=0.008..0.008 rows=1.00 loops=1)
+  Output: ibversion, platformversionreq
+  Buffers: shared hit=1
+Query Identifier: 1344210360454642114
+Planning:
+  Buffers: shared hit=6
+Planning Time: 0.093 ms
+Execution Time: 0.013 ms

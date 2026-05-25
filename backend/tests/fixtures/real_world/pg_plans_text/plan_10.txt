@@ -1,0 +1,17 @@
+Nested Loop Left Join  (cost=0.01..2.16 rows=1 width=4) (actual time=2.497..2.500 rows=1.00 loops=1)
+  Output: x.extversion
+  Inner Unique: true
+  Buffers: shared hit=1
+  ->  Function Scan on pg_catalog.pg_available_extensions e  (cost=0.01..1.11 rows=1 width=64) (actual time=2.477..2.479 rows=1.00 loops=1)
+        Output: e.name, e.default_version, e.comment
+        Function Call: pg_available_extensions()
+        Filter: (e.name = 'fulleq'::name)
+        Rows Removed by Filter: 61
+  ->  Seq Scan on pg_catalog.pg_extension x  (cost=0.00..1.04 rows=1 width=68) (actual time=0.018..0.018 rows=1.00 loops=1)
+        Output: x.oid, x.extname, x.extowner, x.extnamespace, x.extrelocatable, x.extversion, x.extconfig, x.extcondition
+        Filter: (x.extname = 'fulleq'::name)
+        Rows Removed by Filter: 3
+        Buffers: shared hit=1
+Query Identifier: -79929494436939192
+Planning Time: 0.136 ms
+Execution Time: 2.538 ms

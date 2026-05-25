@@ -1,0 +1,12 @@
+Aggregate  (cost=15.84..15.85 rows=1 width=8) (actual time=0.019..0.019 rows=1.00 loops=1)
+  Output: count(*)
+  Buffers: shared hit=3
+  ->  Index Scan using pg_class_relname_nsp_index on pg_catalog.pg_class c  (cost=0.12..15.84 rows=1 width=0) (actual time=0.017..0.017 rows=1.00 loops=1)
+        Output: c.oid, c.relname, c.relnamespace, c.reltype, c.reloftype, c.relowner, c.relam, c.relfilenode, c.reltablespace, c.relpages, c.reltuples, c.relallvisible, c.relallfrozen, c.reltoastrelid, c.relhasindex, c.relisshared, c.relpersistence, c.relkind, c.relnatts, c.relchecks, c.relhasrules, c.relhastriggers, c.relhassubclass, c.relrowsecurity, c.relforcerowsecurity, c.relispopulated, c.relreplident, c.relispartition, c.relrewrite, c.relfrozenxid, c.relminmxid, c.relacl, c.reloptions, c.relpartbound
+        Index Cond: (c.relname = ANY ('{dbschema,dbschemaog}'::name[]))
+        Filter: (c.relkind = ANY ('{r,p}'::""char""[]))
+        Index Searches: 1
+        Buffers: shared hit=3
+Query Identifier: -4344109851984448627
+Planning Time: 0.116 ms
+Execution Time: 0.036 ms

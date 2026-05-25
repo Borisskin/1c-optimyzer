@@ -724,3 +724,54 @@ def test_golden_case(...): ...
 
 **Consequences.** + Не тратим 1-2 недели на conversion который ничего не даёт. + Архитектура чище: каждый формат идёт через свой родной view. + Phase C может включать всё что было в Phase D scope (PG antipatterns engine был в обоих изначально). − Pev2 требует JSON (т.е. либо re-EXPLAIN, либо юзер вставляет EXPLAIN FORMAT JSON output) — для чистого TEXT мы остаёмся с line-by-line render. Это acceptable trade-off.
 
+---
+
+## ADR-049 — Real-world fixture strategy: synthetic + extracted, не реальные дампы
+
+**Status:** Accepted (Sprint 9 Phase A, 2026-05-25)
+
+**Context.** Для regression-тестов нужны реальные SQL запросы. Опции:
+- (A) Дамп реальных запросов из production ТЖ клиента — риск утечки данных (PII в значениях параметров)
+- (B) Извлечение из тестовой базы Test1CProf (localhost:2541) — безопасно, но объём мал (< 30 запросов)
+- (C) Синтетические запросы по образцу реальных 1С-паттернов + извлечённые pg_stat_statements из pgBase — полное покрытие без PII
+
+**Decision.** **(C)** — гибридный подход. MSSQL: 32 синтетических запроса в sp_executesql обёртке, покрывают 8 основных антипаттернов 1С. PG: 12 извлечённых + 22 синтетических = 34 total. Все запросы работают на типовых 1С-именах таблиц (`_Reference15`, `_Document70`, `_AccumRg5000`) без реальных значений бизнес-параметров.
+
+**Consequences.** + Нет риска утечки данных клиента. + Fixtures воспроизводимы и детерминированы. + Охватывают все ключевые антипаттерны (SELECT *, LIKE %, NOT IN, cross join, implicit convert). + Синтетические запросы проще параметризовать для новых тест-кейсов. − Не ловят специфические баги на очень нестандартных SQL которые иногда генерирует 1С Platform (можно добавить отдельно по мере нахождения).
+
+---
+
+## ADR-050 — normalize_ai_enum: generic helper вместо ad-hoc per-field проверок
+
+**Status:** Accepted (Sprint 9 Phase D, 2026-05-25)
+
+**Context.** AI (Claude) иногда возвращает нестандартные значения enum: "High" вместо "Critical", "Moderate" вместо "Warning", "Low" вместо "Info". Sprint 7-8 обрабатывал это через ad-hoc условия в `_norm_sev()`. По мере роста числа полей (hotspot.severity, recommendation.impact_estimate, suggested_index.impact_estimate, overall_severity) дублирование росло.
+
+**Decision.** Единый `normalize_ai_enum(value, mapping, default, field_name)` в `server/services/ai_explainer.py`. Принимает mapping `dict[str, str]` с canonical + alias keys в lowercase. Логгирует предупреждение если значение неизвестно. Два готовых mapping: `SEVERITY_MAPPING` (Critical/Warning/Info + алиасы), `IMPACT_MAPPING` (Critical/High/Medium/Low + алиасы). Тесты: 30+ кейсов в `tests/test_ai_normalize.py`.
+
+**Consequences.** + Один код path для всей AI enum нормализации — легко добавлять алиасы. + Logging неизвестных значений позволяет мониторить AI enum drift. + 30+ тестов документируют все алиасы. − Чуть больше indirection — минимальная стоимость (helper простой).
+
+---
+
+## ADR-051 — tj-simulator: 7 новых сценариев через тот же worker-shell паттерн
+
+**Status:** Accepted (Sprint 9 Phase C, 2026-05-25)
+
+**Context.** Sprint 9 Phase C расширяет tj-simulator 7 новыми сценариями. Вопрос реализации: добавить в существующую обработку или создать отдельную.
+
+**Decision.** Расширяем существующую обработку `МоделированиеТЖ.epf`. Новые сценарии разделены на два типа: (1) параллельные блокировочные сценарии (TDEADLOCK X-X, chain, длинная транзакция) — через тот же `WScript.Shell 1cv8c.exe /Execute` паттерн; (2) однопоточные сценарии (Memory, N+1, Heavy SDBL, PG-паттерны) — выполняются в текущей сессии через `РеквизитФормыВЗначение("Объект")` wrapper. Обе группы добавлены в новый визуальный блок "Дополнительные сценарии (Sprint 9)".
+
+**Consequences.** + Переиспользуем проверенный worker паттерн (тот же механизм TLOCK/TDEADLOCK). + Нет новых зависимостей и новых EPF файлов. + Расширение расширения `ВоркерыТЖ` новыми background-task методами. − Форма становится длиннее (13 кнопок vs 6) — решено группировкой в отдельный UsualGroup. Сценарии 9-12 (Memory/N+1/SDBL/PG) не нуждаются в параллельных сессиях и не генерируют TLOCK/TDEADLOCK — они генерируют только DBMSSQL события, что достаточно для testing antipatterns detection.
+
+---
+
+## ADR-052 — CSS design token lint: identify-first, fix-as-you-go
+
+**Status:** Accepted (Sprint 9 Phase D, 2026-05-25)
+
+**Context.** Sprint 9 добавляет lint-скрипт `scripts/check-css-tokens.ps1` для обнаружения hardcoded hex-цветов в CSS modules. При первом прогоне обнаружено 254 нарушения в 32 файлах — весь legacy CSS написан до введения `--o-*` design token системы.
+
+**Decision.** Lint запускается (и интегрирован в `npm run lint:css`) но **не блокирует CI** на текущем этапе. Существующие 254 нарушения — известный технический долг. Правило: **новые файлы** и **новые правки CSS** должны использовать только `var(--o-*)`. Whitelist разрешает #000/#fff/transparent и определения самих token'ов (`--o-*: #hex`). Полная миграция существующего CSS — отдельный рефакторинг-спринт.
+
+**Consequences.** + Lint работает и выявляет нарушения — tooling готов. + Не блокирует разработку пока legacy CSS не мигрирован. + Документирует 254 нарушения как known tech debt. − Без blocking enforcement новые нарушения могут проскользнуть — это trade-off между скоростью разработки и качеством. Mitigation: code review + linkreview на CSS changes.
+

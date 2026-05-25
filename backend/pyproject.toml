@@ -58,6 +58,7 @@ asyncio_default_fixture_loop_scope = "module"
 asyncio_default_test_loop_scope = "module"
 markers = [
     "integration: реальный bsl-LS JVM (медленно, требует setup-bsl-ls-binaries.ps1)",
+    "performance: latency/throughput benchmarks (исключены из default CI, запуск: pytest -m performance)",
 ]
 
 [tool.ruff]

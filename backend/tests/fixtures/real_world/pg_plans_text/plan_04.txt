@@ -1,0 +1,10 @@
+Seq Scan on pg_catalog.pg_database  (cost=0.00..1.02 rows=1 width=20) (actual time=0.008..0.008 rows=1.00 loops=1)
+  Output: datcollate
+  Filter: (pg_database.datname = current_database())
+  Rows Removed by Filter: 4
+  Buffers: shared hit=1
+Query Identifier: -4274817044854304588
+Planning:
+  Buffers: shared hit=19
+Planning Time: 0.206 ms
+Execution Time: 0.015 ms

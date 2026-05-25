@@ -1,0 +1,10 @@
+Seq Scan on pg_catalog.pg_tablespace  (cost=0.00..1.02 rows=2 width=64) (actual time=0.011..0.011 rows=0.00 loops=1)
+  Output: spcname
+  Filter: ((pg_tablespace.spcname = 'v81c_index'::name) OR (pg_tablespace.spcname = 'v81c_data'::name))
+  Rows Removed by Filter: 2
+  Buffers: shared hit=1
+Query Identifier: 4542859770577971149
+Planning:
+  Buffers: shared hit=190
+Planning Time: 0.783 ms
+Execution Time: 0.024 ms

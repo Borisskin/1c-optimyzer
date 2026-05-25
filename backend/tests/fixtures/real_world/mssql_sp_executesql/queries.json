@@ -1,0 +1,162 @@
+[
+  {
+    "sql": "exec sp_executesql N'SELECT TOP 1000 T1._IDRRef, T1._Code, T1._Description, T1._Fld1234RRef, T1._Fld1235 FROM dbo._Reference15 T1 (NOLOCK) WHERE T1._Fld1236 = @P1 ORDER BY T1._Description', N'@P1 nvarchar(128)', N'ACTIVE'",
+    "duration_us": 450000,
+    "comment": "Выборка из справочника Контрагенты с фильтром по статусу"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Code, T2._Fld5001 FROM dbo._Reference15 T1 INNER JOIN dbo._InfoRg5000 T2 ON T1._IDRRef = T2._Fld5000RRef WHERE T1._Marked = 0x00 AND T2._Fld5002 = @P1', N'@P1 numeric(10)', 1",
+    "duration_us": 1200000,
+    "comment": "JOIN справочника с регистром сведений"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Date_Time, T1._Number, T1._Fld7001RRef FROM dbo._Document70 T1 WHERE T1._Date_Time BETWEEN @P1 AND @P2 AND T1._Fld7002 IN (SELECT T2._IDRRef FROM dbo._Reference23 T2 WHERE T2._Code = @P3)', N'@P1 datetime, @P2 datetime, @P3 nvarchar(9)', '20250101 00:00:00', '20250131 23:59:59', '000001234'",
+    "duration_us": 3500000,
+    "comment": "Документы реализации за период с IN (subquery)"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT * FROM dbo._Document70 T1 WHERE T1._Posted = 0x01 AND T1._Date_Time >= @P1', N'@P1 datetime', '20250101 00:00:00'",
+    "duration_us": 5000000,
+    "comment": "SELECT * — антипаттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef FROM dbo._Reference15 T1 WHERE T1._IDRRef NOT IN (SELECT T2._Fld7001RRef FROM dbo._Document70 T2 WHERE T2._Posted = 0x01) AND T1._Marked = 0x00', N''",
+    "duration_us": 8000000,
+    "comment": "NOT IN with subquery — антипаттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Code, T1._Description FROM dbo._Reference15 T1 WHERE T1._Description LIKE @P1', N'@P1 nvarchar(200)', N'%ООО%'",
+    "duration_us": 2300000,
+    "comment": "LIKE с ведущим % — антипаттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, YEAR(T1._Date_Time) AS Год, MONTH(T1._Date_Time) AS Месяц, SUM(T1._Fld7010) AS Сумма FROM dbo._Document70 T1 WHERE YEAR(T1._Date_Time) = @P1 GROUP BY T1._IDRRef, YEAR(T1._Date_Time), MONTH(T1._Date_Time)', N'@P1 int', 2025",
+    "duration_us": 12000000,
+    "comment": "Функция YEAR() в WHERE — антипаттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._Fld10001RRef, SUM(T1._Fld10002) AS Остаток FROM dbo._AccumRg10000 T1 WHERE T1._Period = @P1 GROUP BY T1._Fld10001RRef', N'@P1 datetime', '20250101 00:00:00'",
+    "duration_us": 890000,
+    "comment": "Регистр накопления — агрегация остатков"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT TOP 100 T1._IDRRef, T1._Number, T1._Date_Time, T2._Description AS Контрагент FROM dbo._Document70 T1 LEFT JOIN dbo._Reference15 T2 ON T1._Fld7001RRef = T2._IDRRef WHERE T1._Date_Time >= @P1 ORDER BY T1._Date_Time DESC', N'@P1 datetime', '20250101 00:00:00'",
+    "duration_us": 670000,
+    "comment": "Список документов с LEFT JOIN контрагента"
+  },
+  {
+    "sql": "exec sp_executesql N'INSERT INTO #T1 (_IDRRef, _Code, _Fld1234RRef) SELECT T1._IDRRef, T1._Code, T1._Fld1234RRef FROM dbo._Reference15 T1 WHERE T1._Marked = 0x00 AND T1._Fld1235 = @P1', N'@P1 bit', 0x01",
+    "duration_us": 340000,
+    "comment": "INSERT в temp table"
+  },
+  {
+    "sql": "exec sp_executesql N'WITH CTE AS (SELECT T1._IDRRef, SUM(T1._Fld10002) AS Total FROM dbo._AccumRg10000 T1 GROUP BY T1._Fld10001RRef) SELECT T2._Code, T2._Description, C.Total FROM CTE C INNER JOIN dbo._Reference15 T2 ON C._IDRRef = T2._IDRRef WHERE C.Total > @P1', N'@P1 numeric(15,2)', 1000.00",
+    "duration_us": 1800000,
+    "comment": "CTE с агрегацией и JOIN"
+  },
+  {
+    "sql": "{call sp_executesql(N'SELECT T1._IDRRef, T1._Description FROM dbo._Reference37 T1 WHERE T1._Fld3700 = @P1 AND T1._Marked = 0x00', N'@P1 nvarchar(128)', N'MAIN_GROUP')}",
+    "duration_us": 210000,
+    "comment": "ODBC формат вызова sp_executesql"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT COUNT(*) FROM dbo._Document70 T1 WHERE T1._Posted = 0x01'",
+    "duration_us": 430000,
+    "comment": "COUNT без параметров"
+  },
+  {
+    "sql": "exec sp_executesql N'UPDATE dbo._Reference15 SET _Fld1235 = @P1, _Fld1236 = @P2 WHERE _IDRRef = @P3', N'@P3 binary(16), @P1 bit, @P2 nvarchar(128)', 0x00, N'ARCHIVED', 0xA1B2C3D4E5F60718293A4B5C6D7E8F90",
+    "duration_us": 150000,
+    "comment": "UPDATE одной записи справочника"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Number, T1._Date_Time, T2._Description AS Org, T3._Description AS Контрагент, T4._Description AS Договор, T5._Description AS Склад FROM dbo._Document70 T1 LEFT JOIN dbo._Reference10 T2 ON T1._Fld7003RRef = T2._IDRRef LEFT JOIN dbo._Reference15 T3 ON T1._Fld7001RRef = T3._IDRRef LEFT JOIN dbo._Reference25 T4 ON T1._Fld7004RRef = T4._IDRRef LEFT JOIN dbo._Reference19 T5 ON T1._Fld7005RRef = T5._IDRRef WHERE T1._Posted = 0x01 AND T1._Date_Time >= @P1 AND T1._Date_Time < @P2 ORDER BY T1._Date_Time DESC', N'@P1 datetime, @P2 datetime', '20250101 00:00:00', '20250201 00:00:00'",
+    "duration_us": 4500000,
+    "comment": "5-таближный JOIN для отчёта"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._Period, T1._AccountRRef, T1._Fld30001RRef, SUM(T1._Fld30002Dt) - SUM(T1._Fld30002Ct) AS Сальдо FROM dbo._AccumRgT30000 T1 WHERE T1._Period >= @P1 AND T1._Fld30001RRef = @P2 GROUP BY T1._Period, T1._AccountRRef, T1._Fld30001RRef', N'@P1 datetime, @P2 binary(16)', '20250101 00:00:00', 0xAB12CD34EF561234567890ABCDEF1234",
+    "duration_us": 2100000,
+    "comment": "Регистр бухгалтерии — обороты"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Description FROM dbo._Reference15 T1 WHERE ISNULL(T1._Fld1234RRef, 0x0) = @P1 AND T1._Marked = 0x00', N'@P1 binary(16)', 0x0",
+    "duration_us": 1600000,
+    "comment": "ISNULL() в WHERE — антипаттерн implicit convert"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Number FROM dbo._Document70 T1 WHERE EXISTS (SELECT 1 FROM dbo._Reference15 T2 WHERE T2._IDRRef = T1._Fld7001RRef AND T2._Fld1236 = @P1) AND T1._Date_Time >= @P2', N'@P1 nvarchar(128), @P2 datetime', N'VIP', '20250101 00:00:00'",
+    "duration_us": 980000,
+    "comment": "EXISTS — хороший паттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'DELETE T1 FROM dbo._AccumRg10000 T1 WHERE T1._Period < @P1 AND T1._Fld10001RRef IN (SELECT _IDRRef FROM dbo._Reference15 WHERE _Marked = 0x01)', N'@P1 datetime', '20240101 00:00:00'",
+    "duration_us": 5600000,
+    "comment": "DELETE устаревших записей"
+  },
+  {
+    "sql": "exec sp_executesql N'MERGE dbo._Reference15 AS target USING (SELECT @P1 AS _IDRRef, @P2 AS _Code, @P3 AS _Description) AS source ON (target._IDRRef = source._IDRRef) WHEN MATCHED THEN UPDATE SET target._Code = source._Code, target._Description = source._Description WHEN NOT MATCHED THEN INSERT (_IDRRef, _Code, _Description) VALUES (source._IDRRef, source._Code, source._Description);', N'@P1 binary(16), @P2 nvarchar(9), @P3 nvarchar(150)', 0xA1B2C3D4E5F60718293A4B5C6D7E8F91, N'000012345', N'ООО Ромашка'",
+    "duration_us": 320000,
+    "comment": "MERGE для справочника"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT TOP 1 T1._Fld8001, T1._Period FROM dbo._InfoRg8000 T1 WHERE T1._Fld8002RRef = @P1 AND T1._Period <= @P2 ORDER BY T1._Period DESC', N'@P1 binary(16), @P2 datetime', 0xB1C2D3E4F506172839405060708090A0, '20250115 00:00:00'",
+    "duration_us": 120000,
+    "comment": "Срез последних периодического регистра"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Code, T1._Description, T1._Fld1240 FROM dbo._Reference15 T1 WHERE (T1._Description LIKE @P1 OR T1._Code LIKE @P1 OR T1._Fld1240 LIKE @P1) AND T1._Marked = 0x00', N'@P1 nvarchar(200)', N'%Иванов%'",
+    "duration_us": 7800000,
+    "comment": "Поиск по нескольким полям через LIKE % — антипаттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT DISTINCT T1._Fld7001RRef FROM dbo._Document70 T1 INNER JOIN dbo._Document70_VT7100 T2 ON T1._IDRRef = T2._Document70_IDRRef WHERE T1._Date_Time >= @P1 AND T2._Fld7101 > @P2', N'@P1 datetime, @P2 numeric(15,2)', '20250101 00:00:00', 0.00",
+    "duration_us": 2400000,
+    "comment": "DISTINCT с JOIN табличной части"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Description, ''Клиент'' AS Тип FROM dbo._Reference15 T1 WHERE T1._Fld1236 = @P1 UNION SELECT T2._IDRRef, T2._Description, ''Поставщик'' AS Тип FROM dbo._Reference15 T2 WHERE T2._Fld1237 = @P1', N'@P1 bit', 0x01",
+    "duration_us": 3100000,
+    "comment": "UNION вместо UNION ALL — антипаттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Code, T1._Fld1234RRef FROM dbo._Reference15 T1 WHERE T1._IDRRef = @P1', N'@P1 binary(16)', 0xA1B2C3D4E5F60718293A4B5C6D7E8F90",
+    "duration_us": 15000,
+    "comment": "Point lookup по первичному ключу"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._Fld10001RRef, T1._Fld10003RRef, SUM(T1._Fld10004) AS Количество, SUM(T1._Fld10005) AS Сумма FROM dbo._AccumRg10000 T1 WHERE T1._Period BETWEEN @P1 AND @P2 AND T1._Fld10006 = @P3 GROUP BY T1._Fld10001RRef, T1._Fld10003RRef HAVING SUM(T1._Fld10004) > @P4 ORDER BY Сумма DESC', N'@P1 datetime, @P2 datetime, @P3 binary(16), @P4 numeric(15,2)', '20250101 00:00:00', '20250131 23:59:59', 0xBEEFCAFED00DABCDEF1234567890ABCD, 100.00",
+    "duration_us": 15000000,
+    "comment": "Сложная агрегация регистра за период"
+  },
+  {
+    "sql": "exec sp_executesql N'INSERT INTO dbo._Document70_VT7100 (_Document70_IDRRef, _KeyField, _Fld7101, _Fld7102RRef, _Fld7103) VALUES (@P1, @P2, @P3, @P4, @P5)', N'@P1 binary(16), @P2 binary(16), @P3 numeric(15,2), @P4 binary(16), @P5 nvarchar(150)', 0xDEADBEEFCAFED00DABCDEF1234567890, 0xCAFEBABED00D4B1D00ABCDEF12345678, 5000.00, 0xBEEFCAFED00DABCDEF1234567890ABCD, N'Ноутбук Dell XPS 15'",
+    "duration_us": 80000,
+    "comment": "Вставка строки в табличную часть документа"
+  },
+  {
+    "sql": "exec sp_executesql N'UPDATE T1 SET T1._Fld1235 = @P1 FROM dbo._Reference15 T1 WHERE T1._IDRRef IN (SELECT DISTINCT T2._Fld7001RRef FROM dbo._Document70 T2 WHERE T2._Posted = 0x01 AND T2._Date_Time >= @P2 AND T2._Date_Time < @P3)', N'@P1 bit, @P2 datetime, @P3 datetime', 0x01, '20250101 00:00:00', '20250201 00:00:00'",
+    "duration_us": 2700000,
+    "comment": "UPDATE с подзапросом"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Code, T1._Description, T1._Fld1240_TYPE, T1._Fld1240_RRef, T1._Fld1240_RTRef FROM dbo._Reference15 T1 WHERE T1._Fld1236 = @P1 AND T1._Marked = 0x00 ORDER BY T1._Code', N'@P1 nvarchar(128)', N'GROUP_A'",
+    "duration_us": 560000,
+    "comment": "Справочник с составным типом (TYPE+RRef+RTRef)"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef FROM dbo._Reference15 T1 WHERE CAST(T1._IDRRef AS nvarchar(36)) = @P1', N'@P1 nvarchar(36)', N'A1B2C3D4-E5F6-0718-2930-4B5C6D7E8F90'",
+    "duration_us": 9000000,
+    "comment": "CAST в WHERE — implicit conversion антипаттерн"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._RegistrationTime, T1._UserRRef, T1._EventCode, T1._Session, T1._Fld2001 FROM dbo._SystemLog T1 WHERE T1._RegistrationTime >= @P1 AND T1._EventCode = @P2 ORDER BY T1._RegistrationTime DESC', N'@P1 datetime, @P2 int', '20250120 00:00:00', 15",
+    "duration_us": 1100000,
+    "comment": "Запрос к журналу регистрации"
+  },
+  {
+    "sql": "exec sp_executesql N'SELECT T1._IDRRef, T1._Number, T1._Date_Time, CASE WHEN T1._Fld7010 > @P1 THEN N''Высокий'' WHEN T1._Fld7010 > @P2 THEN N''Средний'' ELSE N''Низкий'' END AS Приоритет FROM dbo._Document70 T1 WHERE T1._Posted = 0x01 AND T1._Date_Time >= @P3', N'@P1 numeric(15,2), @P2 numeric(15,2), @P3 datetime', 100000.00, 10000.00, '20250101 00:00:00'",
+    "duration_us": 780000,
+    "comment": "CASE WHEN в SELECT — нормальный паттерн"
+  }
+]

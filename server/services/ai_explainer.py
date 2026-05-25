@@ -38,6 +38,71 @@ from schemas.ai import (
 logger = logging.getLogger(__name__)
 
 
+# ============== Sprint 9 Phase D: Generic AI enum normalizer ==============
+
+
+def normalize_ai_enum(
+    value: Any,
+    mapping: dict[str, str],
+    default: str,
+    field_name: str = "enum",
+) -> str:
+    """Normalize AI-returned enum values to schema-valid options.
+
+    AI иногда возвращает нестандартные значения enum (например, 'High' вместо
+    'Critical', 'Moderate' вместо 'Warning'). Эта функция нормализует их через
+    mapping, с fallback на default.
+
+    Args:
+        value: значение из AI response (может быть любого типа)
+        mapping: lowercased input -> valid output
+        default: fallback если не нашли в mapping
+        field_name: для logging (помогает при дебаге)
+
+    Returns:
+        valid enum value из mapping или default
+    """
+    if not isinstance(value, str):
+        logger.warning("AI returned non-string %s: %r (type=%s)", field_name, value, type(value).__name__)
+        return default
+    normalized = value.lower().strip()
+    result = mapping.get(normalized, None)
+    if result is None:
+        logger.info("AI returned unknown %s %r, falling back to %r", field_name, value, default)
+        return default
+    return result
+
+
+# Predefined severity mapping: AI-возвращаемые варианты -> canonical
+SEVERITY_MAPPING: dict[str, str] = {
+    "critical": "Critical",
+    "high": "Critical",
+    "blocker": "Critical",
+    "error": "Critical",
+    "warning": "Warning",
+    "medium": "Warning",
+    "moderate": "Warning",
+    "warn": "Warning",
+    "info": "Info",
+    "low": "Info",
+    "minor": "Info",
+    "informational": "Info",
+}
+
+# Impact mapping для recommendations/suggested_indexes
+IMPACT_MAPPING: dict[str, str] = {
+    "critical": "Critical",
+    "high": "High",
+    "medium": "Medium",
+    "moderate": "Medium",
+    "low": "Low",
+    "minor": "Low",
+}
+
+
+# ============ end Sprint 9 Phase D ============
+
+
 SYSTEM_PROMPT_EXPLAIN = """Ты — эксперт по производительности 1С:Предприятие и SDBL запросам. Объясняешь разработчику 1С проблемы в его запросе понятным русским языком.
 
 Правила:
@@ -685,29 +750,30 @@ async def _process_plan_response(
             ) from ex
 
     # Нормализуем severity — AI иногда возвращает 'High'/'Medium'/'Low'
-    # вместо 'Critical'/'Warning'/'Info'.
-    _SEV_MAP = {
-        "critical": "Critical", "high": "Critical",
-        "warning": "Warning", "medium": "Warning",
-        "info": "Info", "low": "Info",
-    }
-
+    # вместо 'Critical'/'Warning'/'Info'. Используем generic normalizer (Sprint 9 Phase D).
     def _norm_sev(h: dict) -> dict:
-        sev = str(h.get("severity", "Info")).lower()
         h = dict(h)
-        h["severity"] = _SEV_MAP.get(sev, "Info")
+        h["severity"] = normalize_ai_enum(h.get("severity", "Info"), SEVERITY_MAPPING, "Info", "hotspot.severity")
         return h
+
+    def _norm_impact(obj: dict) -> dict:
+        obj = dict(obj)
+        if "impact_estimate" in obj:
+            obj["impact_estimate"] = normalize_ai_enum(
+                obj.get("impact_estimate", "Low"), IMPACT_MAPPING, "Low", "impact_estimate"
+            )
+        return obj
 
     hotspots_raw = parsed.get("hotspots", []) or []
     hotspots = [PlanHotspot(**_norm_sev(h)) for h in hotspots_raw if isinstance(h, dict)]
     recs_raw = parsed.get("recommendations", []) or []
-    recommendations = [PlanRecommendation(**r) for r in recs_raw if isinstance(r, dict)]
+    recommendations = [PlanRecommendation(**_norm_impact(r)) for r in recs_raw if isinstance(r, dict)]
     sidx_raw = parsed.get("suggested_indexes", []) or []
-    suggested_indexes = [PlanSuggestedIndex(**s) for s in sidx_raw if isinstance(s, dict)]
+    suggested_indexes = [PlanSuggestedIndex(**_norm_impact(s)) for s in sidx_raw if isinstance(s, dict)]
 
-    overall = parsed.get("overall_severity", "Info")
-    if overall not in ("Critical", "Warning", "Info"):
-        overall = "Info"
+    overall = normalize_ai_enum(
+        parsed.get("overall_severity", "Info"), SEVERITY_MAPPING, "Info", "overall_severity"
+    )
 
     return PlanExplainResponse(
         summary=str(parsed.get("summary", "")),
