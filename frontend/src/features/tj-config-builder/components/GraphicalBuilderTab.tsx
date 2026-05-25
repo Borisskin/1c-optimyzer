@@ -100,7 +100,7 @@ export function GraphicalBuilderTab({ config, onChange }: Props) {
         <hr className={styles.divider} />
         <VolumePreview config={config} />
         <hr className={styles.divider} />
-        <Actions config={config} onReset={handleReset} />
+        <Actions onReset={handleReset} />
       </div>
 
       {/* Правая область: XML-предпросмотр занимает весь экран */}

@@ -1,13 +1,5 @@
 .root {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.buttons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
 }
 
 .btn_reset {
@@ -25,54 +17,4 @@
 .btn_reset:hover {
   color: var(--o-text-1);
   border-color: var(--o-accent);
-}
-
-.btn_download {
-  padding: 5px 14px;
-  border: 1px solid var(--o-accent);
-  border-radius: var(--o-radius);
-  background: var(--o-accent);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 80ms;
-  white-space: nowrap;
-}
-
-.btn_download:hover {
-  opacity: 0.85;
-}
-
-.btn_download:active {
-  opacity: 0.7;
-}
-
-/* ---- Что делать дальше ---- */
-.next_steps {
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--o-success, #4caf50) 30%, transparent);
-  border-radius: var(--o-radius);
-  background: color-mix(in srgb, var(--o-success, #4caf50) 8%, transparent);
-}
-
-.next_steps_title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--o-text-1);
-  margin-bottom: 6px;
-}
-
-.steps_list {
-  margin: 0;
-  padding-left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.steps_list li {
-  font-size: 11px;
-  color: var(--o-text-2);
-  line-height: 1.4;
 }

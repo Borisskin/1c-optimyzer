@@ -1,19 +1,19 @@
 /* =========================================================
    XmlPreview — подсвеченный редактируемый XML
-   Техника: transparent textarea overlay поверх highlighted pre.
-   Обе панели должны иметь ОДИНАКОВЫЕ: font-size, font-family,
-   line-height, padding, white-space — иначе текст съедет.
+   Overlay-техника: transparent textarea поверх highlighted pre.
+   КРИТИЧНО: font-size, font-family, line-height, padding — одинаковые
+   у .highlight_pre и .editor_textarea, иначе текст съедет.
    ========================================================= */
 
-/* Цвета XML-подсветки (VS Code Dark+ стиль) */
-:global(.xd)  { color: #858585; }                    /* <?xml …?>  declaration */
-:global(.xc)  { color: #6a9955; }                    /* <!-- comments -->      */
-:global(.xb)  { color: #808080; }                    /* < >  brackets/slashes  */
-:global(.xt)  { color: #e8a857; }                    /* tag names  (amber)     */
-:global(.xk)  { color: #9cdcfe; }                    /* attr keys  (blue)      */
-:global(.xv)  { color: #ce9178; }                    /* attr values (peach)    */
+/* --- Цвета XML-подсветки (VS Code Dark+ стиль) --- */
+:global(.xd)  { color: #858585; }        /* <?xml …?>   declaration  */
+:global(.xc)  { color: #6a9955; }        /* <!-- ... --> comments     */
+:global(.xb)  { color: #808080; }        /* < > / brackets            */
+:global(.xt)  { color: #e8a857; }        /* tag names    amber        */
+:global(.xk)  { color: #9cdcfe; }        /* attr keys    light blue   */
+:global(.xv)  { color: #ce9178; }        /* attr values  peach        */
 
-/* ---- Корневой контейнер ---- */
+/* --- Корневой контейнер --- */
 .root {
   flex: 1;
   min-height: 0;
@@ -25,7 +25,7 @@
   overflow: hidden;
 }
 
-/* ---- Шапка ---- */
+/* --- Шапка --- */
 .header {
   display: flex;
   align-items: center;
@@ -51,8 +51,9 @@
   align-items: center;
 }
 
-/* Иконочные кнопки */
+/* --- Иконочные кнопки --- */
 .icon_btn {
+  position: relative;         /* для CSS-тултипа */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,7 +64,7 @@
   background: none;
   color: var(--o-text-3);
   cursor: pointer;
-  transition: color 80ms, border-color 80ms;
+  transition: color 80ms, border-color 80ms, background 80ms;
   padding: 0;
   flex-shrink: 0;
 }
@@ -73,12 +74,50 @@
   border-color: var(--o-accent);
 }
 
-.icon_btn_ok {
-  color: var(--o-success, #4caf50);
-  border-color: var(--o-success, #4caf50);
+/* Кнопка сохранения — чуть выделена акцентом */
+.icon_btn_save {
+  border-color: var(--o-accent);
+  color: var(--o-accent);
 }
 
-/* ---- Редактируемая область ---- */
+.icon_btn_save:hover {
+  background: color-mix(in srgb, var(--o-accent) 12%, transparent);
+}
+
+/* Состояние «успешно» — зелёный */
+.icon_btn_ok {
+  color: var(--o-success, #4caf50) !important;
+  border-color: var(--o-success, #4caf50) !important;
+}
+
+/* --- CSS-тултип через data-tooltip --- */
+.icon_btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--o-surface, #252526);
+  border: 1px solid var(--o-border, #3e3e42);
+  color: var(--o-text-1);
+  font-size: 11px;
+  font-family: var(--o-font-sans, sans-serif);
+  font-weight: 400;
+  padding: 3px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms 300ms;  /* задержка 300мс перед появлением */
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+
+.icon_btn[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* --- Редактируемая область --- */
 .editor {
   flex: 1;
   min-height: 0;
@@ -86,11 +125,11 @@
   overflow: hidden;
 }
 
-/* ---- Слой подсветки (фон) ---- */
+/* Слой подсветки (фон, pointer-events: none) */
 .highlight_layer {
   position: absolute;
   inset: 0;
-  overflow: hidden;        /* скролл управляется textarea */
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
@@ -103,12 +142,10 @@
   line-height: 1.6;
   white-space: pre;
   word-break: normal;
-  color: var(--o-text-2);  /* цвет текстовых узлов по умолчанию */
-  /* Размер совпадает с textarea: нет переносов, только скролл */
-  min-width: 100%;
+  color: var(--o-text-2);
 }
 
-/* ---- Прозрачная textarea поверх (редактирование) ---- */
+/* Прозрачная textarea поверх (редактирование) */
 .editor_textarea {
   position: absolute;
   inset: 0;
@@ -119,10 +156,10 @@
   white-space: pre;
   word-break: normal;
 
-  /* Прозрачный фон — сквозь него видна подсветка */
   background: transparent;
   color: transparent;
   caret-color: var(--o-text-1);
+  -webkit-text-fill-color: transparent;
 
   border: none;
   outline: none;
@@ -130,14 +167,10 @@
   overflow: auto;
   z-index: 1;
   tab-size: 2;
-
-  /* Отключить браузерные «улучшения» */
-  -webkit-text-fill-color: transparent;
 }
 
-/* При выделении текста — видимое выделение */
 .editor_textarea::selection {
-  background: rgba(120, 160, 255, 0.25);
+  background: rgba(120, 160, 255, 0.28);
   color: transparent;
   -webkit-text-fill-color: transparent;
 }
