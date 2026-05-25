@@ -727,6 +727,35 @@ export interface PlanAnalyzerReExplainResponse {
   engine?: "postgres";
 }
 
+// Sprint 8 Phase C — SQL antipatterns
+export type SqlAntipatternSeverity =
+  | "Critical"
+  | "Warning"
+  | "Info"
+  | "Blocker"
+  | "Major"
+  | "Minor";
+
+export interface SqlAntipatternFinding {
+  code: string;
+  title: string;
+  description: string;
+  severity: SqlAntipatternSeverity;
+  dialect: PlanEngine;
+  is_1c_context_only: boolean;
+  snippet: string | null;
+  rationale: string;
+  recommendation: string;
+}
+
+export interface SqlAntipatternsResponse {
+  ok: boolean;
+  error?: string;
+  engine?: PlanEngine;
+  is_1c_context?: boolean;
+  findings?: SqlAntipatternFinding[];
+}
+
 export interface SavedQuery {
   id: number;
   name: string;
@@ -957,6 +986,18 @@ export const backend = {
       sql,
       connection_id,
       timeout_seconds,
+    }),
+
+  // Sprint 8 Phase C — SQL antipatterns detection
+  sqlAntipatternsDetect: (
+    sql: string,
+    engine: PlanEngine,
+    force_1c_context?: boolean | null,
+  ) =>
+    rpc<SqlAntipatternsResponse>("sql_antipatterns.detect", {
+      sql,
+      engine,
+      force_1c_context: force_1c_context ?? null,
     }),
 
   // Sprint 5 — Configuration metadata

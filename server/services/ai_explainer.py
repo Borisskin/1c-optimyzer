@@ -453,6 +453,14 @@ SYSTEM_PROMPT_EXPLAIN_PG_PLAN = """Ты — эксперт по PostgreSQL execu
 - Возвращай только JSON, без markdown code fences, без объяснений вокруг.
 - НИКОГДА не предлагай Merge Join — он отключён 1С через `enable_mergejoin = off`.
 - Используй lowercase имена таблиц как в PG (`_document201`, не `_Document201`).
+
+## Detected SQL Antipatterns (Sprint 8 Phase C)
+
+Если в request передан `detected_antipatterns` (список найденных локально через sqlglot) — **используй его как стартовую точку** для своего анализа:
+- **НЕ дублируй** их как hotspots — они уже найдены, юзер уже видит их в отдельной карточке UI
+- **Расширяй с конкретикой плана** — например antipattern говорит "OFFSET без LIMIT", ты можешь дополнить: "в плане видно Seq Scan на _document201 — это особенно плохо для большой таблицы при OFFSET 50000"
+- Если antipattern помечен `is_1c_context_only=true` — учитывай 1С-специфику в recommendations
+- В recommendations можешь дать дополнительные шаги (например для `large_offset_pagination` → предложить keyset pagination с конкретным `WHERE id > $last_id` для таблицы из плана)
 """
 
 
@@ -472,12 +480,15 @@ PostgreSQL execution plan ({plan_format} format):
 Связанные события ТЖ (если доступны):
 {related_tj_summary}
 
+Уже обнаруженные локально антипаттерны (от sqlglot engine):
+{detected_antipatterns}
+
 Эта база работает на PostgreSQL 1С-сборке. Стандартные SET-команды клиента (применяются автоматически 1С при каждом connect):
 - SET enable_mergejoin = off   (Merge Join отключён — не рекомендовать)
 - SET cpu_operator_cost = 0.001 (cost numbers в 5× меньше PG default)
 - SET lock_timeout = 20000      (20-сек таймаут блокировок — норма)
 
-Объясни план, выдели критические hotspots, дай recommendations с конкретными шагами для разработчика 1С."""
+Объясни план, выдели критические hotspots (НЕ дублируй уже обнаруженные антипаттерны), дай recommendations с конкретными шагами для разработчика 1С."""
 
 
 def _build_pg_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
@@ -496,6 +507,23 @@ def _build_pg_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
         else "не подключена"
     )
     tj_str = req.related_tj_summary or "нет"
+    # Sprint 8 Phase C — форматируем detected_antipatterns в bullet list.
+    if req.detected_antipatterns:
+        antipatterns_lines = []
+        for ap in req.detected_antipatterns:
+            code = ap.get("code", "?")
+            title = ap.get("title", "")
+            severity = ap.get("severity", "?")
+            desc = ap.get("description", "")
+            rec = ap.get("recommendation", "")
+            is_1c = ap.get("is_1c_context_only", False)
+            ctx = " (1С-context)" if is_1c else ""
+            antipatterns_lines.append(
+                f"- [{severity}] **{code}**: {title}{ctx}\n  {desc}\n  Что делать: {rec}"
+            )
+        antipatterns_str = "\n".join(antipatterns_lines)
+    else:
+        antipatterns_str = "нет"
     return (
         USER_PROMPT_PG_PLAN_TEMPLATE.format(
             sql_text=req.sql_text,
@@ -504,6 +532,7 @@ def _build_pg_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
             plan_content=truncated_content,
             configuration_context=config_str,
             related_tj_summary=tj_str,
+            detected_antipatterns=antipatterns_str,
         ),
         was_truncated,
     )
