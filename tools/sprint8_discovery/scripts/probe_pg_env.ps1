@@ -26,7 +26,10 @@ function Run-Probe {
 
 # --- Cat 1: PostgreSQL environment ---
 Run-Probe -Db "postgres" -Name "01_version" -Sql "SELECT version();"
-Run-Probe -Db "postgres" -Name "02_installed_extensions" -Sql "SELECT name, default_version, installed_version FROM pg_available_extensions WHERE installed_version IS NOT NULL ORDER BY name;"
+Run-Probe -Db "postgres" -Name "02a_installed_extensions_postgres" -Sql "SELECT name, default_version, installed_version FROM pg_available_extensions WHERE installed_version IS NOT NULL ORDER BY name;"
+# ВАЖНО: 1С устанавливает свои extensions (mchar, fulleq, fasttrun) в РАБОЧУЮ базу, а не в postgres.
+# Проверяем pgBase отдельно.
+Run-Probe -Db "pgBase" -Name "02b_installed_extensions_pgBase" -Sql "SELECT extname, extversion FROM pg_extension ORDER BY extname;"
 Run-Probe -Db "postgres" -Name "03_available_extensions" -Sql "SELECT name, default_version FROM pg_available_extensions ORDER BY name;"
 Run-Probe -Db "postgres" -Name "04_key_guc" -Sql "SHOW shared_buffers; SHOW effective_cache_size; SHOW work_mem; SHOW max_connections; SHOW log_min_duration_statement; SHOW track_io_timing; SHOW config_file; SHOW log_directory; SHOW log_filename; SHOW logging_collector;"
 Run-Probe -Db "postgres" -Name "05_databases" -Sql "SELECT datname, pg_size_pretty(pg_database_size(datname)) AS size FROM pg_database WHERE datistemplate = false ORDER BY pg_database_size(datname) DESC;"

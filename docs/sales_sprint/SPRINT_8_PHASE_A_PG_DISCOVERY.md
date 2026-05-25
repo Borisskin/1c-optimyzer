@@ -765,3 +765,84 @@ docs/sales_sprint/
 **Время:** ~3 часа real-time работы (vs планируемые 1-2 дня) — благодаря тому что pgBase уже был установлен и доступен.
 
 **Готовность Phase B:** ВЫСОКАЯ — все архитектурные вопросы имеют конкретные данные для решения.
+
+---
+
+## ADDENDUM — критические корректировки после активации pg_stat_statements
+
+После активации `pg_stat_statements` (через `CREATE EXTENSION` в `pgBase`) обнаружены **три исправления** к разведке выше:
+
+### A.1. CORRECTION к Section 1.2 — extensions в pgBase
+
+**Раньше написано (раздел 1.2):** "Только plpgsql установлен."
+
+**Реальность:** искал в БД `postgres` вместо `pgBase`. **1С устанавливает свои extensions в РАБОЧУЮ базу**, не в системную. В `pgBase` фактически установлены:
+
+| Extension | Version | Назначение |
+|---|---|---|
+| `plpgsql` | 1.0 | стандартный (default) |
+| **`mchar`** | **2.2.1** | **1С CHAR(N) тип — установлен через CREATE EXTENSION в pgBase** |
+| **`fulleq`** | **2.0** | **Полное равенство (NULL handling)** |
+| **`fasttrun`** | **2.0** | **Fast unsafe TRUNCATE для tt-таблиц** |
+| `pg_stat_statements` | 1.12 | активирован в Phase A экстре |
+
+**Корректировка Section 2.5:** `mchar` и `mvarchar` НЕ являются "directly injected base types" — они приходят из стандартного CREATE EXTENSION `mchar`. Просто я искал в неправильной базе. `mvarchar` входит в состав extension `mchar` как дополнительный тип.
+
+**Impact:** Phase B анализатор должен делать `SELECT * FROM pg_extension` в рабочей базе клиента, не в postgres. И поддержка `mchar`/`mvarchar`/`fasttrun`/`fulleq` — это поддержка **трёх extensions от фирмы 1С**, а не "custom injected types".
+
+### A.2. MAJOR DISCOVERY — 1С автоматически выполняет EXPLAIN для каждого SELECT
+
+В первых 325 нормализованных queries в `pg_stat_statements`:
+- **166 (51%)** — это `explain (analyse, verbose, buffers) SELECT ...` от 1С
+- **159 (49%)** — реальные SELECT (без EXPLAIN префикса)
+
+Топ-3 EXPLAIN запросов:
+
+```
+explain (analyse, verbose, buffers) SELECT Creation,Modified,Attributes,DataSize,BinaryData
+  FROM Config WHERE FileName = $1 ORDER BY PartNo                                  -- 5248 calls
+
+explain (analyse, verbose, buffers) SELECT T1._SettingsData
+  FROM _SystemSettings T1
+  WHERE ((T1._Fld11354 = CAST($1 AS NUMERIC) AND T1._Fld11355 = CAST($2 AS NUMERIC)))
+    AND (T1._UserId = $3::mvarchar...)                                             -- 129 calls
+
+explain (analyse, verbose, buffers) SELECT T1._Fld10491
+  FROM _Const10490 T1
+  WHERE ((T1._Fld11354 = CAST($1 AS NUMERIC))) AND (T1._RecordKey = $2::bytea)     -- 56 calls
+```
+
+**Это значит 1С Server Agent сам собирает планы выполнения** для каждого SELECT перед его реальным запуском, аналогично тому что делал MSSQL через `SET SHOWPLAN_TEXT ON`. План возвращается как ResultSet, после чего 1С выполняет реальный SELECT.
+
+**Гипотеза:** этот EXPLAIN result скорее всего и попадает в ТЖ как `planSQLText` (или его аналог). Тогда **наш existing `tj_parser.py` + UI «Из архива ТЖ» Sprint 7 будет работать и для PG**, только plan content будет PG TEXT format вместо MSSQL SHOWPLAN_TEXT.
+
+**Это RADICALLY меняет Phase B стратегию** для plan capture: **может быть не нужна** новая server-side инфраструктура (auto_explain), достаточно адаптировать существующий ТЖ-pipeline под PG format.
+
+**Action item для Phase A экстры:** Сергею собрать **один реальный ТЖ архив** на pgBase (5-10 минут работы в 1С Enterprise) и проверить:
+- Есть ли в DBMSSQL событиях поле `planSQLText`?
+- Если есть — какой формат: TEXT или JSON?
+- Если нет — есть ли там `explain (analyse, verbose, buffers) ...` в `Sql` поле как отдельный event?
+
+### A.3. CORRECTION к Section 5.1 — pg_stat_statements
+
+`pg_stat_statements` теперь **установлен и работает**. Setup пройден:
+- `shared_preload_libraries = 'pg_stat_statements'` применился через SCM Recovery (auto.conf был прочитан при невольном restart)
+- `CREATE EXTENSION pg_stat_statements` выполнен в pgBase
+- View `pg_stat_statements` возвращает данные (325 нормализованных queries уже)
+
+Evidence: `tools/sprint8_discovery/probe_results/pg_stat_statements_explains.txt`
+
+### A.4. Обновлённый список Critical findings для Phase B
+
+(Дополнительно к section 7)
+
+1. **1С пишет EXPLAIN перед каждым SELECT** (51% всех queries в pg_stat_statements) — это **главное архитектурное упрощение** для Phase B. Возможно planSQLText pipeline работает.
+2. **mchar/fulleq/fasttrun — full extensions** (не magic injection). Phase B должен `pg_extension` в рабочей базе клиента.
+3. **pg_stat_statements готов**, можно использовать прямо в Phase B как primary source для агрегаций.
+
+### A.5. Новые открытые вопросы для архитектора
+
+- **Q1 (HIGH):** Если 1С пишет EXPLAIN в `planSQLText` ТЖ — нужно ли вообще `auto_explain` extension в Phase B? Или достаточно адаптировать existing tj_parser.py под PG TEXT format плана?
+- **Q2 (MEDIUM):** pg_stat_statements view — это primary source для Phase B "Top Slow Queries" (вместо/в дополнение к существующему `view_slow_queries` который читает ТЖ)?
+- **Q3 (LOW):** EXPLAIN запросы от 1С в pg_stat_statements — это noise или signal? Их нужно фильтровать или они полезны для анализа?
+
