@@ -29,7 +29,7 @@ _SERVER_AGENT_PORT = 1541
 
 
 @rpc("logcfg.detect_platform")
-async def detect_platform_rpc() -> dict:
+def detect_platform_rpc() -> dict:
     """Определяет версию платформы 1С на локальной машине.
 
     Стратегии (в порядке приоритета):
