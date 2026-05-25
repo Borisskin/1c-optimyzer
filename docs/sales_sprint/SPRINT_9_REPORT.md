@@ -153,6 +153,37 @@ Sprint 9 сфокусирован на hardening: real-world fixtures, regressio
 
 ---
 
+## Phase F — Documentation & Release
+
+- `docs/sales_sprint/SPRINT_9_REPORT.md` — этот отчёт
+- `backend/tests/fixtures/real_world/README.md` — документация fixtures
+- `docs/DECISIONS.md` — добавлены ADR-049..052
+- `backend/pyproject.toml` — зарегистрирован `performance` pytest mark
+- `frontend/package.json` — добавлен скрипт `npm run lint:css`
+- `git tag v0.9.0-internal` → запушен на main
+
+---
+
+## Scope-out (не вошло в Sprint 9)
+
+| Элемент | Причина | Статус |
+|---------|---------|--------|
+| `pg_plans_json/` — PG планы в FORMAT JSON | Требует asyncpg-подключения к pgBase; текстовые планы покрывают сценарии | Backlog |
+| `tj_archives/` — реальные архивы ТЖ | Требует ручной генерации через tj-simulator + запуск 1С | Backlog |
+| `docs/development/testing-guide.md` | SPRINT_9_REPORT.md покрывает ту же информацию | Отменён |
+
+---
+
+## Breaking Changes
+
+**Нет.** Все изменения Sprint 9 — аддитивные:
+- Новые тесты не меняют API
+- `normalize_ai_enum()` — новый хелпер, старые вызовы `_norm_sev()` / `_norm_impact()` не изменились (рефакторинг под капотом)
+- TJ-simulator: новые кнопки добавлены в отдельную группу, старые кнопки не тронуты
+- CSS lint: только диагностика, никаких автоматических правок
+
+---
+
 ## Tag: v0.9.0-internal
 
 ```
