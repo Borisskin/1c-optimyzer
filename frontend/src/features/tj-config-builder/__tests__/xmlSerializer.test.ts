@@ -45,7 +45,8 @@ describe("serializeToXml", () => {
     };
     const xml = serializeToXml(config);
     expect(xml).toContain('<eq property="name" value="CALL"/>');
-    expect(xml).toContain('<gt property="duration" value="100"/>');
+    // threshold_cs=100 → value="10000" (100 cs × 100 units/cs = 10000; 1 unit = 100мкс → 10000 × 100мкс = 1 сек)
+    expect(xml).toContain('<gt property="duration" value="10000"/>');
   });
 
   it("включает событие TDEADLOCK без порога", () => {
@@ -145,7 +146,8 @@ describe("serializeToXml", () => {
     };
     const xml = serializeToXml(config);
     expect(xml).toContain("SCALL");
-    expect(xml).toContain('<gt property="duration" value="50"/>');
+    // threshold_cs=50 → value="5000" (50 × 100 = 5000; 5000 × 100мкс = 500мс)
+    expect(xml).toContain('<gt property="duration" value="5000"/>');
   });
 
   it("EXCPCNTX не имеет duration (нет в EVENTS_WITH_DURATION)", () => {

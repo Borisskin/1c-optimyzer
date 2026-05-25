@@ -41,12 +41,16 @@ export function serializeToXml(config: LogcfgConfig): string {
     lines.push(`      <eq property="name" value="${eventType}"/>`);
 
     // Порог — только для событий с Duration и если threshold > 0.
+    // ВАЖНО: 1C ТЖ измеряет Duration в сотнях микросекунд (1 unit = 100 мкс).
+    // threshold_cs хранится в centiseconds (1 cs = 10 мс = 100 units).
+    // Поэтому умножаем на 100: threshold_cs * 100 = значение в 1C-единицах.
+    // Пример: threshold_cs=100 (1 сек) → value="10000" (10000 × 100мкс = 1 сек).
     if (
       EVENTS_WITH_DURATION.has(eventType) &&
       settings.threshold_cs != null &&
       settings.threshold_cs > 0
     ) {
-      lines.push(`      <gt property="duration" value="${settings.threshold_cs}"/>`);
+      lines.push(`      <gt property="duration" value="${settings.threshold_cs * 100}"/>`);
     }
 
     lines.push("    </event>");

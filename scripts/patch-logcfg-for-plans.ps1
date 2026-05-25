@@ -135,7 +135,7 @@ $existingDbpostgrs = $logNode.SelectNodes("*[local-name()='event']/*[local-name(
 if ($existingDbpostgrs.Count -eq 0) {
     # Берём порог duration с существующего DBMSSQL event если есть, иначе 10 (100 мс)
     $existingDbmssql = $logNode.SelectSingleNode("*[local-name()='event'][./*[local-name()='eq' and @property='name' and @value='DBMSSQL']]")
-    $threshold = "10"
+    $threshold = "10"   # 1C duration unit = 100мкс → value="10" = 1 мс (намеренно низкий порог = захватываем все запросы)
     if ($existingDbmssql) {
         $durNode = $existingDbmssql.SelectSingleNode("*[local-name()='gt' and @property='duration']")
         if ($durNode) { $threshold = $durNode.GetAttribute("value") }
