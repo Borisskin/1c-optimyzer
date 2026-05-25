@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>pev2 demo — Sprint 8 Phase A</title>
+  <link rel="stylesheet" href="./node_modules/pev2/dist/style.css">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 16px; background: #f6f7f9; }
+    h1 { font-size: 16px; margin: 0 0 12px; color: #1d4ed8; }
+    .meta { font-size: 12px; color: #64748b; margin-bottom: 12px; }
+    #app { background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; }
+  </style>
+</head>
+<body>
+  <h1>pev2 demo — Sprint 8 Phase A discovery</h1>
+  <div class="meta">
+    PostgreSQL 18.1-2.1C · pgBase · test02_join_with_filter.json (Nested Loop с Memoize)
+  </div>
+  <div id="app"></div>
+
+  <script type="module">
+    import { createApp } from "./node_modules/vue/dist/vue.esm-browser.js";
+    import { Plan } from "./node_modules/pev2/dist/pev2.es.js";
+
+    // План из test02_join_with_filter.json
+    const planJSON = await fetch("./test02_plan.json").then(r => r.text());
+    const planQuery = `SELECT d._idrref, d._date_time, d._number, r._idrref AS ref_id
+FROM _document201 d
+LEFT JOIN _reference68 r ON d._fld5340rref = r._idrref
+WHERE d._date_time >= '2024-01-01'::timestamp
+LIMIT 100;`;
+
+    const App = {
+      components: { Plan },
+      template: `<plan :plan-source="planJSON" :plan-query="planQuery" />`,
+      data() { return { planJSON, planQuery }; },
+    };
+
+    createApp(App).mount("#app");
+  </script>
+</body>
+</html>

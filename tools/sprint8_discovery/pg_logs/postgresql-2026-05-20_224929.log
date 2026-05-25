@@ -1,0 +1,3 @@
+2026-05-20 22:49:29.502 MSK [7920] LOG:  database system was shut down at 2026-05-20 22:48:58 MSK
+2026-05-20 22:54:29.503 MSK [7012] LOG:  checkpoint starting: time
+2026-05-20 22:54:29.512 MSK [7012] LOG:  checkpoint complete: wrote 0 buffers (0.0%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.002 s, sync=0.001 s, total=0.009 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=2A/EDCA8BF8, redo lsn=2A/EDCA8BA0
