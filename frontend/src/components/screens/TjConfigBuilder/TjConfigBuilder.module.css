@@ -2,21 +2,21 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 24px;
+  padding: 10px 16px;
   overflow-y: auto;
   box-sizing: border-box;
 }
 
 /* ---- Шапка ---- */
 .header {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .title {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--o-text-1);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .subtitle {
@@ -29,8 +29,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-top: 8px;
-  padding: 3px 8px;
+  margin-top: 4px;
+  padding: 2px 7px;
   border: 1px solid var(--o-border);
   border-radius: var(--o-radius);
   font-size: 11px;
@@ -54,7 +54,7 @@
 .divider {
   border: none;
   border-top: 1px solid var(--o-border);
-  margin: 0 0 14px;
+  margin: 0 0 6px;
 }
 
 /* ---- Табы ---- */
@@ -66,7 +66,7 @@
 }
 
 .tab {
-  padding: 7px 14px;
+  padding: 5px 12px;
   border: none;
   border-bottom: 2px solid transparent;
   background: none;

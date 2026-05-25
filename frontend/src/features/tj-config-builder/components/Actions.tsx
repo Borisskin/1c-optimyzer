@@ -1,9 +1,13 @@
 /**
  * Sprint 10 — Actions: кнопки «Сбросить» и «Скачать logcfg.xml».
- * Download-only: никакого Apply locally — файл скачивается через Blob URL.
- * После скачивания показывается inline-banner «Что делать дальше».
+ * Использует Tauri plugin-dialog save() + plugin-fs writeTextFile() чтобы
+ * пользователь сам выбрал путь сохранения. Fallback на Blob URL если
+ * Tauri API недоступен (например, в dev-browser режиме).
+ * После сохранения показывается inline-banner «Что делать дальше».
  */
 import { useState } from "react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import type { LogcfgConfig } from "../types";
 import { serializeToXml } from "../xmlSerializer";
 import styles from "./Actions.module.css";
@@ -16,18 +20,31 @@ interface Props {
 export function Actions({ config, onReset }: Props) {
   const [downloaded, setDownloaded] = useState(false);
 
-  function handleDownload() {
+  async function handleDownload() {
     const xml = serializeToXml(config);
-    const blob = new Blob([xml], { type: "application/xml; charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "logcfg.xml";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setDownloaded(true);
+    try {
+      // Tauri save dialog — пользователь выбирает куда сохранить
+      const filePath = await save({
+        defaultPath: "logcfg.xml",
+        filters: [{ name: "XML-файл", extensions: ["xml"] }],
+        title: "Сохранить logcfg.xml",
+      });
+      if (!filePath) return; // пользователь нажал «Отмена»
+      await writeTextFile(filePath, xml);
+      setDownloaded(true);
+    } catch {
+      // Fallback на Blob download (dev-browser / WebView без plugin-dialog)
+      const blob = new Blob([xml], { type: "application/xml; charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "logcfg.xml";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setDownloaded(true);
+    }
   }
 
   return (

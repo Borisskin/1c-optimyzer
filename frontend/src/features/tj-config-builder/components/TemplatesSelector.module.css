@@ -1,15 +1,15 @@
 .root {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 0 12px;
+  gap: 5px;
+  padding: 0 0 6px;
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+  gap: 4px;
+  padding: 3px 8px;
   border-radius: var(--o-radius);
   border: 1px solid var(--o-border);
   background: var(--o-panel);

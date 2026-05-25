@@ -11,6 +11,7 @@ import { PlansToggle } from "./PlansToggle";
 import { StorageSettings } from "./StorageSettings";
 import { Actions } from "./Actions";
 import { VolumePreview } from "./VolumePreview";
+import { XmlPreview } from "./XmlPreview";
 import styles from "./GraphicalBuilderTab.module.css";
 
 interface Props {
@@ -98,9 +99,10 @@ export function GraphicalBuilderTab({ config, onChange }: Props) {
         <Actions config={config} onReset={handleReset} />
       </div>
 
-      {/* Правая колонка */}
+      {/* Правая колонка: оценка объёма + XML-предпросмотр */}
       <div className={styles.right}>
         <VolumePreview config={config} />
+        <XmlPreview config={config} />
       </div>
     </div>
   );

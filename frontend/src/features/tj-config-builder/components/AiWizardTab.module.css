@@ -1,8 +1,8 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 12px 0 16px;
+  gap: 10px;
+  padding: 6px 0 8px;
   max-width: 700px;
 }
 
@@ -10,7 +10,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
 }
 
 .form_label {
