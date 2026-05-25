@@ -10,7 +10,7 @@ const BASE_CONFIG: LogcfgConfig = {
   events: {},
   capture_plans: false,
   log_directory: "C:\\1C-TechLog",
-  max_size_gb: 10,
+  history_hours: 72,
 };
 
 describe("serializeToXml", () => {
@@ -24,7 +24,13 @@ describe("serializeToXml", () => {
   it("содержит тег <log> с location и history", () => {
     const xml = serializeToXml(BASE_CONFIG);
     expect(xml).toContain('location="C:\\1C-TechLog"');
-    expect(xml).toContain('history="24"');
+    expect(xml).toContain('history="72"');
+  });
+
+  it("history отражает значение history_hours из config", () => {
+    const config: LogcfgConfig = { ...BASE_CONFIG, history_hours: 168 };
+    const xml = serializeToXml(config);
+    expect(xml).toContain('history="168"');
   });
 
   it("содержит property name=all", () => {
@@ -38,8 +44,8 @@ describe("serializeToXml", () => {
       events: { CALL: { enabled: true, threshold_cs: 100 } },
     };
     const xml = serializeToXml(config);
-    expect(xml).toContain('<eq property="Name" value="CALL"/>');
-    expect(xml).toContain('<gt property="Duration" value="100"/>');
+    expect(xml).toContain('<eq property="name" value="CALL"/>');
+    expect(xml).toContain('<gt property="duration" value="100"/>');
   });
 
   it("включает событие TDEADLOCK без порога", () => {
@@ -48,8 +54,8 @@ describe("serializeToXml", () => {
       events: { TDEADLOCK: { enabled: true } },
     };
     const xml = serializeToXml(config);
-    expect(xml).toContain('<eq property="Name" value="TDEADLOCK"/>');
-    expect(xml).not.toContain("Duration");
+    expect(xml).toContain('<eq property="name" value="TDEADLOCK"/>');
+    expect(xml).not.toContain("duration");
   });
 
   it("не включает disabled события", () => {
@@ -65,24 +71,24 @@ describe("serializeToXml", () => {
     expect(xml).not.toContain("DBMSSQL");
   });
 
-  it("threshold=0 — не добавляет Duration фильтр", () => {
+  it("threshold=0 — не добавляет duration фильтр", () => {
     const config: LogcfgConfig = {
       ...BASE_CONFIG,
       events: { CALL: { enabled: true, threshold_cs: 0 } },
     };
     const xml = serializeToXml(config);
     expect(xml).toContain("CALL");
-    expect(xml).not.toContain("Duration");
+    expect(xml).not.toContain("duration");
   });
 
-  it("threshold=null — не добавляет Duration фильтр", () => {
+  it("threshold=null — не добавляет duration фильтр", () => {
     const config: LogcfgConfig = {
       ...BASE_CONFIG,
       events: { EXCP: { enabled: true, threshold_cs: null } },
     };
     const xml = serializeToXml(config);
     expect(xml).toContain("EXCP");
-    expect(xml).not.toContain("Duration");
+    expect(xml).not.toContain("duration");
   });
 
   it("capture_plans=true добавляет plansqltext и plansql", () => {
@@ -132,25 +138,25 @@ describe("serializeToXml", () => {
     expect(xml).toContain("Program Files");
   });
 
-  it("SCALL с порогом — Duration добавляется (SCALL входит в EVENTS_WITH_DURATION)", () => {
+  it("SCALL с порогом — duration добавляется (SCALL входит в EVENTS_WITH_DURATION)", () => {
     const config: LogcfgConfig = {
       ...BASE_CONFIG,
       events: { SCALL: { enabled: true, threshold_cs: 50 } },
     };
     const xml = serializeToXml(config);
     expect(xml).toContain("SCALL");
-    expect(xml).toContain('<gt property="Duration" value="50"/>');
+    expect(xml).toContain('<gt property="duration" value="50"/>');
   });
 
-  it("EXCPCNTX не имеет Duration (нет в EVENTS_WITH_DURATION)", () => {
+  it("EXCPCNTX не имеет duration (нет в EVENTS_WITH_DURATION)", () => {
     const config: LogcfgConfig = {
       ...BASE_CONFIG,
       events: { EXCPCNTX: { enabled: true, threshold_cs: 100 } },
     };
     const xml = serializeToXml(config);
     expect(xml).toContain("EXCPCNTX");
-    // threshold_cs есть, но EXCPCNTX не в EVENTS_WITH_DURATION → без Duration
-    expect(xml).not.toContain("Duration");
+    // threshold_cs есть, но EXCPCNTX не в EVENTS_WITH_DURATION → без duration
+    expect(xml).not.toContain("duration");
   });
 
   it("результат валидный XML — начинается с <?xml и закрывается </config>", () => {

@@ -222,11 +222,11 @@ class LogcfgConfig(BaseModel):
         max_length=500,
         description="Путь к папке для хранения логов ТЖ.",
     )
-    max_size_gb: int = Field(
-        default=10,
+    history_hours: int = Field(
+        default=72,
         ge=1,
-        le=1000,
-        description="Максимальный суммарный объём логов в ГБ (history в конфиге).",
+        le=720,
+        description="Период хранения логов в часах (атрибут history в logcfg.xml).",
     )
 
 

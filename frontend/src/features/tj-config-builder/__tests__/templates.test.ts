@@ -36,7 +36,7 @@ describe("BUILTIN_TEMPLATES", () => {
     for (const t of BUILTIN_TEMPLATES) {
       expect(t.config).toBeDefined();
       expect(t.config.log_directory).toBeTruthy();
-      expect(t.config.max_size_gb).toBeGreaterThan(0);
+      expect(t.config.history_hours).toBeGreaterThan(0);
       expect(t.config.events).toBeDefined();
     }
   });

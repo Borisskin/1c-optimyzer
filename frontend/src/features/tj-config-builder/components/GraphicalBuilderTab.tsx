@@ -69,9 +69,9 @@ export function GraphicalBuilderTab({ config, onChange }: Props) {
     [config, onChange],
   );
 
-  const handleMaxSizeChange = useCallback(
+  const handleHistoryChange = useCallback(
     (value: number) => {
-      onChange({ ...config, max_size_gb: value });
+      onChange({ ...config, history_hours: value });
     },
     [config, onChange],
   );
@@ -95,7 +95,7 @@ export function GraphicalBuilderTab({ config, onChange }: Props) {
         <StorageSettings
           config={config}
           onDirectoryChange={handleDirectoryChange}
-          onMaxSizeChange={handleMaxSizeChange}
+          onHistoryChange={handleHistoryChange}
         />
         <hr className={styles.divider} />
         <VolumePreview config={config} />

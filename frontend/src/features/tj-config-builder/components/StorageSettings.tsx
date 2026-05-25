@@ -7,13 +7,13 @@ import styles from "./StorageSettings.module.css";
 interface Props {
   config: LogcfgConfig;
   onDirectoryChange: (value: string) => void;
-  onMaxSizeChange: (value: number) => void;
+  onHistoryChange: (value: number) => void;
 }
 
 export function StorageSettings({
   config,
   onDirectoryChange,
-  onMaxSizeChange,
+  onHistoryChange,
 }: Props) {
   return (
     <div className={styles.root}>
@@ -34,31 +34,30 @@ export function StorageSettings({
           />
         </div>
         <div className={styles.field}>
-          <label className={styles.field_label} htmlFor="tj-max-size">
-            Лимит на диске
+          <label className={styles.field_label} htmlFor="tj-history">
+            Хранить логи
           </label>
           <div className={styles.field_row}>
             <input
-              id="tj-max-size"
+              id="tj-history"
               type="number"
               className={[styles.input, styles.input_size].join(" ")}
-              value={config.max_size_gb}
+              value={config.history_hours}
               min={1}
-              max={1000}
+              max={720}
               step={1}
               onChange={(e) =>
-                onMaxSizeChange(
+                onHistoryChange(
                   Math.max(1, parseInt(e.target.value, 10) || 1),
                 )
               }
             />
-            <span className={styles.unit}>ГБ</span>
+            <span className={styles.unit}>ч</span>
           </div>
         </div>
       </div>
       <div className={styles.hint}>
-        История хранится 24 часа. При достижении лимита старые файлы удаляются
-        автоматически.
+        Старые файлы удаляются автоматически по истечении срока хранения.
       </div>
     </div>
   );

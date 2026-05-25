@@ -46,8 +46,8 @@ export type LogcfgConfig = {
   capture_plans: boolean;
   /** Путь к папке хранения логов ТЖ. */
   log_directory: string;
-  /** Максимальный суммарный объём в ГБ (history в конфиге). */
-  max_size_gb: number;
+  /** Период хранения логов в часах (атрибут history в logcfg.xml). */
+  history_hours: number;
 };
 
 /** Значения по умолчанию для новой конфигурации. */
@@ -55,7 +55,7 @@ export const DEFAULT_LOGCFG_CONFIG: LogcfgConfig = {
   events: {},
   capture_plans: false,
   log_directory: "C:\\1C-TechLog",
-  max_size_gb: 10,
+  history_hours: 72,
 };
 
 /** Один встроенный шаблон. */

@@ -21,7 +21,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       },
       capture_plans: false,
       log_directory: "C:\\1C-TechLog",
-      max_size_gb: 10,
+      history_hours: 168,
     },
   },
   {
@@ -40,7 +40,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       },
       capture_plans: false,
       log_directory: "C:\\1C-TechLog",
-      max_size_gb: 10,
+      history_hours: 72,
     },
   },
   {
@@ -63,7 +63,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       },
       capture_plans: true,
       log_directory: "C:\\1C-TechLog",
-      max_size_gb: 20,
+      history_hours: 4,
     },
   },
   {
@@ -82,7 +82,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       },
       capture_plans: false,
       log_directory: "C:\\1C-TechLog",
-      max_size_gb: 10,
+      history_hours: 72,
     },
   },
   {
@@ -106,7 +106,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       },
       capture_plans: false,
       log_directory: "C:\\1C-TechLog",
-      max_size_gb: 15,
+      history_hours: 24,
     },
   },
   {
@@ -125,7 +125,7 @@ export const BUILTIN_TEMPLATES: Template[] = [
       },
       capture_plans: false,
       log_directory: "C:\\1C-TechLog",
-      max_size_gb: 10,
+      history_hours: 168,
     },
   },
 ];

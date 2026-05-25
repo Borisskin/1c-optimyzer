@@ -10,7 +10,7 @@ const EMPTY_CONFIG: LogcfgConfig = {
   events: {},
   capture_plans: false,
   log_directory: "C:\\1C-TechLog",
-  max_size_gb: 10,
+  history_hours: 72,
 };
 
 describe("estimateVolume", () => {
@@ -89,7 +89,7 @@ describe("estimateVolume", () => {
       },
       capture_plans: true,
       log_directory: "C:\\1C-TechLog",
-      max_size_gb: 10,
+      history_hours: 72,
     };
     const result = estimateVolume(config);
     expect(result.warning_if_too_large).toBe(true);

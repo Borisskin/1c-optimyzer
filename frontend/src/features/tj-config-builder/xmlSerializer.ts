@@ -13,10 +13,10 @@ import { EVENTS_WITH_DURATION } from "./types";
  *
  * Структура:
  * <config>
- *   <log location="..." history="24">
+ *   <log location="..." history="72">
  *     <event>
- *       <eq property="Name" value="DBMSSQL"/>
- *       <gt property="Duration" value="10"/>   <!-- если threshold > 0 -->
+ *       <eq property="name" value="DBMSSQL"/>
+ *       <gt property="duration" value="10"/>   <!-- если threshold > 0 -->
  *     </event>
  *     ...
  *     <property name="all"/>
@@ -30,7 +30,7 @@ export function serializeToXml(config: LogcfgConfig): string {
 
   lines.push('<?xml version="1.0" encoding="UTF-8"?>');
   lines.push('<config xmlns="http://v8.1c.ru/v8/tech-log">');
-  lines.push(`  <log location="${escapeXml(config.log_directory)}" history="24">`);
+  lines.push(`  <log location="${escapeXml(config.log_directory)}" history="${config.history_hours}">`);
 
   // События — только enabled.
   const eventEntries = Object.entries(config.events) as [EventType, { enabled: boolean; threshold_cs?: number | null }][];
@@ -38,7 +38,7 @@ export function serializeToXml(config: LogcfgConfig): string {
     if (!settings?.enabled) continue;
 
     lines.push("    <event>");
-    lines.push(`      <eq property="Name" value="${eventType}"/>`);
+    lines.push(`      <eq property="name" value="${eventType}"/>`);
 
     // Порог — только для событий с Duration и если threshold > 0.
     if (
@@ -46,7 +46,7 @@ export function serializeToXml(config: LogcfgConfig): string {
       settings.threshold_cs != null &&
       settings.threshold_cs > 0
     ) {
-      lines.push(`      <gt property="Duration" value="${settings.threshold_cs}"/>`);
+      lines.push(`      <gt property="duration" value="${settings.threshold_cs}"/>`);
     }
 
     lines.push("    </event>");

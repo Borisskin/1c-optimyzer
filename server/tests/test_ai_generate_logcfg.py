@@ -41,7 +41,7 @@ def _make_valid_ai_response(events: dict | None = None) -> str:
             "events": events,
             "capture_plans": False,
             "log_directory": "C:\\1C-TechLog",
-            "max_size_gb": 10,
+            "history_hours": 72,
         },
         "explanation": "Для расследования медленных операций нужны CALL, DBMSSQL и EXCP.",
         "events_rationale": [
@@ -122,7 +122,7 @@ class TestGenerateLogcfgSuccess:
                 "events": {"DBMSSQL": {"enabled": True, "threshold_cs": 10}},
                 "capture_plans": True,
                 "log_directory": "C:\\1C-TechLog",
-                "max_size_gb": 10,
+                "history_hours": 72,
             },
             "explanation": "С планами запросов.",
             "events_rationale": [],
@@ -319,7 +319,7 @@ class TestGenerateLogcfgErrors:
                 "events": {},
                 "capture_plans": False,
                 "log_directory": "C:\\1C-TechLog",
-                "max_size_gb": 10,
+                "history_hours": 72,
             },
             "explanation": "Пустая конфигурация.",
             "events_rationale": [],
@@ -368,7 +368,7 @@ class TestGenerateLogcfgErrors:
 
         # Defaults из LogcfgConfig.
         assert result.config.log_directory == "C:\\1C-TechLog"
-        assert result.config.max_size_gb == 10
+        assert result.config.history_hours == 72
 
 
 # ---------------------------------------------------------------------------
@@ -392,7 +392,7 @@ class TestLogcfgSchemas:
     def test_logcfg_config_defaults(self) -> None:
         cfg = LogcfgConfig()
         assert cfg.log_directory == "C:\\1C-TechLog"
-        assert cfg.max_size_gb == 10
+        assert cfg.history_hours == 72
         assert cfg.capture_plans is False
 
     def test_logcfg_events_partial(self) -> None:

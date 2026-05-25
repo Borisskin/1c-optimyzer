@@ -820,7 +820,7 @@ SYSTEM_PROMPT_LOGCFG = """Ты — эксперт по технологичес�
     },
     "capture_plans": false,
     "log_directory": "C:\\\\1C-TechLog",
-    "max_size_gb": 10
+    "history_hours": 72
   },
   "explanation": "Краткое объяснение почему такая настройка подходит",
   "events_rationale": [
@@ -941,7 +941,7 @@ async def generate_logcfg(req: LogcfgGenerateRequest) -> LogcfgGenerateResponse:
             events=LogcfgEvents(**clean_events),
             capture_plans=bool(config_raw.get("capture_plans", False)),
             log_directory=str(config_raw.get("log_directory", "C:\\1C-TechLog")),
-            max_size_gb=int(config_raw.get("max_size_gb", 10)),
+            history_hours=int(config_raw.get("history_hours", 72)),
         )
     except Exception as e:
         logger.warning("Не удалось распарсить LogcfgConfig из AI ответа: %s", e)

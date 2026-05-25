@@ -394,7 +394,7 @@ export interface AiLogcfgConfigResult {
   events: Record<string, AiLogcfgEventConfig>;
   capture_plans: boolean;
   log_directory: string;
-  max_size_gb: number;
+  history_hours: number;
 }
 
 export interface AiLogcfgEventRationale {
