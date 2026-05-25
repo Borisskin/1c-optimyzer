@@ -54,7 +54,14 @@ export function PgPlanTextView({
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
+      <div
+        className={styles.header}
+        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCollapsed((v) => !v); } }}
+        aria-expanded={!collapsed}
+      >
         <div className={styles.title}>
           <span className={styles.engineBadge}>PostgreSQL</span>
           План запроса (EXPLAIN ANALYZE)
@@ -74,14 +81,6 @@ export function PgPlanTextView({
             )}
           </div>
         )}
-        <button
-          type="button"
-          className={styles.collapseToggle}
-          onClick={() => setCollapsed((v) => !v)}
-          aria-expanded={!collapsed}
-        >
-          {collapsed ? "Развернуть" : "Свернуть"}
-        </button>
       </div>
 
       {!collapsed && (

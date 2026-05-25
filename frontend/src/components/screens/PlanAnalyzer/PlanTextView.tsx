@@ -39,7 +39,14 @@ export function PlanTextView({ planText, meta }: Props) {
   }
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
+      <div
+        className={styles.header}
+        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCollapsed((v) => !v); } }}
+        aria-expanded={!collapsed}
+      >
         <div className={styles.title}>План запроса (текстовый формат 1С)</div>
         {meta && (
           <div className={styles.meta}>
@@ -56,14 +63,6 @@ export function PlanTextView({ planText, meta }: Props) {
             )}
           </div>
         )}
-        <button
-          type="button"
-          className={styles.collapseToggle}
-          onClick={() => setCollapsed((v) => !v)}
-          aria-expanded={!collapsed}
-        >
-          {collapsed ? "Развернуть" : "Свернуть"}
-        </button>
       </div>
       {!collapsed && (
         <>
