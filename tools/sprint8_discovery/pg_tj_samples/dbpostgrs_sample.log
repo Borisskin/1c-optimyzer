@@ -1,0 +1,224 @@
+﻿27:17.083001-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET client_min_messages=error',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083003-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="SET lc_messages to 'en_US.UTF-8';",RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083005-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET enable_mergejoin = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083007-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=show standard_conforming_strings,RowsAffected=0,Result=PGRES_TUPLES_OK
+27:17.083009-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET standard_conforming_strings = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083011-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET escape_string_warning = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083013-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET cpu_operator_cost = 0.001;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083015-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=select pg_backend_pid(),planSQLText='Result  (cost=0.00..0.01 rows=1 width=4) (actual time=0.004..0.004 rows=1.00 loops=1)
+  Output: pg_backend_pid()
+Query Identifier: -4078663784810584269
+Planning Time: 0.059 ms
+Execution Time: 0.027 ms
+',RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.083017-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="set client_encoding = 'utf8'",RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083019-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET lock_timeout = 20000;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.083021-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="select spcname from pg_tablespace where spcname = 'v81c_index' or spcname = 'v81c_data';
+",planSQLText="Seq Scan on pg_catalog.pg_tablespace  (cost=0.00..1.02 rows=2 width=64) (actual time=0.011..0.011 rows=0.00 loops=1)
+  Output: spcname
+  Filter: ((pg_tablespace.spcname = 'v81c_index'::name) OR (pg_tablespace.spcname = 'v81c_data'::name))
+  Rows Removed by Filter: 2
+  Buffers: shared hit=1
+Query Identifier: 4542859770577971149
+Planning:
+  Buffers: shared hit=190
+Planning Time: 0.783 ms
+Execution Time: 0.024 ms
+",RowsAffected=0,Result=PGRES_TUPLES_OK
+27:17.223001-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET client_min_messages=error',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223003-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="SET lc_messages to 'en_US.UTF-8';",RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223005-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET enable_mergejoin = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223007-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=show standard_conforming_strings,RowsAffected=0,Result=PGRES_TUPLES_OK
+27:17.223009-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET standard_conforming_strings = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223011-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET escape_string_warning = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223013-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET cpu_operator_cost = 0.001;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223015-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=select pg_backend_pid(),planSQLText='Result  (cost=0.00..0.01 rows=1 width=4) (actual time=0.001..0.002 rows=1.00 loops=1)
+  Output: pg_backend_pid()
+Query Identifier: -4078663784810584269
+Planning Time: 0.022 ms
+Execution Time: 0.014 ms
+',RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.223017-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="set client_encoding = 'utf8'",RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223019-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET lock_timeout = 20000;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.223021-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="select 1 from pg_proc where proname in ('datediff2')",planSQLText="Index Only Scan using pg_proc_proname_args_nsp_index on pg_catalog.pg_proc  (cost=0.11..8.13 rows=1 width=4) (actual time=0.123..0.123 rows=1.00 loops=1)
+  Output: 1
+  Index Cond: (pg_proc.proname = 'datediff2'::name)
+  Heap Fetches: 0
+  Index Searches: 1
+  Buffers: shared hit=3
+Query Identifier: 524212415149747793
+Planning:
+  Buffers: shared hit=156
+Planning Time: 0.632 ms
+Execution Time: 0.156 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.223023-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="SELECT 1 FROM pg_catalog.pg_type as t WHERE typname = 'mchar' AND pg_catalog.pg_type_is_visible(t.oid);",planSQLText="Index Scan using pg_type_typname_nsp_index on pg_catalog.pg_type t  (cost=0.16..8.20 rows=1 width=4) (actual time=0.043..0.044 rows=1.00 loops=1)
+  Output: 1
+  Index Cond: (t.typname = 'mchar'::name)
+  Filter: pg_type_is_visible(t.oid)
+  Index Searches: 1
+  Buffers: shared hit=10
+Query Identifier: -4248150014066157332
+Planning:
+  Buffers: shared hit=12
+Planning Time: 0.209 ms
+Execution Time: 0.065 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.239000-15976,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="select installed_version from pg_available_extensions where name = 'mchar'",planSQLText="Nested Loop Left Join  (cost=0.01..2.16 rows=1 width=4) (actual time=5.861..5.864 rows=1.00 loops=1)
+  Output: x.extversion
+  Inner Unique: true
+  Buffers: shared hit=1
+  ->  Function Scan on pg_catalog.pg_available_extensions e  (cost=0.01..1.11 rows=1 width=64) (actual time=5.801..5.803 rows=1.00 loops=1)
+        Output: e.name, e.default_version, e.comment
+        Function Call: pg_available_extensions()
+        Filter: (e.name = 'mchar'::name)
+        Rows Removed by Filter: 61
+  ->  Seq Scan on pg_catalog.pg_extension x  (cost=0.00..1.04 rows=1 width=68) (actual time=0.051..0.051 rows=1.00 loops=1)
+        Output: x.oid, x.extname, x.extowner, x.extnamespace, x.extrelocatable, x.extversion, x.extconfig, x.extcondition
+        Filter: (x.extname = 'mchar'::name)
+        Rows Removed by Filter: 1
+        Buffers: shared hit=1
+Query Identifier: -79929494436939192
+Planning:
+  Buffers: shared hit=200
+Planning Time: 0.775 ms
+Execution Time: 5.903 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.239002-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=alter extension mchar update,RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.239004-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="select installed_version from pg_available_extensions where name = 'fasttrun'",planSQLText="Nested Loop Left Join  (cost=0.01..2.16 rows=1 width=4) (actual time=2.267..2.270 rows=1.00 loops=1)
+  Output: x.extversion
+  Inner Unique: true
+  Buffers: shared hit=1
+  ->  Function Scan on pg_catalog.pg_available_extensions e  (cost=0.01..1.11 rows=1 width=64) (actual time=2.249..2.252 rows=1.00 loops=1)
+        Output: e.name, e.default_version, e.comment
+        Function Call: pg_available_extensions()
+        Filter: (e.name = 'fasttrun'::name)
+        Rows Removed by Filter: 61
+  ->  Seq Scan on pg_catalog.pg_extension x  (cost=0.00..1.04 rows=1 width=68) (actual time=0.015..0.016 rows=1.00 loops=1)
+        Output: x.oid, x.extname, x.extowner, x.extnamespace, x.extrelocatable, x.extversion, x.extconfig, x.extcondition
+        Filter: (x.extname = 'fasttrun'::name)
+        Rows Removed by Filter: 2
+        Buffers: shared hit=1
+Query Identifier: -79929494436939192
+Planning Time: 0.086 ms
+Execution Time: 2.290 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.239006-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=alter extension fasttrun update,RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.239008-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="select installed_version from pg_available_extensions where name = 'fulleq'",planSQLText="Nested Loop Left Join  (cost=0.01..2.16 rows=1 width=4) (actual time=2.497..2.500 rows=1.00 loops=1)
+  Output: x.extversion
+  Inner Unique: true
+  Buffers: shared hit=1
+  ->  Function Scan on pg_catalog.pg_available_extensions e  (cost=0.01..1.11 rows=1 width=64) (actual time=2.477..2.479 rows=1.00 loops=1)
+        Output: e.name, e.default_version, e.comment
+        Function Call: pg_available_extensions()
+        Filter: (e.name = 'fulleq'::name)
+        Rows Removed by Filter: 61
+  ->  Seq Scan on pg_catalog.pg_extension x  (cost=0.00..1.04 rows=1 width=68) (actual time=0.018..0.018 rows=1.00 loops=1)
+        Output: x.oid, x.extname, x.extowner, x.extnamespace, x.extrelocatable, x.extversion, x.extconfig, x.extcondition
+        Filter: (x.extname = 'fulleq'::name)
+        Rows Removed by Filter: 3
+        Buffers: shared hit=1
+Query Identifier: -79929494436939192
+Planning Time: 0.136 ms
+Execution Time: 2.538 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.239010-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=alter extension fulleq update,RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.239012-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="select 1 from pg_proc where proname = 'vassn'",planSQLText="Index Only Scan using pg_proc_proname_args_nsp_index on pg_catalog.pg_proc  (cost=0.11..8.13 rows=1 width=4) (actual time=0.086..0.086 rows=1.00 loops=1)
+  Output: 1
+  Index Cond: (pg_proc.proname = 'vassn'::name)
+  Heap Fetches: 1
+  Index Searches: 1
+  Buffers: shared hit=4 dirtied=1
+Query Identifier: 524212415149747793
+Planning Time: 0.077 ms
+Execution Time: 0.099 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.270001-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET client_min_messages=error',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270003-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="SET lc_messages to 'en_US.UTF-8';",RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270005-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET enable_mergejoin = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270007-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=show standard_conforming_strings,RowsAffected=0,Result=PGRES_TUPLES_OK
+27:17.270009-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET standard_conforming_strings = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270011-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET escape_string_warning = off;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270013-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET cpu_operator_cost = 0.001;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270015-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql=select pg_backend_pid(),planSQLText='Result  (cost=0.00..0.01 rows=1 width=4) (actual time=0.001..0.001 rows=1.00 loops=1)
+  Output: pg_backend_pid()
+Query Identifier: -4078663784810584269
+Planning Time: 0.019 ms
+Execution Time: 0.011 ms
+',RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.270017-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql="set client_encoding = 'utf8'",RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270019-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,Sql='SET lock_timeout = 2000;',RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270021-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql=BEGIN TRANSACTION,RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.270024-1,DBPOSTGRS,4,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql=SHOW SERVER_VERSION_NUM,RowsAffected=0,Result=PGRES_TUPLES_OK
+27:17.270026-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql=COMMIT,RowsAffected=0,Result=PGRES_COMMAND_OK
+27:17.286000-15973,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql="select count(*) from pg_tables where tablename IN ('config', 'configsave', 'params', 'files')",planSQLText="Aggregate  (cost=31.25..31.26 rows=1 width=8) (actual time=0.021..0.022 rows=1.00 loops=1)
+  Output: count(*)
+  Buffers: shared hit=4
+  ->  Index Scan using pg_class_relname_nsp_index on pg_catalog.pg_class c  (cost=0.12..31.25 rows=1 width=0) (actual time=0.014..0.017 rows=4.00 loops=1)
+        Output: c.oid, c.relname, c.relnamespace, c.reltype, c.reloftype, c.relowner, c.relam, c.relfilenode, c.reltablespace, c.relpages, c.reltuples, c.relallvisible, c.relallfrozen, c.reltoastrelid, c.relhasindex, c.relisshared, c.relpersistence, c.relkind, c.relnatts, c.relchecks, c.relhasrules, c.relhastriggers, c.relhassubclass, c.relrowsecurity, c.relforcerowsecurity, c.relispopulated, c.relreplident, c.relispartition, c.relrewrite, c.relfrozenxid, c.relminmxid, c.relacl, c.reloptions, c.relpartbound
+        Index Cond: (c.relname = ANY ('{config,configsave,params,files}'::name[]))
+        Filter: (c.relkind = ANY ('{r,p}'::""char""[]))
+        Index Searches: 1
+        Buffers: shared hit=4
+Query Identifier: -4344109851984448627
+Planning:
+  Buffers: shared hit=474
+Planning Time: 1.120 ms
+Execution Time: 0.064 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.286002-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql="select count(*) from pg_tables where tablename IN ('dbschema', 'dbschemaog')",planSQLText="Aggregate  (cost=15.84..15.85 rows=1 width=8) (actual time=0.019..0.019 rows=1.00 loops=1)
+  Output: count(*)
+  Buffers: shared hit=3
+  ->  Index Scan using pg_class_relname_nsp_index on pg_catalog.pg_class c  (cost=0.12..15.84 rows=1 width=0) (actual time=0.017..0.017 rows=1.00 loops=1)
+        Output: c.oid, c.relname, c.relnamespace, c.reltype, c.reloftype, c.relowner, c.relam, c.relfilenode, c.reltablespace, c.relpages, c.reltuples, c.relallvisible, c.relallfrozen, c.reltoastrelid, c.relhasindex, c.relisshared, c.relpersistence, c.relkind, c.relnatts, c.relchecks, c.relhasrules, c.relhastriggers, c.relhassubclass, c.relrowsecurity, c.relforcerowsecurity, c.relispopulated, c.relreplident, c.relispartition, c.relrewrite, c.relfrozenxid, c.relminmxid, c.relacl, c.reloptions, c.relpartbound
+        Index Cond: (c.relname = ANY ('{dbschema,dbschemaog}'::name[]))
+        Filter: (c.relkind = ANY ('{r,p}'::""char""[]))
+        Index Searches: 1
+        Buffers: shared hit=3
+Query Identifier: -4344109851984448627
+Planning Time: 0.116 ms
+Execution Time: 0.036 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.286004-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql="SELECT 1::INT8 FROM PG_CLASS WHERE pg_catalog.pg_table_is_visible(OID) AND RELKIND='r' AND RELNAME='ibversion' and relnamespace IN('public'::regnamespace, pg_my_temp_schema()) LIMIT 1",planSQLText="Limit  (cost=24.44..36.60 rows=1 width=8) (actual time=0.019..0.020 rows=1.00 loops=1)
+  Output: '1'::bigint
+  Buffers: shared hit=8
+  ->  Index Scan using pg_class_relname_nsp_index on pg_catalog.pg_class  (cost=0.12..12.28 rows=1 width=8) (actual time=0.017..0.017 rows=1.00 loops=1)
+        Output: '1'::bigint
+        Index Cond: ((pg_class.relname = 'ibversion'::name) AND (pg_class.relnamespace = ANY (ARRAY['2200'::oid, pg_my_temp_schema()])))
+        Filter: ((pg_class.relkind = 'r'::""char"") AND pg_table_is_visible(pg_class.oid))
+        Index Searches: 1
+        Buffers: shared hit=8
+Query Identifier: 371000189573531325
+Planning Time: 0.070 ms
+Execution Time: 0.030 ms
+",RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.286006-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql='SELECT IBVersion, PlatformVersionReq FROM IBVersion',planSQLText='Seq Scan on public.ibversion  (cost=0.00..1.01 rows=1 width=8) (actual time=0.008..0.008 rows=1.00 loops=1)
+  Output: ibversion, platformversionreq
+  Buffers: shared hit=1
+Query Identifier: 1344210360454642114
+Planning:
+  Buffers: shared hit=6
+Planning Time: 0.093 ms
+Execution Time: 0.013 ms
+',RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.286008-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql='select datcollate from pg_database where datname = current_database()',planSQLText='Seq Scan on pg_catalog.pg_database  (cost=0.00..1.02 rows=1 width=20) (actual time=0.008..0.008 rows=1.00 loops=1)
+  Output: datcollate
+  Filter: (pg_database.datname = current_database())
+  Rows Removed by Filter: 4
+  Buffers: shared hit=1
+Query Identifier: -4274817044854304588
+Planning:
+  Buffers: shared hit=19
+Planning Time: 0.206 ms
+Execution Time: 0.015 ms
+',RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.286010-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql='select datcollate from pg_database where datname = current_database()',planSQLText='Seq Scan on pg_catalog.pg_database  (cost=0.00..1.02 rows=1 width=20) (actual time=0.006..0.006 rows=1.00 loops=1)
+  Output: datcollate
+  Filter: (pg_database.datname = current_database())
+  Rows Removed by Filter: 4
+  Buffers: shared hit=1
+Query Identifier: -4274817044854304588
+Planning Time: 0.029 ms
+Execution Time: 0.012 ms
+',RowsAffected=1,Result=PGRES_TUPLES_OK
+27:17.286012-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=3496,Sql="SELECT 1::INT8 FROM PG_CLASS WHERE pg_catalog.pg_table_is_visible(OID) AND RELKIND='r' AND RELNAME='params' and relnamespace IN('public'::regnamespace, pg_my_temp_schema()) LIMIT 1",planSQLText="Limit  (cost=24.44..36.60 rows=1 width=8) (actual time=0.023..0.023 rows=1.00 loops=1)

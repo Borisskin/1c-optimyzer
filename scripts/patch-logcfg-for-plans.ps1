@@ -9,7 +9,8 @@
 
         <config xmlns="http://v8.1c.ru/v8/tech-log">
             <log location="...">
-                <event>...DBMSSQL...</event>
+                <event>...DBMSSQL...</event>     <!-- MSSQL queries -->
+                <event>...DBPOSTGRS...</event>   <!-- PostgreSQL queries -->
                 <property name="all"/>
                 <property name="plansqltext"/>   <!-- внутри <log> -->
             </log>
@@ -21,6 +22,12 @@
     и planSQLText не пишется (проверено восемью неудачными попытками).
     Атомарное property <property name="plansqltext"/> идёт внутрь <log> как
     обычная property — это безопаснее чем полагаться на <property name="all"/>.
+
+    Sprint 8 Phase A discovery (2026-05-25): для PostgreSQL баз 1С пишет
+    события под именем DBPOSTGRS, НЕ DBMSSQL. Это значит существующий
+    фильтр на DBMSSQL ловит только MS SQL Server. Для PG-баз нужен
+    отдельный <event> с DBPOSTGRS. Этот скрипт добавляет оба event'а
+    если их ещё нет (idempotent).
 
     Idempotent patch:
       1. Backup logcfg.xml в logcfg.xml.backup.YYYYMMDD-HHMMSS
@@ -119,6 +126,39 @@ $oldProps = @($logNode.SelectNodes("*[local-name()='property' and @name='plansql
 if ($oldProps.Count -gt 0) {
     Write-Host "  Удаляю старые <property name='plansqltext'>: $($oldProps.Count)" -ForegroundColor Yellow
     foreach ($el in $oldProps) { $logNode.RemoveChild($el) | Out-Null }
+}
+
+# === Sprint 8 Phase A — добавить <event name="DBPOSTGRS"> если его ещё нет ===
+# Для PostgreSQL баз 1С пишет события под этим именем, NOT DBMSSQL.
+# Idempotent: если DBPOSTGRS event уже есть — не дублируем.
+$existingDbpostgrs = $logNode.SelectNodes("*[local-name()='event']/*[local-name()='eq' and @property='name' and @value='DBPOSTGRS']")
+if ($existingDbpostgrs.Count -eq 0) {
+    # Берём порог duration с существующего DBMSSQL event если есть, иначе 10 (100 мс)
+    $existingDbmssql = $logNode.SelectSingleNode("*[local-name()='event'][./*[local-name()='eq' and @property='name' and @value='DBMSSQL']]")
+    $threshold = "10"
+    if ($existingDbmssql) {
+        $durNode = $existingDbmssql.SelectSingleNode("*[local-name()='gt' and @property='duration']")
+        if ($durNode) { $threshold = $durNode.GetAttribute("value") }
+    }
+
+    $eventNode = $xml.CreateElement("event", $NS)
+    $eqNode = $xml.CreateElement("eq", $NS)
+    $eqNode.SetAttribute("property", "name")
+    $eqNode.SetAttribute("value", "DBPOSTGRS")
+    $gtNode = $xml.CreateElement("gt", $NS)
+    $gtNode.SetAttribute("property", "duration")
+    $gtNode.SetAttribute("value", $threshold)
+    $eventNode.AppendChild($xml.CreateWhitespace("`n            ")) | Out-Null
+    $eventNode.AppendChild($eqNode) | Out-Null
+    $eventNode.AppendChild($xml.CreateWhitespace("`n            ")) | Out-Null
+    $eventNode.AppendChild($gtNode) | Out-Null
+    $eventNode.AppendChild($xml.CreateWhitespace("`n        ")) | Out-Null
+
+    $logNode.AppendChild($xml.CreateWhitespace("`n        ")) | Out-Null
+    $logNode.AppendChild($eventNode) | Out-Null
+    Write-Host "  + <event name='DBPOSTGRS' duration>$threshold/> для PostgreSQL баз" -ForegroundColor Green
+} else {
+    Write-Host "  = <event name='DBPOSTGRS'> уже есть, пропускаю" -ForegroundColor Gray
 }
 
 # === Шаг 1: <property name="plansqltext"/> ВНУТРИ <log> ===

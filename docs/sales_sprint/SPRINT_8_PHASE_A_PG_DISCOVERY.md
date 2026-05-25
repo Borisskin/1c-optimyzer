@@ -846,3 +846,151 @@ Evidence: `tools/sprint8_discovery/probe_results/pg_stat_statements_explains.txt
 - **Q2 (MEDIUM):** pg_stat_statements view — это primary source для Phase B "Top Slow Queries" (вместо/в дополнение к существующему `view_slow_queries` который читает ТЖ)?
 - **Q3 (LOW):** EXPLAIN запросы от 1С в pg_stat_statements — это noise или signal? Их нужно фильтровать или они полезны для анализа?
 
+---
+
+## ADDENDUM 2 — окончательное подтверждение по ТЖ для PG
+
+После активации DBPOSTGRS event в logcfg.xml (5 минут активности, 473257 events за это время) **гипотезы из ADDENDUM 1 подтверждены полностью**. Все 9 secondary вопросов закрыты.
+
+### B.1. CRITICAL — event name DBPOSTGRS, не DBMSSQL
+
+Spasibo Сергей за hint: **`DBMSSQL` — это MS SQL Server**-specific event name. Для PostgreSQL события называются **`DBPOSTGRS`**. logcfg.xml фильтр `<eq property="name" value="DBMSSQL" />` ловит **только MSSQL** queries. Для PG нужен **отдельный** event:
+
+```xml
+<event>
+    <eq property="name" value="DBPOSTGRS" />
+    <gt property="duration" value="10" />  <!-- 10 cs = 100 ms -->
+</event>
+```
+
+Аналогично для других СУБД: `DBORACLE` (Oracle), `DB2` (IBM DB2).
+
+**Impact:**
+1. **patch-logcfg-for-plans.ps1 (Sprint 7 D.1) НЕ добавляет DBPOSTGRS event.** Нужно обновить — добавить.
+2. Документация `docs/onboarding/enable-dbmssql-plans.md` (Sprint 7 D.2) тоже только про MSSQL. Нужна параллельная страница `enable-dbpostgrs-plans.md` или общая `enable-plansqltext.md`.
+3. tj_parser.py: проверить что он распознаёт оба event name (DBMSSQL И DBPOSTGRS).
+
+### B.2. CONFIRMED — planSQLText есть в DBPOSTGRS events
+
+Sample event с реальным планом:
+
+```
+27:17.223021-1,DBPOSTGRS,3,level=DEBUG,process=rphost,p:processName=pgBase,
+OSThread=21928,t:clientID=622,t:applicationName=Designer,t:computerName=WIN,
+t:connectID=239,DBMS=DBPOSTGRS,DataBase=localhost\pgBase,Trans=0,dbpid=,
+Sql="select spcname from pg_tablespace where spcname = 'v81c_index' or spcname = 'v81c_data';
+",planSQLText="Seq Scan on pg_catalog.pg_tablespace  (cost=0.00..1.02 rows=2 width=64) (actual time=0.011..0.011 rows=0.00 loops=1)
+  Output: spcname
+  Filter: ((pg_tablespace.spcname = 'v81c_index'::name) OR (pg_tablespace.spcname = 'v81c_data'::name))
+  Rows Removed by Filter: 2
+  Buffers: shared hit=1
+Query Identifier: 4542859770577971149
+Planning:
+  Buffers: shared hit=190
+Planning Time: 0.783 ms
+Execution Time: 0.024 ms
+",RowsAffected=0,Result=PGRES_TUPLES_OK
+```
+
+**Поля DBPOSTGRS event** (отличия от DBMSSQL):
+- `DBMS=DBPOSTGRS` (вместо `DBMS=DBMSSQL`)
+- `DataBase=localhost\pgBase` (с backslash — наследие MSSQL naming)
+- `dbpid=N` (постоянно `''` empty в нашем sample — видимо не заполняется для PG)
+- **`Sql=...`** — реальный SQL отправленный в PG (часто многострочный, может содержать `$1`, `$2` для prepared statements)
+- **`planSQLText="..."`** — PostgreSQL `EXPLAIN ANALYZE BUFFERS VERBOSE` output в TEXT формате
+- **`RowsAffected=N`** — для DML
+- **`Result=PGRES_TUPLES_OK | PGRES_COMMAND_OK`** — PG-specific result code
+
+### B.3. planSQLText format — PostgreSQL EXPLAIN TEXT (НЕ JSON, НЕ XML)
+
+В отличие от MSSQL SHOWPLAN_TEXT (где у нас был Sprint 7 PlanTextView), PG план содержит:
+
+- Operator nodes с indent через 2 пробела + `->` для children
+- `(cost=X..Y rows=N width=N)` — cost + estimated stats
+- `(actual time=X..Y rows=N.NN loops=N)` — runtime stats (если ANALYZE)
+- `Output: cols` — returned columns
+- `Filter:` / `Index Cond:` / `Recheck Cond:` / `Hash Cond:` / `Join Filter:` — predicates
+- `Rows Removed by Filter: N` / `Rows Removed by Index Recheck: N`
+- `Index Searches: N` (новое в PG 18)
+- `Heap Fetches: N` (для Index Only Scan)
+- `Buffers: shared hit=N read=N` (если BUFFERS)
+- `Inner Unique: true` (для joins)
+- `Function Call: pg_available_extensions()` (для Function Scan)
+- **Footer block:**
+  - `Query Identifier: NNN` (с PG 14+)
+  - `Planning: Buffers: ...` + `Planning Time: X ms`
+  - `Execution Time: X ms`
+
+**Это TEXT, НЕ JSON.** Phase B имеет 3 опции:
+
+1. **Парсить TEXT** прямо как делает Sprint 7 PlanTextView (минимум работы, но pev2 не показать)
+2. **Перезапускать запрос** с `EXPLAIN (FORMAT JSON, ANALYZE)` через psql для pev2 визуализации (требует подключения к PG из нашего backend)
+3. **Конвертировать TEXT → JSON** своим парсером (~2 недели работы, переиспользуемая инфраструктура)
+
+**Рекомендация:** для MVP — opt 1 (TEXT view + AI explanation), для production — opt 2 (re-EXPLAIN с JSON для pev2 интерактивной визуализации).
+
+### B.4. CRITICAL — 1С отключает merge_join и калибрует cost_model
+
+Каждое соединение к PG начинается с **обязательных SET команд**:
+
+```sql
+SET client_min_messages=error
+SET lc_messages to 'en_US.UTF-8'
+SET enable_mergejoin = off            -- ← КРИТИЧНО для antipatterns
+SET standard_conforming_strings = off
+SET escape_string_warning = off
+SET cpu_operator_cost = 0.001         -- ← КРИТИЧНО для cost interpretation
+SET client_encoding = 'utf8'
+SET lock_timeout = 20000              -- 20 секунд таймаут на блокировки
+```
+
+**`SET enable_mergejoin = off`** — это значит **1С запрещает PG использовать Merge Join**. Наши Phase B antipatterns не должны рекомендовать "переключиться на Merge Join" — это технически невозможно в 1С-PG.
+
+**`SET cpu_operator_cost = 0.001`** — это в 5 раз меньше дефолта (0.005). Это значит **cost numbers в плане другие** чем в стандартном PG. AI prompts и интерпретация costs должны это учитывать.
+
+**`SET lock_timeout = 20000`** — это причина почему 1С-PG ошибки про блокировки имеют timeout 20 секунд (не PG default 0=infinite).
+
+### B.5. 1С auto-runs `ALTER EXTENSION <ext> UPDATE` при connect
+
+Видно в логе:
+
+```
+Sql=alter extension mchar update,RowsAffected=0,Result=PGRES_COMMAND_OK
+```
+
+То есть 1С Server Agent на каждом connect проверяет версии своих extensions и автоматически обновляет до latest. **Это важно для feature detection** — наш Phase B не может полагаться на конкретную версию mchar, она может меняться.
+
+### B.6. Объём данных для PG
+
+С duration filter = 10 cs (100 ms) — за **5 минут активности** Сергей перепровёл несколько документов. Без фильтра было **473257 events** = ~1.2 GB. С фильтром 100ms активность практически нулевая (только реально медленные queries).
+
+**Phase B нужен правильный design для частоты DBPOSTGRS events** — типичная 1С база с активной работой может производить миллионы events в час. Наш archive ingestion должен быть в DuckDB friendly.
+
+### B.7. Final actionable items для Phase B promt
+
+1. **tj_parser.py** — добавить поддержку `DBPOSTGRS` event name (сейчас только `DBMSSQL`)
+2. **patch-logcfg-for-plans.ps1** — добавлять оба event (`DBMSSQL` + `DBPOSTGRS`) когда патчим для plans
+3. **PlanTextView** Sprint 7 — переиспользовать как есть, но distinguish MSSQL vs PG format через AI prompt
+4. **AI prompt** — split на 2: explain_mssql_plan vs explain_pg_plan
+5. **PG-specific antipatterns** — не рекомендовать "use Merge Join" (1С его отключает)
+6. **pev2 visualization** — option 2 (re-EXPLAIN с FORMAT JSON через psql backend connection) — лучший UX
+7. **DB connection settings** — Phase B должен учитывать `SET enable_mergejoin = off` + `SET cpu_operator_cost = 0.001` при анализе планов
+
+### B.8. Готовность Phase B — пересчёт
+
+| Original Phase | Estimate | После discovery |
+|---|---|---|
+| Phase B (PG Plan Analyzer Core) | 1.5 недели | **~3-5 дней** (главное — адаптация tj_parser + PlanTextView + AI prompts) |
+| Phase C (PG Antipatterns) | 1 неделя | без изменений ~1 неделя |
+| Phase D (planSQLText XML конвертер) | 1 неделя | **может быть исключён** — planSQLText для PG это уже текст, не XML |
+
+**Sprint 8 общий estimate: ~2-3 недели вместо изначальных 4.** Discovery окупила себя.
+
+### B.9. Sample DBPOSTGRS event
+
+Полный sample (50 events, ~24.5 KB) сохранён в `tools/sprint8_discovery/pg_tj_samples/dbpostgrs_sample.log`. Доступен архитектору для написания спецификации Phase B.
+
+---
+
+**Final status Phase A: ПОЛНОСТЬЮ ЗАКРЫТ.** Все 9 критических вопросов имеют подтверждённые ответы с реальными samples. Phase B promt можно писать на твёрдых данных без угадывания.
+
