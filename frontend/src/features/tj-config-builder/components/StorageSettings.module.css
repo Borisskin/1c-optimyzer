@@ -1,0 +1,76 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--o-text-3);
+  font-family: var(--o-font-mono);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field_row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.field_label {
+  font-size: 11px;
+  color: var(--o-text-2);
+}
+
+.input {
+  padding: 5px 8px;
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-sm);
+  background: var(--o-input, var(--o-surface));
+  color: var(--o-text-1);
+  font-size: 12px;
+  font-family: var(--o-font-mono);
+  width: 100%;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--o-accent);
+}
+
+.input_size {
+  width: 72px;
+}
+
+/* Скрыть spinner */
+.input_size::-webkit-outer-spin-button,
+.input_size::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.unit {
+  font-size: 11px;
+  color: var(--o-text-3);
+  flex-shrink: 0;
+}
+
+.hint {
+  font-size: 10px;
+  color: var(--o-text-3);
+  line-height: 1.4;
+}

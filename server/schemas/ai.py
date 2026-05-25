@@ -175,3 +175,108 @@ class PlanExplainResponse(BaseModel):
         default=False,
         description="True если plan XML был обрезан до AI_PLAN_MAX_CHARS (для больших планов)",
     )
+
+
+# ---------------- Sprint 10: TJ Config Builder AI ----------------
+
+
+class EventConfig(BaseModel):
+    """Настройка одного ТЖ события."""
+
+    enabled: bool
+    threshold_cs: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Порог в centiseconds (1 cs = 10 ms). None = нет фильтра по длительности.",
+    )
+
+
+class LogcfgEvents(BaseModel):
+    """Набор событий ТЖ — все поля Optional (включать только нужные)."""
+
+    CALL: Optional[EventConfig] = None
+    SCALL: Optional[EventConfig] = None
+    SDBL: Optional[EventConfig] = None
+    DBMSSQL: Optional[EventConfig] = None
+    DBPOSTGRS: Optional[EventConfig] = None
+    TDEADLOCK: Optional[EventConfig] = None
+    TLOCK: Optional[EventConfig] = None
+    EXCP: Optional[EventConfig] = None
+    EXCPCNTX: Optional[EventConfig] = None
+    ADMIN: Optional[EventConfig] = None
+    MEM: Optional[EventConfig] = None
+    ATTN: Optional[EventConfig] = None
+    TTIMEOUT: Optional[EventConfig] = None
+
+
+class LogcfgConfig(BaseModel):
+    """Структурированная конфигурация logcfg.xml (не raw XML)."""
+
+    events: LogcfgEvents = Field(default_factory=LogcfgEvents)
+    capture_plans: bool = Field(
+        default=False,
+        description="Добавить <plansql/> и property plansqltext — увеличивает объём в 3-4×.",
+    )
+    log_directory: str = Field(
+        default="C:\\1C-TechLog",
+        max_length=500,
+        description="Путь к папке для хранения логов ТЖ.",
+    )
+    max_size_gb: int = Field(
+        default=10,
+        ge=1,
+        le=1000,
+        description="Максимальный суммарный объём логов в ГБ (history в конфиге).",
+    )
+
+
+class EventRationale(BaseModel):
+    """Обоснование включения одного события от AI."""
+
+    event: str = Field(max_length=32)
+    threshold: str = Field(max_length=100, description='Человеческое описание порога, например "10 cs (100 мс)".')
+    why: str = Field(max_length=500)
+
+
+class LogcfgGenerateRequest(BaseModel):
+    """POST /v1/ai/generate_logcfg — вход."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    problem_description: str = Field(
+        min_length=10,
+        max_length=2000,
+        description="Свободное описание проблемы производительности.",
+    )
+    platform_version: Optional[str] = Field(
+        default=None,
+        max_length=20,
+        description='Версия платформы 1С, например "8.3.24". Если не указана — AI использует актуальную.',
+    )
+    dbms: Optional[Literal["mssql", "postgres", "both", "unknown"]] = Field(
+        default="unknown",
+        description="СУБД. AI включит соответствующие события (DBMSSQL / DBPOSTGRS).",
+    )
+
+
+class LogcfgGenerateResponse(BaseModel):
+    """POST /v1/ai/generate_logcfg — выход."""
+
+    config: LogcfgConfig
+    explanation: str = Field(description="Краткое объяснение почему такая настройка подходит.")
+    events_rationale: list[EventRationale] = Field(
+        default_factory=list,
+        max_length=15,
+        description="Обоснование по каждому включённому событию.",
+    )
+    estimated_use_duration: str = Field(
+        default="30-60 минут",
+        description="Рекомендуемое время сбора логов с активной нагрузкой.",
+    )
+    warnings: list[str] = Field(
+        default_factory=list,
+        max_length=10,
+        description="Предупреждения (например, о большом объёме).",
+    )
+    model_used: str
+    duration_ms: int

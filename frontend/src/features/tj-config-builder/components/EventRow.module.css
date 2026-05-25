@@ -1,0 +1,73 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 5px;
+  border-radius: var(--o-radius-sm);
+  cursor: pointer;
+  transition: background 80ms;
+  user-select: none;
+  min-height: 26px;
+}
+
+.row:hover {
+  background: var(--o-hover, rgba(255, 255, 255, 0.04));
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--o-accent);
+}
+
+.name {
+  flex: 1;
+  font-size: 12px;
+  font-family: var(--o-font-mono);
+  font-weight: 500;
+  color: var(--o-text-2);
+  transition: color 80ms;
+}
+
+.row_enabled .name {
+  color: var(--o-text-1);
+}
+
+.threshold {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.threshold_input {
+  width: 62px;
+  padding: 2px 5px;
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-sm);
+  background: var(--o-input, var(--o-surface));
+  color: var(--o-text-1);
+  font-size: 11px;
+  font-family: var(--o-font-mono);
+  text-align: right;
+  outline: none;
+}
+
+.threshold_input:focus {
+  border-color: var(--o-accent);
+}
+
+/* Скрыть spinner в number input */
+.threshold_input::-webkit-outer-spin-button,
+.threshold_input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.threshold_unit {
+  font-size: 10px;
+  color: var(--o-text-3);
+  font-family: var(--o-font-mono);
+  flex-shrink: 0;
+}

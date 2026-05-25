@@ -36,7 +36,8 @@ export type ScreenId =
   | "alerts"
   | "reports"
   | "mobile"
-  | "dev-tools";
+  | "dev-tools"
+  | "tj-config-builder";
 
 export interface ToastMessage {
   id: number;

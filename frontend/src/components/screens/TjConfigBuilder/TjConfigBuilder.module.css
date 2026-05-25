@@ -1,0 +1,95 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 24px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* ---- Шапка ---- */
+.header {
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--o-text-1);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--o-text-3);
+  line-height: 1.4;
+}
+
+.platform_badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius);
+  font-size: 11px;
+  font-family: var(--o-font-mono);
+  color: var(--o-text-2);
+}
+
+.platform_dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--o-success, #4caf50);
+  flex-shrink: 0;
+}
+
+.platform_dot_low {
+  background: var(--o-warning, #ff9800);
+}
+
+/* ---- Разделитель ---- */
+.divider {
+  border: none;
+  border-top: 1px solid var(--o-border);
+  margin: 0 0 14px;
+}
+
+/* ---- Табы ---- */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--o-border);
+  margin-bottom: 0;
+}
+
+.tab {
+  padding: 7px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--o-text-3);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 80ms, border-color 80ms;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--o-text-1);
+}
+
+.tab_active {
+  color: var(--o-accent);
+  border-bottom-color: var(--o-accent);
+}
+
+/* ---- Тело контента ---- */
+.content {
+  flex: 1;
+  min-height: 0;
+}

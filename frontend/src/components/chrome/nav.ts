@@ -6,7 +6,7 @@ export interface NavItem {
   id: ScreenId;
   label: string;
   icon: IconName;
-  group: "live" | "analyze" | "config" | "manage" | "dev";
+  group: "prepare" | "live" | "analyze" | "config" | "manage" | "dev";
   enabled: boolean;
   tooltip?: string;
   /** Текст keyboard-шортката для отображения справа в Sidebar (Ctrl+1, Ctrl+Q …). */
@@ -22,6 +22,9 @@ export interface NavItem {
 // одной строкой. См. docs/UI_INVENTORY_2026_05.md для полной картины.
 
 export const NAV_ITEMS: NavItem[] = [
+  // ----- ПОДГОТОВКА ----- (Sprint 10 — первый шаг pipeline до Sprint 14 UX Reorg)
+  { id: "tj-config-builder", label: t.sidebar.items.tjConfigBuilder, icon: "Settings2", group: "prepare", enabled: true, shortcut: "Ctrl+L" },
+
   // ----- ANALYZE -----
   { id: "operations",     label: t.sidebar.items.operations,     icon: "Layers",        group: "analyze", enabled: true, shortcut: "Ctrl+1" },
   { id: "sql",            label: t.sidebar.items.sql,            icon: "Terminal",      group: "analyze", enabled: true, shortcut: "Ctrl+2" },
@@ -80,6 +83,7 @@ export const DRILLDOWN_PARENT: Partial<Record<ScreenId, ScreenId>> = {
 };
 
 export const GROUPS: { name: string; key: NavItem["group"] }[] = [
+  { name: t.sidebar.groups.prepare, key: "prepare" },
   { name: t.sidebar.groups.analyze, key: "analyze" },
   { name: t.sidebar.groups.config,  key: "config" },
   // Hidden until Sprint 7+: группы НАБЛЮДЕНИЕ и УПРАВЛЕНИЕ пока не содержат

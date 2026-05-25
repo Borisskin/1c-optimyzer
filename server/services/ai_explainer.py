@@ -24,9 +24,14 @@ import anthropic
 
 from api.settings import settings
 from schemas.ai import (
+    EventRationale,
     ExplainRequest,
     ExplainResponse,
     IssueExplanation,
+    LogcfgConfig,
+    LogcfgEvents,
+    LogcfgGenerateRequest,
+    LogcfgGenerateResponse,
     PlanExplainRequest,
     PlanExplainResponse,
     PlanHotspot,
@@ -784,4 +789,183 @@ async def _process_plan_response(
         model_used=response.model,
         duration_ms=elapsed_ms,
         plan_truncated=was_truncated,
+    )
+
+
+# ============== Sprint 10: TJ Config Builder AI ==============
+
+# Модель — Haiku (convention «Haiku везде» для коротких структурированных задач).
+AI_MODEL_LOGCFG = "claude-haiku-4-5"
+
+SYSTEM_PROMPT_LOGCFG = """Ты — эксперт по технологическому журналу 1С:Предприятие. Юзер описывает проблему производительности, ты предлагаешь оптимальную настройку logcfg.xml в виде structured JSON.
+
+Принципы:
+1. Минимум events — только то что нужно для конкретной проблемы юзера.
+2. Правильные пороги — чтобы не было ни overload, ни пропуска данных.
+3. Detect движок БД из описания (MSSQL / PostgreSQL). Если не понятно — включи оба DBMSSQL + DBPOSTGRS.
+4. Учитывай объём — предупреждай если settings приведут к большому файлу (> 500 МБ/час).
+
+Пороги указываются в centiseconds (1 cs = 10 ms). Типичные значения:
+- 100 cs = 1 секунда (для CALL, TLOCK)
+- 10 cs = 100 ms (для DBMSSQL/DBPOSTGRS)
+- 0 cs = все события без фильтра (для TDEADLOCK, EXCP — редких событий)
+
+Возвращай строго valid JSON по схеме — и ТОЛЬКО JSON, без markdown fences, без пояснений вокруг:
+{
+  "config": {
+    "events": {
+      "CALL": {"enabled": true, "threshold_cs": 100},
+      "DBMSSQL": {"enabled": true, "threshold_cs": 10},
+      "EXCP": {"enabled": true, "threshold_cs": null}
+    },
+    "capture_plans": false,
+    "log_directory": "C:\\\\1C-TechLog",
+    "max_size_gb": 10
+  },
+  "explanation": "Краткое объяснение почему такая настройка подходит",
+  "events_rationale": [
+    {"event": "DBMSSQL", "threshold": "10 cs (100 мс)", "why": "Нужно ловить медленные запросы к БД"}
+  ],
+  "estimated_use_duration": "Собирать 30-60 минут с активной нагрузкой",
+  "warnings": ["Если у вас мало места на диске — снизьте threshold для DBMSSQL до 100 cs"]
+}"""
+
+USER_PROMPT_LOGCFG_TEMPLATE = """Описание проблемы производительности:
+{problem_description}
+
+Известная информация о среде:
+- Версия 1С: {platform_version}
+- СУБД: {dbms}
+
+Предложи оптимальную настройку logcfg.xml для сбора технологического журнала."""
+
+
+async def generate_logcfg(req: LogcfgGenerateRequest) -> LogcfgGenerateResponse:
+    """Sprint 10: генерация настройки logcfg.xml через Haiku по описанию проблемы.
+
+    Raises:
+        AiNotConfiguredError если ANTHROPIC_API_KEY не задан.
+        AiExplainerError для прочих сбоев.
+    """
+    if not settings.anthropic_api_key:
+        raise AiNotConfiguredError(
+            "ANTHROPIC_API_KEY не задан в server/.env — generate_logcfg недоступен"
+        )
+
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key,
+        timeout=settings.ai_request_timeout_s,
+    )
+    user_msg = USER_PROMPT_LOGCFG_TEMPLATE.format(
+        problem_description=req.problem_description,
+        platform_version=req.platform_version or "не указана",
+        dbms=req.dbms or "не указана",
+    )
+    started = time.monotonic()
+
+    try:
+        response = await client.messages.create(
+            model=AI_MODEL_LOGCFG,
+            max_tokens=2000,
+            system=SYSTEM_PROMPT_LOGCFG,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+    except anthropic.APIError as e:
+        raise AiExplainerError(f"Anthropic API error (generate_logcfg): {e}") from e
+
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+
+    text_parts: list[str] = []
+    for block in response.content:
+        text = getattr(block, "text", None)
+        if text:
+            text_parts.append(text)
+    raw_text = "\n".join(text_parts)
+    json_text = extract_json(raw_text)
+
+    try:
+        parsed: dict[str, Any] = json.loads(json_text)
+    except json.JSONDecodeError as e:
+        logger.warning("Haiku вернул невалидный JSON (logcfg): %s | raw: %s", e, raw_text[:200])
+        retry_msg = (
+            f"{user_msg}\n\nТвой предыдущий ответ был невалидным JSON. "
+            f"Ошибка: {e}. Верни ТОЛЬКО valid JSON без markdown."
+        )
+        try:
+            response = await client.messages.create(
+                model=AI_MODEL_LOGCFG,
+                max_tokens=2000,
+                system=SYSTEM_PROMPT_LOGCFG,
+                messages=[{"role": "user", "content": retry_msg}],
+            )
+        except anthropic.APIError as ex:
+            raise AiExplainerError(f"Retry API error (logcfg): {ex}") from ex
+        retry_text = "\n".join(getattr(b, "text", "") or "" for b in response.content)
+        json_text = extract_json(retry_text)
+        try:
+            parsed = json.loads(json_text)
+        except json.JSONDecodeError as ex:
+            raise AiExplainerError(
+                f"Haiku вернул невалидный JSON (logcfg) даже после retry: {ex}"
+            ) from ex
+
+    # Строим LogcfgConfig из parsed["config"].
+    # AI может вернуть неполные / лишние поля — обрабатываем gracefully.
+    config_raw = parsed.get("config", {})
+    if not isinstance(config_raw, dict):
+        config_raw = {}
+
+    events_raw = config_raw.get("events", {})
+    if not isinstance(events_raw, dict):
+        events_raw = {}
+
+    # Фильтруем только известные event типы (ignore неизвестных от AI).
+    known_events = {
+        "CALL", "SCALL", "SDBL", "DBMSSQL", "DBPOSTGRS",
+        "TDEADLOCK", "TLOCK", "EXCP", "EXCPCNTX",
+        "ADMIN", "MEM", "ATTN", "TTIMEOUT",
+    }
+    clean_events: dict[str, Any] = {}
+    for ev_name, ev_val in events_raw.items():
+        if ev_name not in known_events:
+            logger.info("AI вернул неизвестный event %r — игнорируем", ev_name)
+            continue
+        if isinstance(ev_val, dict):
+            enabled = bool(ev_val.get("enabled", False))
+            threshold_raw = ev_val.get("threshold_cs")
+            threshold = int(threshold_raw) if isinstance(threshold_raw, (int, float)) else None
+            clean_events[ev_name] = {"enabled": enabled, "threshold_cs": threshold}
+
+    try:
+        config = LogcfgConfig(
+            events=LogcfgEvents(**clean_events),
+            capture_plans=bool(config_raw.get("capture_plans", False)),
+            log_directory=str(config_raw.get("log_directory", "C:\\1C-TechLog")),
+            max_size_gb=int(config_raw.get("max_size_gb", 10)),
+        )
+    except Exception as e:
+        logger.warning("Не удалось распарсить LogcfgConfig из AI ответа: %s", e)
+        config = LogcfgConfig()
+
+    rationale_raw = parsed.get("events_rationale", [])
+    rationale: list[EventRationale] = []
+    for r in rationale_raw:
+        if isinstance(r, dict):
+            try:
+                rationale.append(EventRationale(
+                    event=str(r.get("event", "")),
+                    threshold=str(r.get("threshold", "")),
+                    why=str(r.get("why", "")),
+                ))
+            except Exception:
+                pass
+
+    return LogcfgGenerateResponse(
+        config=config,
+        explanation=str(parsed.get("explanation", "")),
+        events_rationale=rationale,
+        estimated_use_duration=str(parsed.get("estimated_use_duration", "30-60 минут")),
+        warnings=[str(w) for w in parsed.get("warnings", []) if w],
+        model_used=response.model,
+        duration_ms=elapsed_ms,
     )

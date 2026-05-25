@@ -16,6 +16,8 @@ from fastapi import APIRouter, HTTPException, status
 from schemas.ai import (
     ExplainRequest,
     ExplainResponse,
+    LogcfgGenerateRequest,
+    LogcfgGenerateResponse,
     PlanExplainRequest,
     PlanExplainResponse,
 )
@@ -24,6 +26,7 @@ from services.ai_explainer import (
     AiNotConfiguredError,
     explain_plan_query,
     explain_query,
+    generate_logcfg,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,6 +66,25 @@ async def post_explain_plan(req: PlanExplainRequest) -> PlanExplainResponse:
         )
     except AiExplainerError as e:
         logger.exception("AI explain_plan failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "ai_orchestration_failed", "message": str(e)},
+        )
+
+
+@router.post("/generate_logcfg", response_model=LogcfgGenerateResponse)
+async def post_generate_logcfg(req: LogcfgGenerateRequest) -> LogcfgGenerateResponse:
+    """Sprint 10: Генерация настройки logcfg.xml через Haiku по описанию проблемы производительности."""
+    try:
+        return await generate_logcfg(req)
+    except AiNotConfiguredError as e:
+        logger.warning("AI generate_logcfg вызван без ANTHROPIC_API_KEY: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "ai_not_configured", "message": str(e)},
+        )
+    except AiExplainerError as e:
+        logger.exception("AI generate_logcfg failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={"error": "ai_orchestration_failed", "message": str(e)},

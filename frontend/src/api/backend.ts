@@ -1000,6 +1000,12 @@ export const backend = {
       force_1c_context: force_1c_context ?? null,
     }),
 
+  // Sprint 10 — TJ Config Builder
+  logcfgDetectPlatform: () =>
+    rpc<{ version: string; confidence: "high" | "medium" | "low" }>(
+      "logcfg.detect_platform",
+    ),
+
   // Sprint 5 — Configuration metadata
   configurationConnect: (path: string) =>
     rpc<ConfigurationConnectResult>("configuration.connect", { path }),

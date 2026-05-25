@@ -51,12 +51,14 @@ export const t = {
   },
   sidebar: {
     groups: {
+      prepare: "ПОДГОТОВКА",
       live: "НАБЛЮДЕНИЕ",
       analyze: "АНАЛИЗ",
       config: "КОНФИГУРАЦИЯ",
       manage: "УПРАВЛЕНИЕ",
     },
     items: {
+      tjConfigBuilder: "Конструктор logcfg.xml",
       sql: "SQL Console",
       operations: "Бизнес-операции",
       slowQueries: "Медленные запросы",

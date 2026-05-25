@@ -1,0 +1,43 @@
+.root {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius);
+  cursor: pointer;
+  transition: border-color 80ms;
+  user-select: none;
+}
+
+.root:hover {
+  border-color: var(--o-accent);
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--o-accent);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--o-text-1);
+  line-height: 1.2;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--o-text-3);
+  line-height: 1.4;
+}

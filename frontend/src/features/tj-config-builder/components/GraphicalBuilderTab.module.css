@@ -1,0 +1,25 @@
+.root {
+  display: grid;
+  grid-template-columns: 1fr 210px;
+  gap: 20px;
+  padding: 12px 0 16px;
+  align-items: start;
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.right {
+  position: sticky;
+  top: 12px;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--o-border);
+  margin: 0;
+}

@@ -247,6 +247,16 @@ export const cloud = {
       body: JSON.stringify(payload),
     });
   },
+
+  // Sprint 10 — AI генерация настройки logcfg.xml через Haiku.
+  async aiGenerateLogcfg(
+    payload: AiLogcfgGenerateRequest,
+  ): Promise<AiLogcfgGenerateResponse> {
+    return request<AiLogcfgGenerateResponse>("/v1/ai/generate_logcfg", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 // ---------- Sprint 6 — AI types ----------
@@ -365,6 +375,42 @@ export interface AiExplainPlanResponse {
   model_used: string;
   duration_ms: number;
   plan_truncated: boolean;
+}
+
+// ---------- Sprint 10 — TJ Config Builder AI types ----------
+
+export interface AiLogcfgGenerateRequest {
+  problem_description: string;
+  platform_version?: string | null;
+  dbms?: "mssql" | "postgres" | "both" | "unknown";
+}
+
+export interface AiLogcfgEventConfig {
+  enabled: boolean;
+  threshold_cs?: number | null;
+}
+
+export interface AiLogcfgConfigResult {
+  events: Record<string, AiLogcfgEventConfig>;
+  capture_plans: boolean;
+  log_directory: string;
+  max_size_gb: number;
+}
+
+export interface AiLogcfgEventRationale {
+  event: string;
+  threshold: string;
+  why: string;
+}
+
+export interface AiLogcfgGenerateResponse {
+  config: AiLogcfgConfigResult;
+  explanation: string;
+  events_rationale: AiLogcfgEventRationale[];
+  estimated_use_duration: string;
+  warnings: string[];
+  model_used: string;
+  duration_ms: number;
 }
 
 export function cabinetUrl(path = "/"): string {

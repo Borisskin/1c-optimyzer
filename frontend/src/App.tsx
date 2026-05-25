@@ -24,6 +24,7 @@ import { DeadlockAnatomyScreen } from "@/components/screens/DeadlockAnatomy/Dead
 // import { QueryAnalyzerScreen } from "@/components/screens/QueryAnalyzer/QueryAnalyzer";
 import { PlanAnalyzerScreen } from "@/components/screens/PlanAnalyzer/PlanAnalyzer";
 import { DevToolsScreen } from "@/components/screens/DevTools/DevTools";
+import { TjConfigBuilderScreen } from "@/components/screens/TjConfigBuilder/TjConfigBuilder";
 import { backend, onProgress, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
@@ -119,6 +120,11 @@ export function App() {
         e.preventDefault();
         useAppStore.getState().setScreen("plan-analyzer");
       }
+      // Sprint 10 — Ctrl+L открывает Конструктор logcfg.xml.
+      if (meta && (e.key === "l" || e.key === "L")) {
+        e.preventDefault();
+        useAppStore.getState().setScreen("tj-config-builder");
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -205,7 +211,10 @@ export function App() {
       <TopBar onOpenArchive={onPickFolder} onActiveArchiveDeleted={onActiveArchiveDeleted} />
       <Sidebar />
       <main className="app__main">
-        {!archive && !welcome.open ? (
+        {/* Экраны, не требующие загруженного архива (Sprint 10: конструктор logcfg.xml) */}
+        {currentScreen === "tj-config-builder" ? (
+          <TjConfigBuilderScreen />
+        ) : !archive && !welcome.open ? (
           <EmptyArchiveState onLoadArchive={onPickFolder} />
         ) : (
           renderScreen({
@@ -281,6 +290,8 @@ function renderScreen({
       );
     case "plan-analyzer":
       return <PlanAnalyzerScreen />;
+    case "tj-config-builder":
+      return <TjConfigBuilderScreen />;
     case "dev-tools":
       return <DevToolsScreen />;
     default:
