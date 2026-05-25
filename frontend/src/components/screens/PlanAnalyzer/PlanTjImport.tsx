@@ -13,8 +13,8 @@
  *   - Архив есть, has_planSQLText=true, items пустой (фильтр? offset?) → empty hint
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { backend, type PlanAnalyzerTjItem } from "@/api/backend";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { backend, type PlanAnalyzerTjItem, type PlanEngine } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { Icon } from "@/components/icons/Icon";
 import styles from "./PlanTjImport.module.css";
@@ -28,18 +28,25 @@ interface Props {
     ts: string | null;
     duration_us: number | null;
     context: string | null;
+    engine?: PlanEngine | null;
   }) => void;
   busy: boolean;
 }
+
+// Sprint 8 Phase B — filter toggle для смешанных архивов MSSQL+PG.
+type EngineFilter = "all" | "mssql" | "postgres";
 
 export function PlanTjImport({ onPick, busy }: Props) {
   const archive = useAppStore((s) => s.archive);
   const [items, setItems] = useState<PlanAnalyzerTjItem[] | null>(null);
   const [total, setTotal] = useState(0);
+  const [countsByEngine, setCountsByEngine] = useState<Partial<Record<string, number>>>({});
   const [hasPlans, setHasPlans] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickingId, setPickingId] = useState<number | null>(null);
+  // Sprint 8 Phase B — фильтр по engine для mixed архивов.
+  const [engineFilter, setEngineFilter] = useState<EngineFilter>("all");
   // Auto-collapse: после выбора плана список сворачивается в bar, оставляя
   // место для plan view внизу. Юзер кликает «Сменить» → bar исчезает,
   // полный список возвращается. Без этого список 200 строк занимал
@@ -48,7 +55,7 @@ export function PlanTjImport({ onPick, busy }: Props) {
 
   const archiveId = archive?.archive_id ?? null;
 
-  // Re-load list когда меняется активный архив.
+  // Re-load list когда меняется активный архив или engine filter.
   useEffect(() => {
     if (!archiveId) {
       setItems(null);
@@ -60,8 +67,9 @@ export function PlanTjImport({ onPick, busy }: Props) {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    const engine = engineFilter === "all" ? undefined : engineFilter;
     backend
-      .planAnalyzerListTjPlans(archiveId, 200, 0)
+      .planAnalyzerListTjPlans(archiveId, 200, 0, engine)
       .then((resp) => {
         if (cancelled) return;
         if (!resp.ok) {
@@ -73,6 +81,7 @@ export function PlanTjImport({ onPick, busy }: Props) {
         setItems(resp.items ?? []);
         setTotal(resp.total ?? 0);
         setHasPlans(resp.has_planSQLText ?? false);
+        setCountsByEngine(resp.counts_by_engine ?? {});
       })
       .catch((e) => {
         if (cancelled) return;
@@ -85,7 +94,7 @@ export function PlanTjImport({ onPick, busy }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [archiveId]);
+  }, [archiveId, engineFilter]);
 
   const onClickRow = useCallback(
     async (item: PlanAnalyzerTjItem) => {
@@ -105,6 +114,7 @@ export function PlanTjImport({ onPick, busy }: Props) {
           ts: resp.ts ?? null,
           duration_us: resp.duration_us ?? null,
           context: resp.context ?? null,
+          engine: resp.engine ?? item.engine ?? null,
         });
         // Auto-collapse — после успешного импорта сворачиваем список в bar
         setSelectedItem(item);
@@ -116,6 +126,14 @@ export function PlanTjImport({ onPick, busy }: Props) {
     },
     [archiveId, busy, pickingId, onPick],
   );
+
+  // Sprint 8 Phase B — показываем filter toggle только если есть оба engine
+  // в архиве. Если только один — toggle бесполезен.
+  const hasBothEngines = useMemo(() => {
+    const m = countsByEngine.mssql ?? 0;
+    const p = countsByEngine.postgres ?? 0;
+    return m > 0 && p > 0;
+  }, [countsByEngine]);
 
   // === Render: нет архива ===
   if (!archiveId) {
@@ -157,7 +175,7 @@ export function PlanTjImport({ onPick, busy }: Props) {
           добавьте элемент <code className={styles.code}>&lt;plan/&gt;</code> в{" "}
           <code className={styles.code}>logcfg.xml</code> и перезапустите 1C Server
           Agent — подробности в файле{" "}
-          <code className={styles.code}>docs/onboarding/enable-dbmssql-plans.md</code>{" "}
+          <code className={styles.code}>docs/onboarding/enable-plansqltext.md</code>{" "}
           (или просто запустите скрипт{" "}
           <code className={styles.code}>scripts/patch-logcfg-for-plans.ps1</code>).
         </div>
@@ -214,8 +232,36 @@ export function PlanTjImport({ onPick, busy }: Props) {
   return (
     <div className={styles.listContainer}>
       <div className={styles.listHeader}>
-        Найдено планов: <strong>{total}</strong>
-        {total > items.length && ` (показано ${items.length})`}
+        <span>
+          Найдено планов: <strong>{total}</strong>
+          {total > items.length && ` (показано ${items.length})`}
+        </span>
+        {/* Sprint 8 Phase B — engine filter toggle для mixed архивов. */}
+        {hasBothEngines && (
+          <div className={styles.engineFilter} role="group" aria-label="Фильтр по движку">
+            <button
+              type="button"
+              className={`${styles.engineFilterBtn} ${engineFilter === "all" ? styles.engineFilterBtnActive : ""}`}
+              onClick={() => setEngineFilter("all")}
+            >
+              Все ({(countsByEngine.mssql ?? 0) + (countsByEngine.postgres ?? 0)})
+            </button>
+            <button
+              type="button"
+              className={`${styles.engineFilterBtn} ${engineFilter === "mssql" ? styles.engineFilterBtnActive : ""}`}
+              onClick={() => setEngineFilter("mssql")}
+            >
+              MSSQL ({countsByEngine.mssql ?? 0})
+            </button>
+            <button
+              type="button"
+              className={`${styles.engineFilterBtn} ${engineFilter === "postgres" ? styles.engineFilterBtnActive : ""}`}
+              onClick={() => setEngineFilter("postgres")}
+            >
+              PostgreSQL ({countsByEngine.postgres ?? 0})
+            </button>
+          </div>
+        )}
       </div>
       <div className={styles.list}>
         {items.map((it) => (
@@ -227,6 +273,19 @@ export function PlanTjImport({ onPick, busy }: Props) {
             disabled={busy || pickingId !== null}
           >
             <div className={styles.rowMeta}>
+              {/* Sprint 8 Phase B — engine badge (MSSQL / PG / неизв.). */}
+              {it.engine && (
+                <span
+                  className={
+                    it.engine === "postgres"
+                      ? `${styles.engineBadge} ${styles.engineBadgePg}`
+                      : `${styles.engineBadge} ${styles.engineBadgeMssql}`
+                  }
+                  title={it.engine === "postgres" ? "PostgreSQL plan" : "MS SQL Server plan"}
+                >
+                  {it.engine === "postgres" ? "PG" : "MSSQL"}
+                </span>
+              )}
               <span className={styles.rowTs}>{formatTs(it.ts)}</span>
               <span className={styles.rowDuration}>{formatDuration(it.duration_us)}</span>
               <span className={styles.rowPlanSize}>

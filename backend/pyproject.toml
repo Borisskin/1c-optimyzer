@@ -22,6 +22,11 @@ dependencies = [
     "websockets>=12,<14",
     # Sprint 6 Phase F — T-SQL antipatterns detector (used in TopSQL + QueryAnalyzer T-SQL view)
     "sqlglot>=30.8,<31",
+    # Sprint 8 Phase B — opt-in PostgreSQL connection для re-EXPLAIN service
+    # (получение EXPLAIN FORMAT JSON для pev2 visualization).
+    # asyncpg: async PG driver. keyring: cross-platform secure storage паролей.
+    "asyncpg>=0.29,<0.31",
+    "keyring>=24,<26",
 ]
 
 [project.optional-dependencies]

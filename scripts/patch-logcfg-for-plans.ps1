@@ -58,7 +58,7 @@
 .NOTES
     Sprint 7 Phase D — Plan Analyzer (auto-extract DBMSSQL.Plan из ТЖ).
     Проверено: 1С 8.3.27.1859 + MSSQL → planSQLText пишется в .log за секунды.
-    См. docs/onboarding/enable-dbmssql-plans.md.
+    См. docs/onboarding/enable-plansqltext.md.
 #>
 
 param(

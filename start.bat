@@ -1,5 +1,6 @@
 @echo off
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\kill-zombie-python.ps1" -Apply
 cd /d "%~dp0frontend"
 npm run tauri dev

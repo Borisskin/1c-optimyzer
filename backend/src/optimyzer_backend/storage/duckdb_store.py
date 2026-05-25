@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS events (
     rows_modified BIGINT,
     extra JSON,
     source_file VARCHAR,
-    source_line_start INTEGER
+    source_line_start INTEGER,
+    engine VARCHAR
 );
 """
 
@@ -47,6 +48,7 @@ INDEX_DDL = [
     "CREATE INDEX IF NOT EXISTS idx_events_sql_hash ON events(archive_id, sql_text_hash);",
     "CREATE INDEX IF NOT EXISTS idx_events_role ON events(archive_id, process_role);",
     "CREATE INDEX IF NOT EXISTS idx_events_ctx_norm ON events(archive_id, context_normalized);",
+    "CREATE INDEX IF NOT EXISTS idx_events_engine ON events(archive_id, engine);",
 ]
 
 EVENT_COLUMNS = [
@@ -71,6 +73,7 @@ EVENT_COLUMNS = [
     "extra",
     "source_file",
     "source_line_start",
+    "engine",
 ]
 
 
@@ -119,6 +122,35 @@ def _migrate_plan_text(conn: duckdb.DuckDBPyConnection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info('events')").fetchall()}
     if "plan_text" not in cols:
         conn.execute("ALTER TABLE events ADD COLUMN plan_text TEXT")
+
+
+def _migrate_engine(conn: duckdb.DuckDBPyConnection) -> None:
+    """Sprint 8 Phase B — idempotent add column engine + backfill.
+
+    Заполняем из event_type для уже загруженных архивов: DBMSSQL → 'mssql',
+    DBPOSTGRS → 'postgres'. Остальные event_type остаются NULL (CALL/EXCP/...
+    не имеют database engine). UI использует это поле для определения формата
+    плана (XML vs TEXT) и AI prompt routing (MSSQL terminology vs PG).
+    """
+    cols = {row[1] for row in conn.execute("PRAGMA table_info('events')").fetchall()}
+    if "engine" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN engine VARCHAR")
+    # Backfill только NULL (idempotent — для уже-смигрированных строк WHERE NULL).
+    conn.execute(
+        """
+        UPDATE events
+        SET engine = CASE event_type
+            WHEN 'DBMSSQL' THEN 'mssql'
+            WHEN 'DBPOSTGRS' THEN 'postgres'
+            ELSE NULL
+        END
+        WHERE engine IS NULL
+          AND event_type IN ('DBMSSQL', 'DBPOSTGRS')
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_events_engine ON events(archive_id, engine)"
+    )
 
 
 def _migrate_context_normalized(conn: duckdb.DuckDBPyConnection) -> None:
@@ -234,6 +266,7 @@ class DuckDBStore:
             self._conn.execute(SCHEMA_DDL)
             _migrate_context_normalized(self._conn)
             _migrate_plan_text(self._conn)
+            _migrate_engine(self._conn)
             register_active_connection(self.archive_id, self._conn)
         return self._conn
 

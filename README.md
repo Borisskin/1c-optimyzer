@@ -28,7 +28,7 @@
 - **Live progress UI** — animated event counter (не замирает на больших файлах)
 - **Full ru-RU localization**
 - **Query Analyzer** — SDBL анализ через bsl-language-server (19 диагностик) + sqlglot T-SQL antipatterns + structured AI explanation на русском (Sprint 6, `Ctrl+Q`)
-- **Plan Analyzer** — анализ SQL Server execution plan через PerformanceStudio CLI (30 правил) + SSMS-style визуализация (html-query-plan) + AI объяснение на русском. Три пути импорта: `.sqlplan` файл, paste XML, автоэкстракт из ТЖ архива (`<plan/>` в logcfg.xml). Sprint 7, `Ctrl+P`.
+- **Plan Analyzer** — универсальный для **MS SQL Server и PostgreSQL**. Для MSSQL: PerformanceStudio CLI (30 правил) + SSMS-style визуализация (html-query-plan) + AI объяснение. Для PostgreSQL: syntax-highlighted EXPLAIN TEXT + AI prompt со знанием 1С-PG специфики (`enable_mergejoin=off`, `mchar/mvarchar`, lowercase naming) + opt-in интерактивная визуализация через [pev2](https://github.com/dalibo/pev2) (требует read-only PG connection в Settings, password в OS keychain). Автоматическое определение движка по событию (DBMSSQL → MSSQL, DBPOSTGRS → PostgreSQL). Три пути импорта: файл/paste/автоэкстракт из ТЖ архива (`<plansql/>` в logcfg.xml). Sprint 7-8, `Ctrl+P`.
 
 ## Architecture
 

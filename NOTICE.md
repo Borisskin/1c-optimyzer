@@ -96,6 +96,60 @@ CLI собирается локально через скрипт `scripts/setup
 
 ---
 
+## pev2
+
+- **Версия:** 1.21.0
+- **License:** PostgreSQL License (BSD-style)
+- **Источник:** https://github.com/dalibo/pev2
+- **Авторы:** Dalibo Labs (Pierre Giraud и contributors)
+- **Использование в продукте:** интерактивная визуализация PostgreSQL execution plans (EXPLAIN FORMAT JSON, ANALYZE). Sprint 8 Phase B — встроен через `Vue.defineCustomElement` как Web Component `<pev2-plan>`. React-обёртка `Pev2PlanVisualization.tsx` рендерит custom element с props `plan-source` (JSON план) + `plan-query` (SQL).
+- **Модификации:** отсутствуют — установлено через `npm install pev2`.
+- **CSS:** автоматически inject'ится через Vue shadow DOM (внутри `<pev2-plan>`) — нет style leakage в основную app.
+
+PostgreSQL License разрешает свободное использование, копирование, модификацию и распространение в коммерческих продуктах с сохранением copyright notice.
+
+---
+
+## Vue.js
+
+- **Версия:** 3.5.34
+- **License:** MIT
+- **Источник:** https://github.com/vuejs/core
+- **Автор:** Evan You и contributors
+- **Copyright:** © 2014-2026 Evan You
+- **Использование в продукте:** runtime для `defineCustomElement(Plan)` который создаёт Web Component из pev2. React не использует Vue напрямую — только через registered `<pev2-plan>` custom element (Sprint 8 Phase B.5).
+- **Модификации:** отсутствуют — установлено через `npm install vue`.
+
+Лицензия MIT разрешает коммерческое использование.
+
+---
+
+## asyncpg
+
+- **Версия:** 0.30+
+- **License:** Apache License 2.0
+- **Источник:** https://github.com/MagicStack/asyncpg
+- **Авторы:** MagicStack Inc. и contributors
+- **Использование в продукте:** async PostgreSQL driver для backend re-EXPLAIN service. Sprint 8 Phase B.4 — используется в `optimyzer_backend.pg.re_explain.re_explain_safe()` для повторного выполнения `EXPLAIN (FORMAT JSON, ANALYZE)` запросов из ТЖ архива через настроенное юзером PG подключение.
+- **Модификации:** отсутствуют — установлено через `uv pip install asyncpg`.
+
+Apache 2.0 разрешает коммерческое использование, модификации и распространение.
+
+---
+
+## keyring (Python)
+
+- **Версия:** 24+
+- **License:** MIT
+- **Источник:** https://github.com/jaraco/keyring
+- **Автор:** Jason R. Coombs и contributors
+- **Использование в продукте:** cross-platform доступ к OS secure storage для хранения PostgreSQL connection passwords. Sprint 8 Phase B.4 — на Windows использует Credential Manager, на macOS — Keychain Access, на Linux — secret service (gnome-keyring / KWallet). Backend сохраняет/читает/удаляет пароли через `keyring.set_password/get_password/delete_password` под service name `"1c-optimyzer-pg"`.
+- **Модификации:** отсутствуют — установлено через `uv pip install keyring`.
+
+Лицензия MIT разрешает коммерческое использование.
+
+---
+
 ## Лицензия 1C-Optimyzer
 
 Сам 1C-Optimyzer распространяется как **коммерческое программное обеспечение** anymasoft (Сергей Назаров).

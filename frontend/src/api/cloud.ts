@@ -304,13 +304,21 @@ export type PlanSeverity = "Info" | "Warning" | "Critical";
 
 export interface AiExplainPlanRequest {
   sql_text: string;
-  // План в одном из двух форматов: XML (.sqlplan от SSMS) или text (SHOWPLAN_TEXT
-  // от 1С planSQLText). Поле называется plan_xml для backward-compat — в text
-  // режиме сюда передаётся текст плана (сервер смотрит на plan_format чтобы
-  // понять как интерпретировать). См. Sprint 7 ADR-038.
+  // План в одном из трёх форматов: XML (.sqlplan от SSMS), text (SHOWPLAN_TEXT
+  // от 1С MSSQL или EXPLAIN ANALYZE от 1С PG) или JSON (EXPLAIN FORMAT JSON от PG).
+  // Поле называется plan_xml для backward-compat — сервер смотрит на plan_format
+  // чтобы понять как интерпретировать. См. Sprint 7 ADR-038, Sprint 8 Phase B.
   plan_xml: string;
-  /** "xml" по умолчанию (Phase B/C path), "text" — для Phase D ТЖ import. */
-  plan_format?: "xml" | "text";
+  /** "xml" — SSMS .sqlplan (MSSQL), "text" — TEXT (MSSQL или PG), "json" — PG FORMAT JSON. */
+  plan_format?: "xml" | "text" | "json";
+  /**
+   * Sprint 8 Phase B — движок СУБД источника плана. Сервер использует это
+   * для выбора правильного AI prompt: "mssql" → MSSQL терминология (Clustered
+   * Index Seek, Hash Match...), "postgres" → PG терминология (Seq Scan,
+   * Memoize...) + 1С-specific знание (enable_mergejoin=off, mchar/mvarchar, ...).
+   * Default "mssql" для backward-compat с Sprint 7 clients.
+   */
+  engine?: "mssql" | "postgres";
   planview_warnings: unknown[];
   missing_indexes: unknown[];
   plan_summary?: Record<string, unknown> | null;

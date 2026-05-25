@@ -640,7 +640,9 @@ export interface PlanAnalyzerStatus {
   rules_count: number;
 }
 
-// Sprint 7 Phase D — TJ archive plan import
+// Sprint 7 Phase D + Sprint 8 Phase B — TJ archive plan import (MSSQL + PG)
+export type PlanEngine = "mssql" | "postgres";
+
 export interface PlanAnalyzerTjItem {
   event_id: number;
   ts: string | null;
@@ -648,6 +650,9 @@ export interface PlanAnalyzerTjItem {
   sql_preview: string;
   plan_size_bytes: number;
   context: string | null;
+  // Sprint 8 Phase B — движок СУБД источника плана. UI использует это для
+  // показа badge (MSSQL / PG) и выбора view (PlanVisualization vs PgPlanTextView).
+  engine?: PlanEngine | null;
 }
 
 export interface PlanAnalyzerTjListResponse {
@@ -657,8 +662,11 @@ export interface PlanAnalyzerTjListResponse {
   items?: PlanAnalyzerTjItem[];
   total?: number;
   // false → в архиве нет ни одного события с plan_text. UI показывает
-  // banner с инструкцией про <plan/> в logcfg.xml.
+  // banner с инструкцией про <plansql/> в logcfg.xml.
   has_planSQLText?: boolean;
+  // Sprint 8 Phase B — разбивка по engine (для UI filter toggle).
+  // Например: { mssql: 156, postgres: 42 }
+  counts_by_engine?: Partial<Record<PlanEngine | "unknown", number>>;
 }
 
 export interface PlanAnalyzerTjPlanResponse {
@@ -671,6 +679,52 @@ export interface PlanAnalyzerTjPlanResponse {
   ts?: string | null;
   duration_us?: number | null;
   context?: string | null;
+  // Sprint 8 Phase B.
+  engine?: PlanEngine | null;
+}
+
+// Sprint 8 Phase B — PG connections + re-EXPLAIN.
+export interface PgConnectionPublic {
+  id: number;
+  name: string;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  created_at: string;
+  last_used_at: string | null;
+  is_default: boolean;
+}
+
+export interface PgListConnectionsResponse {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  items?: PgConnectionPublic[];
+  total?: number;
+}
+
+export interface PgConnectionResponse {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  connection?: PgConnectionPublic;
+}
+
+export interface PgTestConnectionResponse {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  version?: string;
+  is_1c_build?: boolean;
+}
+
+export interface PlanAnalyzerReExplainResponse {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  plan_json?: string;
+  engine?: "postgres";
 }
 
 export interface SavedQuery {
@@ -832,11 +886,78 @@ export const backend = {
   planAnalyzerAnalyzeXml: (plan_xml: string, warnings_only = false) =>
     rpc<PlanAnalyzeResponse>("plan_analyzer.analyze_xml", { plan_xml, warnings_only }),
   planAnalyzerStatus: () => rpc<PlanAnalyzerStatus>("plan_analyzer.status"),
-  // Sprint 7 Phase D — импорт планов из загруженного ТЖ архива
-  planAnalyzerListTjPlans: (archive_id: string, limit = 100, offset = 0) =>
-    rpc<PlanAnalyzerTjListResponse>("plan_analyzer.list_tj_plans", { archive_id, limit, offset }),
+  // Sprint 7 Phase D + Sprint 8 Phase B — импорт планов из загруженного ТЖ архива.
+  // engine: optional filter ("mssql" / "postgres" / undefined для всех).
+  planAnalyzerListTjPlans: (
+    archive_id: string,
+    limit = 100,
+    offset = 0,
+    engine?: PlanEngine,
+  ) =>
+    rpc<PlanAnalyzerTjListResponse>("plan_analyzer.list_tj_plans", {
+      archive_id,
+      limit,
+      offset,
+      engine,
+    }),
   planAnalyzerGetTjPlan: (archive_id: string, event_id: number) =>
     rpc<PlanAnalyzerTjPlanResponse>("plan_analyzer.get_tj_plan", { archive_id, event_id }),
+
+  // Sprint 8 Phase B — PostgreSQL connections + re-EXPLAIN.
+  pgListConnections: () =>
+    rpc<PgListConnectionsResponse>("pg.list_connections"),
+  pgAddConnection: (
+    name: string,
+    host: string,
+    port: number,
+    database: string,
+    username: string,
+    password: string,
+  ) =>
+    rpc<PgConnectionResponse>("pg.add_connection", {
+      name,
+      host,
+      port,
+      database,
+      username,
+      password,
+    }),
+  pgDeleteConnection: (connection_id: number) =>
+    rpc<{ ok: boolean; error?: string; details?: string }>(
+      "pg.delete_connection",
+      { connection_id },
+    ),
+  pgSetDefault: (connection_id: number) =>
+    rpc<{ ok: boolean; error?: string; details?: string }>(
+      "pg.set_default",
+      { connection_id },
+    ),
+  pgTestConnection: (connection_id: number) =>
+    rpc<PgTestConnectionResponse>("pg.test_connection", { connection_id }),
+  pgTestConnectionForm: (
+    host: string,
+    port: number,
+    database: string,
+    username: string,
+    password: string,
+  ) =>
+    rpc<PgTestConnectionResponse>("pg.test_connection_form", {
+      host,
+      port,
+      database,
+      username,
+      password,
+    }),
+  planAnalyzerReExplain: (
+    sql: string,
+    connection_id?: number,
+    timeout_seconds = 30.0,
+  ) =>
+    rpc<PlanAnalyzerReExplainResponse>("plan_analyzer.re_explain", {
+      sql,
+      connection_id,
+      timeout_seconds,
+    }),
 
   // Sprint 5 — Configuration metadata
   configurationConnect: (path: string) =>

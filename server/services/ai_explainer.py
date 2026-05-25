@@ -218,7 +218,7 @@ async def explain_query(req: ExplainRequest) -> ExplainResponse:
 # ============== Sprint 7: Plan-level AI explanation ==============
 
 
-SYSTEM_PROMPT_EXPLAIN_PLAN = """Ты — эксперт по SQL Server execution plans и производительности 1С:Предприятие на MS SQL Server.
+SYSTEM_PROMPT_EXPLAIN_MSSQL_PLAN = """Ты — эксперт по SQL Server execution plans и производительности 1С:Предприятие на MS SQL Server.
 
 Тебе будет передан SQL запрос, его execution plan, и предупреждения от анализатора PerformanceStudio (Erik Darling Data). Твоя задача — объяснить разработчику 1С (на русском) что не так с этим планом и что конкретно делать.
 
@@ -280,7 +280,7 @@ SYSTEM_PROMPT_EXPLAIN_PLAN = """Ты — эксперт по SQL Server executio
 """
 
 
-USER_PROMPT_PLAN_TEMPLATE = """SQL запрос:
+USER_PROMPT_MSSQL_PLAN_TEMPLATE = """SQL запрос:
 ```sql
 {sql_text}
 ```
@@ -352,7 +352,7 @@ def _build_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
     )
     tj_str = req.related_tj_summary or "нет"
     return (
-        USER_PROMPT_PLAN_TEMPLATE.format(
+        USER_PROMPT_MSSQL_PLAN_TEMPLATE.format(
             sql_text=req.sql_text,
             plan_format=req.plan_format,
             plan_format_code_block=code_block,
@@ -367,13 +367,166 @@ def _build_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
     )
 
 
+# ============== Sprint 8 Phase B — PostgreSQL plan prompts ==============
+
+
+SYSTEM_PROMPT_EXPLAIN_PG_PLAN = """Ты — эксперт по PostgreSQL execution plans и производительности 1С:Предприятие на PostgreSQL.
+
+ВАЖНЫЙ КОНТЕКСТ: 1С работает с PostgreSQL через **специальную сборку от фирмы 1С** (`PostgreSQL <ver>-2.1C`). Эта сборка имеет несколько критических особенностей которые нужно учитывать при анализе плана:
+
+1. **`SET enable_mergejoin = off`** — 1С автоматически выполняет эту команду при каждом connect. Это значит: **НЕ рекомендуй переключение на Merge Join** — он технически отключён. Альтернативы: Hash Join (для больших equi-joins) или Nested Loop (для маленьких outer).
+
+2. **`SET cpu_operator_cost = 0.001`** (5× меньше PG default 0.005). Это значит: cost numbers в плане **меньше** чем были бы в стандартном PG. Не сравнивай cost напрямую с типовыми "плохой план если cost > X" thresholds — учитывай этот scaling.
+
+3. **`SET lock_timeout = 20000`** (20 секунд). Lock waits до 20 сек — нормальная ситуация в 1С-PG.
+
+4. **Custom типы 1С:** `mchar(N)` (case-insensitive CHAR), `mvarchar(N)` (multi-byte VARCHAR), `fulleq` (точное равенство для NULL handling). Если в плане видишь `Filter: (..._fld100)::mvarchar = $1::mvarchar` — это **нормально** для 1С, не implicit cast antipattern.
+
+5. **Naming convention 1С таблиц в PG (все lowercase, prefix-based):**
+   - `_reference15` = Catalog (Справочник). Если есть configuration_context — резолвить в имя ("Справочник.Контрагенты")
+   - `_document201` = Document (Документ)
+   - `_accumrg7406` = AccumulationRegister (Регистр накопления)
+   - `_inforg20917` = InformationRegister (Регистр сведений)
+   - `_accrged7859` = CalculationRegisterTotalsForRefMD ("движения с расширенным агрегатом")
+   - `_seq18593` = Sequence (Sequence для номеров документов)
+   - `_fld11355` — это **Data Separator** (разделитель данных). Каждый индекс начинается с него. Если в плане видишь фильтр `_fld11355 = X` — это просто отбор по области данных, не проблема.
+   - `_rref` суффикс — Reference (ссылка) на другую таблицу
+   - `_idrref` — primary key, UUID 16 байт
+
+6. **PostgreSQL EXPLAIN format отличия от MSSQL:**
+   - Операторы: `Seq Scan`, `Index Scan`, `Index Only Scan`, `Bitmap Heap Scan`, `Hash Join`, `Nested Loop`, `Sort`, `Aggregate`, `Memoize` (с PG 14), `Limit`, `Append`, `Gather` (parallel)
+   - Cost format: `(cost=startup..total rows=N width=N)`
+   - Runtime: `(actual time=startup..total rows=N.NN loops=N)`
+   - `Filter:` / `Index Cond:` / `Recheck Cond:` / `Hash Cond:` — predicates
+   - `Rows Removed by Filter: N` — сколько строк сканировалось но отброшено фильтром (если N большое — antipattern)
+   - `Heap Fetches: N` — для Index Only Scan, fetches к heap (если > 0 — VACUUM нужен)
+   - `Buffers: shared hit=N read=N` — I/O (read = миссии в buffer cache)
+
+7. **Что искать как antipatterns (специфика PG для 1С):**
+   - **Plan Rows × Actual Rows divergence > 10×** — устаревшая статистика (нужен ANALYZE)
+   - **Seq Scan на больших таблицах когда есть Index** — оптимизатор не выбрал индекс (статистика? cardinality? SARGable predicate?)
+   - **Nested Loop с большим outer (> 10000 rows)** — обычно нужен Hash Join (но в 1С Merge Join выключен, так что у тебя только Hash Join как альтернатива)
+   - **Sort с `Sort Method: external merge`** — work_mem мало, спилит на диск
+   - **Memoize с низким hit rate** — кэш не работает, проверить параметры
+   - **`Rows Removed by Filter: large`** — predicate не SARGable
+   - **Heap Fetches > 0 в Index Only Scan** — нужен VACUUM таблицы
+   - **Bitmap Heap Scan с большим Recheck** — индекс плохо selective
+
+Задача: объясни план разработчику 1С на **русском** языке. Будь конкретным — ссылайся на конкретные строки/operators, конкретные числа из плана.
+
+Если есть configuration_context — используй mapping чтобы говорить о бизнес-объектах 1С (Справочник.Контрагенты вместо _reference15).
+
+Формат ответа: строго valid JSON по схеме:
+{
+  "summary": "Краткая суть проблем в одном-двух предложениях",
+  "overall_severity": "Critical | Warning | Info",
+  "hotspots": [
+    {
+      "operator_node_id": null,
+      "operator_type": "Seq Scan / Hash Join / Memoize / ...",
+      "severity": "Critical | Warning | Info",
+      "what": "Что происходит конкретно с цитатой/числами",
+      "why": "Почему это плохо технически",
+      "what_to_do": "Конкретные шаги для разработчика 1С"
+    }
+  ],
+  "recommendations": [
+    {
+      "category": "index | query_rewrite | config | stats",
+      "title": "Короткий заголовок",
+      "description": "Конкретные действия",
+      "impact_estimate": "Critical | High | Medium | Low"
+    }
+  ],
+  "suggested_indexes": [
+    {
+      "table": "_document201",
+      "columns": ["_fld11355", "_fld5326rref"],
+      "include": [],
+      "rationale": "Зачем",
+      "impact_estimate": "High"
+    }
+  ]
+}
+
+ВАЖНО:
+- Возвращай только JSON, без markdown code fences, без объяснений вокруг.
+- НИКОГДА не предлагай Merge Join — он отключён 1С через `enable_mergejoin = off`.
+- Используй lowercase имена таблиц как в PG (`_document201`, не `_Document201`).
+"""
+
+
+USER_PROMPT_PG_PLAN_TEMPLATE = """SQL запрос (PostgreSQL):
+```sql
+{sql_text}
+```
+
+PostgreSQL execution plan ({plan_format} format):
+```{plan_format_code_block}
+{plan_content}
+```
+
+Контекст конфигурации 1С (если доступен):
+{configuration_context}
+
+Связанные события ТЖ (если доступны):
+{related_tj_summary}
+
+Эта база работает на PostgreSQL 1С-сборке. Стандартные SET-команды клиента (применяются автоматически 1С при каждом connect):
+- SET enable_mergejoin = off   (Merge Join отключён — не рекомендовать)
+- SET cpu_operator_cost = 0.001 (cost numbers в 5× меньше PG default)
+- SET lock_timeout = 20000      (20-сек таймаут блокировок — норма)
+
+Объясни план, выдели критические hotspots, дай recommendations с конкретными шагами для разработчика 1С."""
+
+
+def _build_pg_plan_user_prompt(req: PlanExplainRequest) -> tuple[str, bool]:
+    """Собирает USER prompt для PG plan AI.
+
+    Returns:
+        (prompt_text, was_truncated)
+    """
+    truncated_content, was_truncated = _truncate_plan_xml(req.plan_xml)
+    # plan_format для PG: "text" (EXPLAIN ANALYZE TEXT) или "json" (FORMAT JSON).
+    # MSSQL xml сюда не приходит (engine dispatcher отсеет).
+    code_block = "json" if req.plan_format == "json" else "text"
+    config_str = (
+        req.configuration_context.model_dump_json(indent=2)
+        if req.configuration_context
+        else "не подключена"
+    )
+    tj_str = req.related_tj_summary or "нет"
+    return (
+        USER_PROMPT_PG_PLAN_TEMPLATE.format(
+            sql_text=req.sql_text,
+            plan_format=req.plan_format,
+            plan_format_code_block=code_block,
+            plan_content=truncated_content,
+            configuration_context=config_str,
+            related_tj_summary=tj_str,
+        ),
+        was_truncated,
+    )
+
+
 async def explain_plan_query(req: PlanExplainRequest) -> PlanExplainResponse:
-    """Главная функция Phase C: SQL + plan XML + warnings → structured AI explanation.
+    """Главная функция: SQL + plan + warnings → structured AI explanation.
+
+    Sprint 8 Phase B: dispatcher по engine —
+        engine='mssql' → explain_mssql_plan() (Sprint 7 logic, MSSQL prompts)
+        engine='postgres' → explain_pg_plan() (PG prompts + 1С-specific knowledge)
 
     Raises:
         AiNotConfiguredError если api key пустой.
         AiExplainerError для прочих сбоев (parse, API rate limit, network).
     """
+    if req.engine == "postgres":
+        return await explain_pg_plan(req)
+    return await explain_mssql_plan(req)
+
+
+async def explain_mssql_plan(req: PlanExplainRequest) -> PlanExplainResponse:
+    """MSSQL plan AI — SHOWPLAN_XML или SHOWPLAN_TEXT. Sprint 7 Phase C/D pattern."""
     if not settings.anthropic_api_key:
         raise AiNotConfiguredError(
             "ANTHROPIC_API_KEY не задан в server/.env — explain_plan недоступен"
@@ -390,12 +543,78 @@ async def explain_plan_query(req: PlanExplainRequest) -> PlanExplainResponse:
         response = await client.messages.create(
             model=settings.ai_model_default,
             max_tokens=settings.ai_max_tokens,
-            system=SYSTEM_PROMPT_EXPLAIN_PLAN,
+            system=SYSTEM_PROMPT_EXPLAIN_MSSQL_PLAN,
             messages=[{"role": "user", "content": user_msg}],
         )
     except anthropic.APIError as e:
-        raise AiExplainerError(f"Anthropic API error (plan): {e}") from e
+        raise AiExplainerError(f"Anthropic API error (mssql plan): {e}") from e
 
+    return await _process_plan_response(
+        response=response,
+        started=started,
+        was_truncated=was_truncated,
+        system_prompt=SYSTEM_PROMPT_EXPLAIN_MSSQL_PLAN,
+        user_msg=user_msg,
+        client=client,
+        engine_label="mssql",
+    )
+
+
+async def explain_pg_plan(req: PlanExplainRequest) -> PlanExplainResponse:
+    """PostgreSQL plan AI — EXPLAIN ANALYZE TEXT или FORMAT JSON.
+
+    Sprint 8 Phase B — отдельный prompt со знанием 1С-PG-сборки:
+    enable_mergejoin=off, cpu_operator_cost=0.001, mchar/mvarchar, lowercase
+    naming, etc. Подробности — SYSTEM_PROMPT_EXPLAIN_PG_PLAN.
+    """
+    if not settings.anthropic_api_key:
+        raise AiNotConfiguredError(
+            "ANTHROPIC_API_KEY не задан в server/.env — explain_plan недоступен"
+        )
+
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key,
+        timeout=settings.ai_request_timeout_s,
+    )
+    user_msg, was_truncated = _build_pg_plan_user_prompt(req)
+    started = time.monotonic()
+
+    try:
+        response = await client.messages.create(
+            model=settings.ai_model_default,
+            max_tokens=settings.ai_max_tokens,
+            system=SYSTEM_PROMPT_EXPLAIN_PG_PLAN,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+    except anthropic.APIError as e:
+        raise AiExplainerError(f"Anthropic API error (pg plan): {e}") from e
+
+    return await _process_plan_response(
+        response=response,
+        started=started,
+        was_truncated=was_truncated,
+        system_prompt=SYSTEM_PROMPT_EXPLAIN_PG_PLAN,
+        user_msg=user_msg,
+        client=client,
+        engine_label="postgres",
+    )
+
+
+async def _process_plan_response(
+    *,
+    response: Any,
+    started: float,
+    was_truncated: bool,
+    system_prompt: str,
+    user_msg: str,
+    client: Any,
+    engine_label: str,
+) -> PlanExplainResponse:
+    """Общий post-processing для MSSQL/PG plan AI responses.
+
+    Извлекает JSON, делает retry если невалидный, строит PlanExplainResponse.
+    Логика идентична для обоих движков — только prompt отличается.
+    """
     elapsed_ms = int((time.monotonic() - started) * 1000)
     text_parts: list[str] = []
     for block in response.content:
@@ -408,8 +627,10 @@ async def explain_plan_query(req: PlanExplainRequest) -> PlanExplainResponse:
     try:
         parsed: dict[str, Any] = json.loads(json_text)
     except json.JSONDecodeError as e:
-        logger.warning("Claude (plan) вернул невалидный JSON: %s | raw: %s", e, raw_text[:200])
-        # Один retry с явным указанием на ошибку (тот же паттерн что в explain_query).
+        logger.warning(
+            "Claude (%s plan) вернул невалидный JSON: %s | raw: %s",
+            engine_label, e, raw_text[:200],
+        )
         retry_msg = (
             f"{user_msg}\n\nТвой предыдущий ответ был невалидным JSON. "
             f"Ошибка: {e}. Верни ТОЛЬКО valid JSON без markdown."
@@ -418,11 +639,11 @@ async def explain_plan_query(req: PlanExplainRequest) -> PlanExplainResponse:
             response = await client.messages.create(
                 model=settings.ai_model_default,
                 max_tokens=settings.ai_max_tokens,
-                system=SYSTEM_PROMPT_EXPLAIN_PLAN,
+                system=system_prompt,
                 messages=[{"role": "user", "content": retry_msg}],
             )
         except anthropic.APIError as ex:
-            raise AiExplainerError(f"Retry API error (plan): {ex}") from ex
+            raise AiExplainerError(f"Retry API error ({engine_label} plan): {ex}") from ex
         retry_text = "\n".join(
             getattr(b, "text", "") or "" for b in response.content
         )
@@ -431,10 +652,9 @@ async def explain_plan_query(req: PlanExplainRequest) -> PlanExplainResponse:
             parsed = json.loads(json_text)
         except json.JSONDecodeError as ex:
             raise AiExplainerError(
-                f"Claude (plan) вернул невалидный JSON даже после retry: {ex}"
+                f"Claude ({engine_label} plan) вернул невалидный JSON даже после retry: {ex}"
             ) from ex
 
-    # Конструируем response с защитой от частичных полей.
     hotspots_raw = parsed.get("hotspots", []) or []
     hotspots = [PlanHotspot(**h) for h in hotspots_raw if isinstance(h, dict)]
     recs_raw = parsed.get("recommendations", []) or []
