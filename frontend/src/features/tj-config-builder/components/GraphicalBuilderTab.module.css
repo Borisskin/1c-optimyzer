@@ -1,28 +1,38 @@
 .root {
   display: grid;
-  grid-template-columns: 1fr 270px;
-  gap: 14px;
+  grid-template-columns: 300px 1fr;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
   padding: 6px 0 8px;
-  align-items: start;
 }
 
+/* ---- Левый сайдбар: настройки ---- */
 .left {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
+/* Распорка, чтобы кнопки всегда были внизу сайдбара */
+.spacer {
+  flex: 1;
+}
+
+/* ---- Правая область: XML-предпросмотр на весь экран ---- */
 .right {
-  position: sticky;
-  top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  min-height: 0;
+  height: 100%;
 }
 
 .divider {
   border: none;
   border-top: 1px solid var(--o-border);
   margin: 0;
+  flex-shrink: 0;
 }

@@ -11,7 +11,7 @@
 }
 
 .btn_reset {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border: 1px solid var(--o-border);
   border-radius: var(--o-radius);
   background: none;
@@ -28,13 +28,12 @@
 }
 
 .btn_download {
-  flex: 1;
-  padding: 7px 16px;
+  padding: 5px 14px;
   border: 1px solid var(--o-accent);
   border-radius: var(--o-radius);
   background: var(--o-accent);
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 80ms;
@@ -51,25 +50,25 @@
 
 /* ---- Что делать дальше ---- */
 .next_steps {
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--o-success, #4caf50) 30%, transparent);
   border-radius: var(--o-radius);
   background: color-mix(in srgb, var(--o-success, #4caf50) 8%, transparent);
 }
 
 .next_steps_title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--o-text-1);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .steps_list {
   margin: 0;
-  padding-left: 18px;
+  padding-left: 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .steps_list li {

@@ -1,38 +1,40 @@
 .root {
+  flex: 1;
+  min-height: 0;
   border: 1px solid var(--o-border);
   border-radius: var(--o-radius);
   background: var(--o-panel);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--o-border);
   background: var(--o-surface);
   flex-shrink: 0;
 }
 
 .title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--o-text-3);
+  color: var(--o-text-2);
   font-family: var(--o-font-mono);
 }
 
 .copy_btn {
-  padding: 2px 7px;
+  padding: 3px 9px;
   border: 1px solid var(--o-border);
   border-radius: var(--o-radius-sm);
   background: none;
   color: var(--o-text-3);
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
   transition: color 80ms, border-color 80ms;
   white-space: nowrap;
@@ -48,15 +50,17 @@
   border-color: var(--o-success, #4caf50);
 }
 
+/* Код занимает всё доступное пространство */
 .code {
+  flex: 1;
+  min-height: 0;
   margin: 0;
-  padding: 8px 10px;
-  font-size: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
   font-family: var(--o-font-mono);
-  color: var(--o-text-2);
-  line-height: 1.5;
+  color: var(--o-text-1);
+  line-height: 1.6;
   overflow: auto;
-  max-height: 260px;
   tab-size: 2;
   white-space: pre;
   word-break: normal;

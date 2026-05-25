@@ -1,7 +1,9 @@
 /**
- * Sprint 10 — GraphicalBuilderTab: двухколоночный конструктор logcfg.xml.
- * Левая колонка: события + планы + хранилище + действия.
- * Правая колонка (sticky): оценка объёма логов.
+ * Sprint 10 — GraphicalBuilderTab: сайдбар настроек + доминирующий XML-предпросмотр.
+ *
+ * Layout:
+ *   Левая колонка (300px, overflow-y: auto): все настройки + объём + кнопки
+ *   Правая область (flex: 1): XML-предпросмотр на весь оставшийся экран
  */
 import { useCallback } from "react";
 import type { EventType, LogcfgConfig } from "../types";
@@ -9,8 +11,8 @@ import { DEFAULT_LOGCFG_CONFIG } from "../types";
 import { EventsGroup } from "./EventsGroup";
 import { PlansToggle } from "./PlansToggle";
 import { StorageSettings } from "./StorageSettings";
-import { Actions } from "./Actions";
 import { VolumePreview } from "./VolumePreview";
+import { Actions } from "./Actions";
 import { XmlPreview } from "./XmlPreview";
 import styles from "./GraphicalBuilderTab.module.css";
 
@@ -80,7 +82,7 @@ export function GraphicalBuilderTab({ config, onChange }: Props) {
 
   return (
     <div className={styles.root}>
-      {/* Левая колонка */}
+      {/* Левый сайдбар: все настройки */}
       <div className={styles.left}>
         <EventsGroup
           config={config}
@@ -96,12 +98,13 @@ export function GraphicalBuilderTab({ config, onChange }: Props) {
           onMaxSizeChange={handleMaxSizeChange}
         />
         <hr className={styles.divider} />
+        <VolumePreview config={config} />
+        <hr className={styles.divider} />
         <Actions config={config} onReset={handleReset} />
       </div>
 
-      {/* Правая колонка: оценка объёма + XML-предпросмотр */}
+      {/* Правая область: XML-предпросмотр занимает весь экран */}
       <div className={styles.right}>
-        <VolumePreview config={config} />
         <XmlPreview config={config} />
       </div>
     </div>

@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   padding: 10px 16px;
-  overflow-y: auto;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -92,4 +92,7 @@
 .content {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
