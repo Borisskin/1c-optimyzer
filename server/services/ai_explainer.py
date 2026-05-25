@@ -684,8 +684,22 @@ async def _process_plan_response(
                 f"Claude ({engine_label} plan) вернул невалидный JSON даже после retry: {ex}"
             ) from ex
 
+    # Нормализуем severity — AI иногда возвращает 'High'/'Medium'/'Low'
+    # вместо 'Critical'/'Warning'/'Info'.
+    _SEV_MAP = {
+        "critical": "Critical", "high": "Critical",
+        "warning": "Warning", "medium": "Warning",
+        "info": "Info", "low": "Info",
+    }
+
+    def _norm_sev(h: dict) -> dict:
+        sev = str(h.get("severity", "Info")).lower()
+        h = dict(h)
+        h["severity"] = _SEV_MAP.get(sev, "Info")
+        return h
+
     hotspots_raw = parsed.get("hotspots", []) or []
-    hotspots = [PlanHotspot(**h) for h in hotspots_raw if isinstance(h, dict)]
+    hotspots = [PlanHotspot(**_norm_sev(h)) for h in hotspots_raw if isinstance(h, dict)]
     recs_raw = parsed.get("recommendations", []) or []
     recommendations = [PlanRecommendation(**r) for r in recs_raw if isinstance(r, dict)]
     sidx_raw = parsed.get("suggested_indexes", []) or []
