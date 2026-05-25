@@ -765,6 +765,59 @@ def test_golden_case(...): ...
 
 ---
 
+## ADR-053 — logcfg.xml generation: download-only, no Apply locally
+
+**Status:** Accepted (Sprint 10, 2026-05-25)
+
+**Context.** Экран TJ Config Builder генерирует logcfg.xml. Два варианта доставки: (a) скачать файл и положить самостоятельно; (b) "Apply locally" — автоматически записать файл в C:\Users\...\AppData\Local\1C\1cv8\conf\logcfg.xml. Вариант (b) требует Tauri `fs` plugin с правами записи + UAC на Windows + правильного определения пути для каждой версии 1С.
+
+**Decision.** Download-only. Файл генерируется в памяти как Blob (`application/xml`) и отдаётся браузеру через `URL.createObjectURL`. Пользователь кладёт файл в нужную папку сам. Инструкции по расположению файла — в документации.
+
+**Consequences.** + Нет зависимости от Tauri fs plugin, + нет UAC headaches, + работает в любом WebView, + пользователь явно контролирует размещение файла. − Лишний ручной шаг (положить файл). Mitigation: документация с пошаговой инструкцией, в будущем Sprint 11+ можно добавить Apply locally как отдельную опцию.
+
+---
+
+## ADR-054 — xmlSerializer: pure TypeScript без XML-библиотек
+
+**Status:** Accepted (Sprint 10, 2026-05-25)
+
+**Context.** Для генерации logcfg.xml нужен сериализатор. Варианты: (a) сторонняя XML-библиотека (xmlbuilder2, fast-xml-parser); (b) DOMParser/XMLSerializer браузера; (c) pure TypeScript template-строки.
+
+**Decision.** Pure TypeScript `xmlSerializer.ts` — строковая генерация через шаблоны с `escapeXml()` для спецсимволов. Структура logcfg.xml фиксированная и малая (≈20 строк XML), полноценная XML-библиотека избыточна. `escapeXml()` корректно обрабатывает `&`, `<`, `>`, `"`, `'`.
+
+**Consequences.** + Нет npm-зависимостей, + bundle size 0 добавляется, + 21 unit-тест покрывает все edge cases, + полный контроль над форматом XML. − Ручное поддержание при изменении схемы logcfg.xml. Mitigation: тесты фиксируют ожидаемый XML формат.
+
+---
+
+## ADR-055 — LogcfgConfig: структурированная модель через все слои
+
+**Status:** Accepted (Sprint 10, 2026-05-25)
+
+**Context.** AI endpoint получает запрос и должен вернуть конфигурацию ТЖ. Варианты: (a) AI возвращает raw XML строку; (b) AI возвращает структурированный JSON (LogcfgConfig).
+
+**Decision.** Структурированный JSON через все слои: Pydantic `LogcfgConfig` на сервере, TypeScript `LogcfgConfig` на фронтенде. AI prompt инструктирует вернуть JSON по схеме. `xmlSerializer.ts` финально трансформирует в XML только при скачивании.
+
+**Consequences.** + AI JSON проще валидировать (Pydantic strict), + фронтенд получает типизированный объект, + UI может редактировать конфиг после AI (GraphicalBuilderTab), + retry logic при invalid JSON прост. − Усложняет AI prompt. Mitigation: чёткие примеры в prompt, фильтрация неизвестных событий.
+
+---
+
+## ADR-056 — detect_platform: multi-strategy с explicit confidence
+
+**Status:** Accepted (Sprint 10, 2026-05-25)
+
+**Context.** Экран конструктора показывает версию 1С в badge для информирования пользователя. Нужен backend RPC `logcfg.detect_platform`. Версия влияет на некоторые настройки (TTIMEOUT появился в 8.3.17).
+
+**Decision.** Три стратегии с явным полем `confidence`:
+1. **Folder scan** → `confidence="high"`: сканирует стандартные пути установки, возвращает наибольший semver.
+2. **TCP probe localhost:1541** → `confidence="medium"`: порт rphost агента; если открыт — 1С запущен, версию берём из folders или дефолт.
+3. **Fallback 8.3.24** → `confidence="low"`: safe default для отображения.
+
+UI показывает badge только если версия определена. При `confidence="low"` добавляет «(предположительно)».
+
+**Consequences.** + Работает без admin priv (только чтение FS), + без WMI/registry (которые требуют особых прав), + graceful при нестандартной установке, + UI не блокируется (вызов best-effort при mount). − При установке 1С в нестандартную папку — fallback. Mitigation: в будущем добавить Settings поле «Путь к установке 1С».
+
+---
+
 ## ADR-052 — CSS design token lint: identify-first, fix-as-you-go
 
 **Status:** Accepted (Sprint 9 Phase D, 2026-05-25)
