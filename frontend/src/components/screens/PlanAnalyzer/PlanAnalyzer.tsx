@@ -91,7 +91,7 @@ function formatAiError(e: unknown): string {
     if (e.reason === "network") {
       return (
         "Сервер AI недоступен (localhost:8001 не отвечает). " +
-        "Запустите server/ через start.bat и попробуйте снова."
+        "Запустите сервер: cd server && .venv\\Scripts\\uvicorn.exe api.main:app --port 8001"
       );
     }
     return e.message;
