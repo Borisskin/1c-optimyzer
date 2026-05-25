@@ -30,6 +30,8 @@
   margin-bottom: 8px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--o-border);
+  cursor: pointer;
+  user-select: none;
 }
 
 .containerCollapsed .titleBar {

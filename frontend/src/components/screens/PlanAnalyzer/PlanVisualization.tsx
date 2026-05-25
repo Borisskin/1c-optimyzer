@@ -127,16 +127,15 @@ export function PlanVisualization({ planXml, onError }: Props) {
 
   return (
     <div className={`${styles.container} ${collapsed ? styles.containerCollapsed : ""}`}>
-      <div className={styles.titleBar}>
+      <div
+        className={styles.titleBar}
+        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCollapsed((v) => !v); } }}
+        aria-expanded={!collapsed}
+      >
         <div className={styles.title}>Визуализация плана (SSMS-style)</div>
-        <button
-          type="button"
-          className={styles.collapseToggle}
-          onClick={() => setCollapsed((v) => !v)}
-          aria-expanded={!collapsed}
-        >
-          {collapsed ? "Развернуть" : "Свернуть"}
-        </button>
       </div>
       {/* display:none сохраняет рендеренный qp.js DOM (innerHTML не сбрасывается
           при свёртывании — это критично, иначе пришлось бы пере-рендерить план

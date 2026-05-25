@@ -408,35 +408,21 @@ function PanelWithToggle({
       className={vshellStyles.panel}
       style={{ marginTop: 12, ...style }}
     >
-      <div className={vshellStyles.panel_head}>
+      <div
+        className={vshellStyles.panel_head}
+        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCollapsed((v) => !v); } }}
+        aria-expanded={!collapsed}
+        style={{ cursor: "pointer", userSelect: "none" }}
+      >
         <div className={vshellStyles.panel_title}>{title}</div>
-        <button
-          type="button"
-          onClick={() => setCollapsed((v) => !v)}
-          aria-expanded={!collapsed}
-          style={collapseBtnStyle}
-        >
-          {collapsed ? "Развернуть" : "Свернуть"}
-        </button>
       </div>
       {!collapsed && children}
     </div>
   );
 }
-
-const collapseBtnStyle: CSSProperties = {
-  marginLeft: "auto",
-  padding: "3px 10px",
-  background: "transparent",
-  border: "1px solid var(--o-border-2)",
-  color: "var(--o-text-2)",
-  borderRadius: 4,
-  cursor: "pointer",
-  fontSize: 11,
-  fontWeight: 500,
-  whiteSpace: "nowrap",
-  fontFamily: "inherit",
-};
 
 const expandedCellStyle: CSSProperties = {
   background: "var(--o-subtle)",

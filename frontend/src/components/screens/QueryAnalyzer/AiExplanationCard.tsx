@@ -47,16 +47,15 @@ export function AiExplanationCard({
 
   return (
     <div className={styles.card}>
-      <div className={styles.header}>
+      <div
+        className={styles.header}
+        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCollapsed((v) => !v); } }}
+        aria-expanded={!collapsed}
+      >
         <div className={styles.title}>AI объяснение</div>
-        <button
-          type="button"
-          className={styles.collapseToggle}
-          onClick={() => setCollapsed((v) => !v)}
-          aria-expanded={!collapsed}
-        >
-          {collapsed ? "Развернуть" : "Свернуть"}
-        </button>
       </div>
 
       {/* display:none сохраняет DOM (response state не теряется при свёртывании) */}

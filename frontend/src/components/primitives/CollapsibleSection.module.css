@@ -13,6 +13,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  cursor: pointer;
+  user-select: none;
   /* padding не задан — родитель сам решает spacing. Но горизонтально
      равняем по содержимому: title слева, actions справа. */
 }

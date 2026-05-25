@@ -56,22 +56,23 @@ export function CollapsibleSection({
 
   return (
     <div className={`${styles.root} ${className ?? ""}`}>
-      <div className={styles.header}>
+      <div
+        className={styles.header}
+        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCollapsed((v) => !v); } }}
+        aria-expanded={!collapsed}
+      >
         <div className={styles.titleBlock}>
           <h3 className={styles.title}>{title}</h3>
           {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
         </div>
-        <div className={styles.actions}>
-          {headerRight}
-          <button
-            type="button"
-            className={styles.toggleButton}
-            onClick={() => setCollapsed((v) => !v)}
-            aria-expanded={!collapsed}
-          >
-            {collapsed ? "Развернуть" : "Свернуть"}
-          </button>
-        </div>
+        {headerRight && (
+          <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
+            {headerRight}
+          </div>
+        )}
       </div>
       {/* display:none через CSS, не conditional render — сохраняем DOM состояние
           дочерних компонентов (например AI response не теряется при свёртывании). */}
