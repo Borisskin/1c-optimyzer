@@ -76,30 +76,15 @@ export function XmlPreview({ config }: Props) {
 
   // --- Кнопка «Сохранить в файл» ---
   const handleSave = useCallback(async () => {
-    try {
-      const filePath = await save({
-        defaultPath: "logcfg.xml",
-        filters: [{ name: "XML-файл", extensions: ["xml"] }],
-        title: "Сохранить logcfg.xml",
-      });
-      if (!filePath) return;
-      await writeTextFile(filePath, xmlText);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch {
-      // Fallback: Blob download
-      const blob = new Blob([xmlText], { type: "application/xml; charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "logcfg.xml";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    }
+    const filePath = await save({
+      defaultPath: "logcfg.xml",
+      filters: [{ name: "XML-файл", extensions: ["xml"] }],
+      title: "Сохранить logcfg.xml",
+    });
+    if (!filePath) return;   // пользователь нажал Отмена
+    await writeTextFile(filePath, xmlText);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }, [xmlText]);
 
   return (
