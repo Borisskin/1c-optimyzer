@@ -33,15 +33,15 @@
   right: 20px;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--o-surface-2, #252525);
-  border: 1px solid var(--o-border);
+  background: var(--o-panel, #ffffff);
+  border: 1px solid var(--o-border, #ededed);
   border-radius: var(--o-radius);
   padding: 8px 10px;
   width: 240px;
   z-index: 200;
   flex-direction: column;
   gap: 5px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
   pointer-events: none;
 }
 

@@ -99,9 +99,9 @@
   top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--o-surface, #252526);
-  border: 1px solid var(--o-border, #3e3e42);
-  color: var(--o-text-1);
+  background: var(--o-panel, #ffffff);
+  border: 1px solid var(--o-border, #ededed);
+  color: var(--o-text-1, #0a0a0a);
   font-size: 11px;
   font-family: var(--o-font-sans, sans-serif);
   font-weight: 400;
@@ -112,7 +112,7 @@
   pointer-events: none;
   transition: opacity 120ms 300ms;  /* задержка 300мс перед появлением */
   z-index: 100;
-  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  box-shadow: 0 2px 6px rgba(0,0,0,.10);
 }
 
 .icon_btn[data-tooltip]:hover::after {

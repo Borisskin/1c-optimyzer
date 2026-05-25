@@ -35,6 +35,12 @@
   --o-info-bg: #eff6ff;
   --o-violet: #7c3aed;
 
+  /* Surfaces (явно определены, чтобы fallback-и не падали на тёмный дефолт) */
+  --o-surface:   #ffffff;   /* белый — для code-editor bg, popover bg */
+  --o-surface-1: #ffffff;
+  --o-surface-2: #f5f5f5;   /* слегка серый второй уровень */
+  --o-input:     #ffffff;   /* фон полей ввода */
+
   /* Borders */
   --o-border: #ededed;
   --o-border-2: #e5e5e5;
