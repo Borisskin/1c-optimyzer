@@ -1,0 +1,65 @@
+.container {
+  background: var(--o-panel);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--o-border);
+}
+
+.title {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--o-text-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.engineBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #336791;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  font-size: 11.5px;
+  color: var(--o-text-mute);
+  font-style: italic;
+}
+
+.viz {
+  /* pev2 рендерится через shadow DOM — нам нужно дать ему достаточно места.
+     min-height: 600px — типичная высота для интерактивной диаграммы
+     с несколькими уровнями операторов. */
+  min-height: 600px;
+  max-height: 80vh;
+  overflow: auto;
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-sm);
+  background: white;  /* pev2 default theme — light, на тёмной теме всё равно white внутри */
+}
+
+.viz pev2-plan {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

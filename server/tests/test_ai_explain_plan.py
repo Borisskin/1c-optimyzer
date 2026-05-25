@@ -210,13 +210,52 @@ class TestPlanExplainRequestSchema:
         assert req.plan_format == "text"
 
     def test_invalid_format_rejected(self) -> None:
+        """Sprint 8 Phase B — теперь plan_format='json' допустим (для PG EXPLAIN FORMAT JSON).
+
+        Проверяем что нелегальный 'xml-text-junk' отвергается.
+        """
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             PlanExplainRequest(
                 sql_text="SELECT 1",
                 plan_xml="<x/>",
-                plan_format="json",  # type: ignore[arg-type]
+                plan_format="xml-text-junk",  # type: ignore[arg-type]
+                planview_warnings=[],
+                missing_indexes=[],
+            )
+
+    def test_json_format_now_accepted(self) -> None:
+        """Sprint 8 Phase B — json format добавлен для PG re-EXPLAIN flow."""
+        req = PlanExplainRequest(
+            sql_text="SELECT 1",
+            plan_xml='[{"Plan":{}}]',
+            plan_format="json",
+            engine="postgres",
+            planview_warnings=[],
+            missing_indexes=[],
+        )
+        assert req.plan_format == "json"
+        assert req.engine == "postgres"
+
+    def test_engine_defaults_to_mssql(self) -> None:
+        """Backward-compat: engine не передан → "mssql" (Sprint 7 default)."""
+        req = PlanExplainRequest(
+            sql_text="SELECT 1",
+            plan_xml="<x/>",
+            planview_warnings=[],
+            missing_indexes=[],
+        )
+        assert req.engine == "mssql"
+
+    def test_engine_invalid_rejected(self) -> None:
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            PlanExplainRequest(
+                sql_text="SELECT 1",
+                plan_xml="<x/>",
+                engine="oracle",  # type: ignore[arg-type]
                 planview_warnings=[],
                 missing_indexes=[],
             )
@@ -302,8 +341,12 @@ class TestPromptBuilder:
         assert truncated is False
 
     def test_system_prompt_mentions_both_formats(self) -> None:
-        """Регресс: SYSTEM упоминает XML и TEXT форматы (Phase D)."""
-        sys_prompt = ai_explainer.SYSTEM_PROMPT_EXPLAIN_PLAN
+        """Регресс: MSSQL SYSTEM prompt упоминает XML и TEXT форматы (Phase D).
+
+        Sprint 8 Phase B: SYSTEM_PROMPT_EXPLAIN_PLAN переименован в
+        SYSTEM_PROMPT_EXPLAIN_MSSQL_PLAN — PG получил свой prompt.
+        """
+        sys_prompt = ai_explainer.SYSTEM_PROMPT_EXPLAIN_MSSQL_PLAN
         assert "XML" in sys_prompt
         assert "TEXT" in sys_prompt or "text" in sys_prompt
         assert "SHOWPLAN_TEXT" in sys_prompt

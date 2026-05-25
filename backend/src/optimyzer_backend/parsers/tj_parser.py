@@ -35,12 +35,14 @@ _EVENT_HEAD_RE = re.compile(
     r"^(?P<min>\d{1,2}):(?P<sec>\d{2})\.(?P<usec>\d{1,6})-(?P<dur>\d+|),(?P<type>[A-Za-z][A-Za-z0-9_]*),(?P<level>\d+)"
 )
 
-# Известные «канонические» типы — Sprint 0 minimum (CALL, DBMSSQL, EXCP, TLOCK, TDEADLOCK + SCALL/CONN/SDBL служебные)
+# Известные «канонические» типы — Sprint 0 minimum (CALL, DBMSSQL, EXCP, TLOCK, TDEADLOCK + SCALL/CONN/SDBL служебные).
+# Sprint 8 Phase B — DBPOSTGRS добавлен (PostgreSQL-specific DB event имя, отдельное от MSSQL).
 KNOWN_EVENT_TYPES: frozenset[str] = frozenset(
     {
         "CALL",
         "SCALL",
         "DBMSSQL",
+        "DBPOSTGRS",
         "EXCP",
         "TLOCK",
         "TDEADLOCK",
@@ -52,6 +54,17 @@ KNOWN_EVENT_TYPES: frozenset[str] = frozenset(
         "QERR",
     }
 )
+
+
+# Sprint 8 Phase B — event_type → engine mapping. DBMSSQL/DBPOSTGRS — это
+# database events с SQL/planSQLText. Прочие события (CALL, EXCP, ...) engine
+# не имеют (т.к. это не SQL-уровень). Mapping используется в interpret()
+# для заполнения ParsedEvent.engine.
+EVENT_TYPE_TO_ENGINE: dict[str, str] = {
+    "DBMSSQL": "mssql",
+    "DBPOSTGRS": "postgres",
+    # на будущее: "DBORACLE": "oracle", "DB2": "db2"
+}
 
 
 # Sprint 3 — нормализация поля Context.
@@ -121,13 +134,18 @@ class ParsedEvent:
     sql_text_hash: str | None = None
     # Sprint 7 Phase D — текстовый план выполнения от 1С (поле planSQLText
     # в DBMSSQL события ТЖ). Заполнено только если в logcfg.xml добавлен
-    # элемент <plan/> и событие — DBMSSQL. См. docs/onboarding/enable-dbmssql-plans.md
+    # элемент <plan/> и событие — DBMSSQL. См. docs/onboarding/enable-plansqltext.md
     plan_text: str | None = None
     rows_read: int | None = None
     rows_modified: int | None = None
     extra: dict[str, Any] = field(default_factory=dict)
     source_file: str = ""
     source_line_start: int = 0
+    # Sprint 8 Phase B — движок СУБД, к которому относится событие. Заполнен
+    # только для database events (DBMSSQL → "mssql", DBPOSTGRS → "postgres").
+    # Для CALL/EXCP/TLOCK/... — None (это не database события). Используется
+    # UI для определения формата плана и AI для выбора правильного prompt.
+    engine: str | None = None
 
     def as_row(self, archive_id: str, event_id: int) -> tuple:
         """Возвращает tuple для batch insert в DuckDB (порядок = EVENT_COLUMNS в storage)."""
@@ -155,6 +173,7 @@ class ParsedEvent:
             _json.dumps(self.extra, ensure_ascii=False) if self.extra else None,
             self.source_file,
             self.source_line_start,
+            self.engine,
         )
 
 
@@ -341,15 +360,22 @@ def interpret(
     plan_text: str | None = None
     rows_read: int | None = None
     rows_modified: int | None = None
+    engine: str | None = None
 
-    if raw.event_type == "DBMSSQL":
+    # Sprint 8 Phase B — DBMSSQL и DBPOSTGRS используют идентичную структуру
+    # полей (Sql, planSQLText, RowsAffected). Различие — engine marker для
+    # UI/AI routing. PG также может приносить Result=PGRES_* (см. discovery),
+    # его сохраняем в extra (не самостоятельная семантика для UI).
+    if raw.event_type in EVENT_TYPE_TO_ENGINE:
+        engine = EVENT_TYPE_TO_ENGINE[raw.event_type]
         sql_text = f.get("Sql")
         rows_read = _to_int(f.get("Rows"))
         rows_modified = _to_int(f.get("RowsAffected"))
-        # Sprint 7 Phase D — planSQLText появляется в DBMSSQL только если в
-        # logcfg.xml добавлен <plan/> (см. patch-logcfg-for-plans.ps1).
-        # Lexer уже снимает обрамляющие одинарные кавычки и обрабатывает
-        # escape '' внутри значения — приходит чистый текст плана.
+        # Sprint 7 Phase D / Sprint 8 Phase B — planSQLText появляется в
+        # DBMSSQL/DBPOSTGRS только если в logcfg.xml добавлен <plansql/>
+        # (см. patch-logcfg-for-plans.ps1). Lexer уже снимает обрамляющие
+        # одинарные/двойные кавычки и обрабатывает escape '' внутри значения —
+        # приходит чистый текст плана.
         plan_text = f.get("planSQLText") or None
         if sql_text:
             sql_norm = normalize_sql(sql_text)
@@ -393,6 +419,7 @@ def interpret(
         extra=extra,
         source_file=raw.source_file,
         source_line_start=raw.source_line_start,
+        engine=engine,
     )
 
 

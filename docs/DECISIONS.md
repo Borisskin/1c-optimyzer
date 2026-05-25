@@ -607,3 +607,60 @@ def test_golden_case(...): ...
 
 **Consequences.** + Доверяем downstream tool — не делаем lossy mapping. + Severity имеет специфический смысл в каждом домене (PerfStudio Critical = «high estimated cost impact», bsl-LS Critical = «гарантированно бажный SDBL»). + UI рендерит native colors каждой схемы — нет confusion с маппингом. − Юзер видит 3 разных severity scheme в разных screens (но Sergey не считает это проблемой — screens используются раздельно). Альтернатива (унификация) — потеря semantic precision; не делаем.
 
+---
+
+## ADR-041 — Один PlanAnalyzer screen для обоих движков, не separate PgPlanAnalyzer
+
+**Status:** Accepted (Sprint 8 Phase B, 2026-05-25)
+
+**Context.** Phase A discovery подтвердил что 1С пишет PG planы в ТЖ как `DBPOSTGRS` events (отдельно от `DBMSSQL`). При обсуждении Phase B рассматривалось создание отдельного screen `PgPlanAnalyzer/`. Однако у real юзеров архив ТЖ часто содержит **и** MSSQL **и** PG events одновременно (migration в процессе, или multi-database setup), и переключение между двумя screens — плохой UX.
+
+**Decision.** Existing `PlanAnalyzer` screen (Sprint 7) расширяется на **универсальный** для обоих движков. UI автоматически detect формат через `detectPlanEngine()` util + использует engine field из RPC ответа (DBMSSQL → "mssql", DBPOSTGRS → "postgres"). Внутренний state хранит `engine: "mssql" | "postgres"` и conditional rendering выбирает правильный view (PlanTextView/PlanVisualization для MSSQL, PgPlanTextView/Pev2PlanVisualization для PG).
+
+**Consequences.** + Один screen для всего — юзер не переключает контекст между двумя tools. + Архивы со смешанным content (DBMSSQL + DBPOSTGRS) работают seamless — engine badge на каждой row + filter toggle для удобства. + Меньше дублирования UI кода (одна dispatcher logic, два specialized view component'а). − PlanAnalyzer.tsx стал сложнее (added state + branching), но это контролируемое усложнение — все условия explicit, нет magic. Альтернатива (две screens) — потеря context при switching, дублирование import/AI/Settings infrastructure.
+
+---
+
+## ADR-042 — pev2 интегрирован через Web Component wrapper (Vue defineCustomElement), не Vue-in-React и не iframe
+
+**Status:** Accepted (Sprint 8 Phase B, 2026-05-25)
+
+**Context.** pev2 (Plan Explorer V2) — Vue 3 компонент от Dalibo Labs. Нужно встроить его в React frontend. Опции:
+- (A) **Vue-in-React** — full Vue runtime в React app, через `vue` + ручной mount/unmount, сложный lifecycle
+- (B) **iframe** — pev2 как standalone HTML в iframe, communication через postMessage
+- (C) **Web Component wrapper** — `defineCustomElement(Plan)` → registers `<pev2-plan>` custom element, React видит обычный HTML
+
+**Decision.** **(C) Web Component wrapper.** Создан `frontend/src/components/vendors/pev2-wrapper/index.ts` с `ensurePev2Registered()` (idempotent), React wrapper `Pev2PlanVisualization.tsx` рендерит `<pev2-plan plan-source={...} plan-query={...} />`. JSX namespace augmentation в `src/types/pev2-jsx.d.ts` даёт TypeScript-safe props.
+
+**Consequences.** + Чистая abstraction — React не знает что внутри Vue. + pev2 CSS автоматически inject'ится в shadow DOM (через `shadowRoot: true`) — нет style leakage в основной app. + Bundle overhead контролируемый: vue (~30 KB gz), pev2 (~150 KB gz), CSS (~5 KB gz). + Web Component переживёт React Strict Mode / HMR (ensurePev2Registered идемпотентно). − Shadow DOM усложняет debugging (но Chrome DevTools хорошо это handles). Альтернатива (iframe) добавила бы 200ms cold start + проблемы с window.parent communication; альтернатива (Vue-in-React) увеличивала бы coupling и risk of lifecycle bugs.
+
+---
+
+## ADR-043 — Re-EXPLAIN для интерактивной визуализации — opt-in feature через PG connection в Settings
+
+**Status:** Accepted (Sprint 8 Phase B, 2026-05-25)
+
+**Context.** PG planы в ТЖ — это **только** текстовый формат (`EXPLAIN ANALYZE TEXT`). pev2 требует **JSON** формат (`EXPLAIN (FORMAT JSON, ANALYZE)`). Опции получения JSON:
+- (A) **Always-on PG connection** — Optimyzer обязательно требует PG creds при импорте плана; без этого не работает
+- (B) **Opt-in PG connection** — юзер настраивает в Settings; без этого работает текстовый план + AI (Path A)
+- (C) **Self-written TEXT → JSON converter** — парсим текст в Python, восстанавливаем JSON структуру
+
+**Decision.** **(B) Opt-in.** Path A (TEXT + AI) — default flow, всегда работает без подключения к PG. Path B (re-EXPLAIN → JSON → pev2) — premium feature, требует юзер настроил read-only PG connection в Settings.
+
+**Consequences.** + Базовый сценарий (TEXT + AI) даёт value с первого момента — без онбординга на PG. + Премиум UX для тех кто готов настроить connection (платящие customers / power users). + Безопасность: re-EXPLAIN запускается через специально настроенного юзера (read-only рекомендация в docs); safety check блокирует DML/DDL до connect. − Юзеры без PG access (security-restricted environments) видят меньше функциональности — но base scenario работает. Альтернатива (A) сделала бы инструмент бесполезным для security-restricted сред. Альтернатива (C) — 2 недели разработки парсера + риск багов в conversion (TEXT и JSON форматы PG не 1-к-1).
+
+---
+
+## ADR-044 — Password PG connections — в OS keychain через keyring (Python), не в SQLite plain
+
+**Status:** Accepted (Sprint 8 Phase B, 2026-05-25)
+
+**Context.** Юзер вводит PG password в Settings UI для opt-in re-EXPLAIN feature. Куда хранить? Опции:
+- (A) **Plaintext в SQLite metadata** — простейший вариант; password виден любому кто прочитает файл
+- (B) **Encrypted в SQLite** — Optimyzer encrypt'ит при save, decrypt'ит при use; нужен local key
+- (C) **OS keychain** — через Python `keyring` library; password хранится в Windows Credential Manager / macOS Keychain / Linux secret service
+
+**Decision.** **(C) OS keychain.** SQLite хранит только metadata (host/port/database/username) + uniquely-generated `password_keychain_key`. Сам password сохраняется через `keyring.set_password("1c-optimyzer-pg", key, password)`. При delete connection — `keyring.delete_password()` тоже вызывается.
+
+**Consequences.** + Используем стандартный OS mechanism — пользователь может ревьюить/удалять через Credential Manager на Windows. + Backups / shared disks не leak пароль (SQLite файл не содержит plaintext). + Нет magic local encryption key который сам уязвим (как было бы в варианте B). + Cross-platform support (Windows/macOS/Linux) бесплатно через keyring abstraction. − На Linux нужен secret service daemon (gnome-keyring / KWallet); для headless server scenarios это требует setup. Для production desktop app — стандартный setup. − Нельзя экспортировать настройки между машинами как простой файл (но это и не требуется — каждый юзер настраивает локально).
+

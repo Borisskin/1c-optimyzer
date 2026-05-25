@@ -33,6 +33,25 @@ CREATE TABLE IF NOT EXISTS saved_queries (
     last_run_at TEXT,
     run_count INTEGER DEFAULT 0
 );
+
+-- Sprint 8 Phase B — opt-in PostgreSQL connections для re-EXPLAIN service.
+-- Password НЕ хранится здесь — только metadata. Реальный пароль лежит в OS
+-- keychain под ключом, который мы сохраняем как password_keychain_key.
+CREATE TABLE IF NOT EXISTS pg_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    host TEXT NOT NULL,
+    port INTEGER NOT NULL DEFAULT 5432,
+    database TEXT NOT NULL,
+    username TEXT NOT NULL,
+    password_keychain_key TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TEXT,
+    is_default INTEGER DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_pg_connections_default
+    ON pg_connections(is_default);
 """
 
 

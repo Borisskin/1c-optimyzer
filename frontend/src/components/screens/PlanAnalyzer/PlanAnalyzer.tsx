@@ -29,9 +29,13 @@ import { PlanStats } from "./PlanStats";
 import { PlanVisualization } from "./PlanVisualization";
 import { AiPlanExplanationCard } from "./AiPlanExplanationCard";
 import { PlanTextView } from "./PlanTextView";
+import { PgPlanTextView } from "./views/PgPlanTextView";
+import { Pev2PlanVisualization } from "./views/Pev2PlanVisualization";
+import { detectPlanEngine, type PlanEngine } from "./utils/detectPlanEngine";
 import styles from "./PlanAnalyzer.module.css";
 
-// Sprint 7 Phase D — text-format plan import payload (из tab «Из архива ТЖ»).
+// Sprint 7 Phase D + Sprint 8 Phase B — text-format plan import payload
+// (из tab «Из архива ТЖ»). engine приходит из RPC (DBMSSQL → mssql, DBPOSTGRS → postgres).
 interface TjPlanPayload {
   event_id: number;
   sql_text: string;
@@ -39,13 +43,18 @@ interface TjPlanPayload {
   ts: string | null;
   duration_us: number | null;
   context: string | null;
+  engine?: PlanEngine | null;
 }
 
 // Внутренний state для text-format пути (отдельно от result/planXmlForViz).
+// Sprint 8 Phase B — добавлено поле engine для dispatcher PG vs MSSQL view.
 interface TextPlanState {
   text: string;
   sql_text: string;
   source_label: string;
+  // "mssql" → PlanTextView (Sprint 7), "postgres" → PgPlanTextView (Sprint 8 B.2).
+  // "unknown" — fallback на PlanTextView с уведомлением.
+  engine: PlanEngine | "unknown";
   meta: {
     ts: string | null;
     duration_us: number | null;
@@ -101,6 +110,14 @@ export function PlanAnalyzerScreen() {
   // result/planXmlForViz используются для XML path. Они взаимоисключающие:
   // если textPlan != null → render text view, иначе → render XML viz+stats.
   const [textPlan, setTextPlan] = useState<TextPlanState | null>(null);
+  // Sprint 8 Phase B.4/B.5 — есть ли в Settings хотя бы одно PG connection?
+  // Используется для показа кнопки «Получить интерактивный план» в PgPlanTextView.
+  const [hasPgConnection, setHasPgConnection] = useState<boolean>(false);
+  // Sprint 8 Phase B.5 — результат re-EXPLAIN (JSON план) для текущего textPlan.
+  // Когда заполнен — рендерится Pev2PlanVisualization вместо PgPlanTextView.
+  const [pev2PlanJson, setPev2PlanJson] = useState<string | null>(null);
+  const [reExplainLoading, setReExplainLoading] = useState(false);
+  const [reExplainError, setReExplainError] = useState<string | null>(null);
   const pushToast = useAppStore((s) => s.pushToast);
 
   // Sprint 7 Phase D fix — scroll to result после клика по плану из ТЖ.
@@ -124,6 +141,22 @@ export function PlanAnalyzerScreen() {
       .planAnalyzerStatus()
       .then(setStatus)
       .catch(() => setStatus(null));
+  }, []);
+
+  // Sprint 8 Phase B.4 — на mount проверяем есть ли PG connections в Settings.
+  // Используем длину списка как простой флаг (default connection или нет
+  // не имеет значения здесь — UI любому даст возможность re-EXPLAIN).
+  useEffect(() => {
+    backend
+      .pgListConnections()
+      .then((resp) => {
+        if (resp.ok && (resp.items?.length ?? 0) > 0) {
+          setHasPgConnection(true);
+        } else {
+          setHasPgConnection(false);
+        }
+      })
+      .catch(() => setHasPgConnection(false));
   }, []);
 
   const requestAiExplanation = useCallback(
@@ -155,19 +188,25 @@ export function PlanAnalyzerScreen() {
     [],
   );
 
-  // Sprint 7 Phase D — AI explanation для text-format плана.
+  // Sprint 7 Phase D + Sprint 8 Phase B — AI explanation для text-format плана.
   // Отличается от requestAiExplanation тем что нет PerformanceStudio warnings
   // и нет missing_indexes (CLI на text не работает). Передаём только SQL + text.
+  // Sprint 8 Phase B: engine передаётся в request — сервер выбирает правильный
+  // prompt (MSSQL terminology vs PG terminology + 1С-specific knowledge).
   const requestAiExplanationText = useCallback(
     async (state: TextPlanState) => {
       setAiLoading(true);
       setAiError(null);
       setAiResponse(null);
       try {
+        // engine="unknown" → fallback на mssql (legacy default).
+        const aiEngine: "mssql" | "postgres" =
+          state.engine === "postgres" ? "postgres" : "mssql";
         const resp = await cloud.aiExplainPlan({
           sql_text: state.sql_text,
           plan_xml: state.text,
           plan_format: "text",
+          engine: aiEngine,
           planview_warnings: [],
           missing_indexes: [],
           plan_summary: null,
@@ -212,13 +251,26 @@ export function PlanAnalyzerScreen() {
     [],
   );
 
-  // Sprint 7 Phase D — handler для tab «Из архива ТЖ».
+  // Sprint 7 Phase D + Sprint 8 Phase B — handler для tab «Из архива ТЖ».
   // Text format не идёт через PerformanceStudio CLI (XSLT не поддерживает
   // text), поэтому result/planXmlForViz сбрасываем и работаем через textPlan
-  // state + PlanTextView + AI (без warnings/missing_indexes).
+  // state + PlanTextView/PgPlanTextView + AI (без warnings/missing_indexes).
+  // engine определяется так: сначала смотрим явный payload.engine из RPC
+  // (DBMSSQL → mssql, DBPOSTGRS → postgres), если его нет — fallback на
+  // эвристику detectPlanEngine по содержимому плана.
   const onPickTjPlan = useCallback(
     (payload: TjPlanPayload) => {
       const sourceLbl = `ТЖ архив · event #${payload.event_id}`;
+      // engine: явный из RPC > эвристика > "unknown"
+      let engine: PlanEngine | "unknown";
+      if (payload.engine === "postgres") {
+        engine = "postgres";
+      } else if (payload.engine === "mssql") {
+        engine = "mssql";
+      } else {
+        const det = detectPlanEngine(payload.plan_text);
+        engine = det.engine === "unknown" ? "unknown" : det.engine;
+      }
       setError(null);
       setResult(null);
       setPlanXmlForViz(null);
@@ -227,19 +279,73 @@ export function PlanAnalyzerScreen() {
         text: payload.plan_text,
         sql_text: payload.sql_text,
         source_label: sourceLbl,
+        engine,
         meta: {
           ts: payload.ts,
           duration_us: payload.duration_us,
           context: payload.context,
         },
       });
+      // Sprint 8 Phase B.5 — сброс pev2 state при смене плана.
+      setPev2PlanJson(null);
+      setReExplainError(null);
+      setReExplainLoading(false);
       setAiResponse(null);
       setAiError(null);
       setAiLoading(false);
-      pushToast(`Импортирован план из ТЖ (event #${payload.event_id})`, "info");
+      const engineLabel =
+        engine === "postgres" ? "PostgreSQL" : engine === "mssql" ? "MS SQL" : "неизв. движок";
+      pushToast(
+        `Импортирован план из ТЖ (event #${payload.event_id}, ${engineLabel})`,
+        "info",
+      );
     },
     [pushToast],
   );
+
+  // Sprint 8 Phase B.5 — callback для PG re-EXPLAIN. Когда юзер кликает
+  // «Получить интерактивный план» в PgPlanTextView, мы:
+  //   1. Берём sql_text из textPlan
+  //   2. Делаем backend.planAnalyzerReExplain (использует default PG connection)
+  //   3. Если успешно → сохраняем JSON план в pev2PlanJson → dispatcher
+  //      переключается на Pev2PlanVisualization
+  const requestReExplain = useCallback(async () => {
+    if (!textPlan || !textPlan.sql_text) {
+      setReExplainError("Нет SQL запроса для re-EXPLAIN");
+      return;
+    }
+    setReExplainLoading(true);
+    setReExplainError(null);
+    try {
+      const resp = await backend.planAnalyzerReExplain(textPlan.sql_text);
+      if (!resp.ok) {
+        // Развёрнутое сообщение для частых случаев.
+        if (resp.error === "no_default_connection") {
+          setReExplainError(
+            "Не настроено PG подключение. Откройте Настройки → PostgreSQL → Добавить.",
+          );
+        } else if (resp.error === "unsafe_query") {
+          setReExplainError(
+            "SQL не безопасен для re-EXPLAIN (не SELECT/WITH). " +
+              "Интерактивный план доступен только для read-only запросов.",
+          );
+        } else {
+          setReExplainError(resp.details ?? resp.error ?? "Неизвестная ошибка");
+        }
+        return;
+      }
+      if (resp.plan_json) {
+        setPev2PlanJson(resp.plan_json);
+        pushToast("Получен интерактивный план через PG re-EXPLAIN", "info");
+      } else {
+        setReExplainError("Backend вернул пустой план");
+      }
+    } catch (e) {
+      setReExplainError(String(e));
+    } finally {
+      setReExplainLoading(false);
+    }
+  }, [textPlan, pushToast]);
 
   // Колбек для idle-кнопки в AiPlanExplanationCard.
   // Sprint 7 Phase D — distinguishing XML vs text path.
@@ -349,10 +455,12 @@ export function PlanAnalyzerScreen() {
 
         {error && <div className={styles.error}>{error}</div>}
 
-        {/* Sprint 7 Phase D — text-format plan path (импорт из ТЖ архива).
+        {/* Sprint 7 Phase D + Sprint 8 Phase B — text-format plan path (импорт из ТЖ архива).
             Не имеет PerformanceStudio analysis (CLI не работает на text),
-            визуализации (XSLT тоже нет), warnings/missing_indexes — пустые.
-            Показываем только AI + PlanTextView + sql_text карточкой. */}
+            визуализации XSLT тоже нет, warnings/missing_indexes — пустые.
+            Dispatcher по engine:
+              postgres → PgPlanTextView (Sprint 8 Phase B.2)
+              mssql / unknown → PlanTextView (Sprint 7 Phase D) */}
         {textPlan && (
           <div className={styles.resultArea} ref={resultAreaRef}>
             <AiPlanExplanationCard
@@ -363,7 +471,58 @@ export function PlanAnalyzerScreen() {
               onRequest={onRequestAi}
             />
 
-            <PlanTextView planText={textPlan.text} meta={textPlan.meta} />
+            {textPlan.engine === "postgres" ? (
+              <>
+                {/* Sprint 8 Phase B.5 — если уже получен JSON план — рендерим pev2.
+                    Иначе показываем TEXT view с кнопкой «Получить интерактивный план». */}
+                {pev2PlanJson ? (
+                  <Pev2PlanVisualization
+                    planJson={pev2PlanJson}
+                    planQuery={textPlan.sql_text}
+                  />
+                ) : (
+                  <PgPlanTextView
+                    planText={textPlan.text}
+                    meta={textPlan.meta}
+                    onRequestInteractive={requestReExplain}
+                    isInteractiveAvailable={hasPgConnection}
+                  />
+                )}
+                {/* Sprint 8 Phase B.5 — показываем ошибку re-EXPLAIN если есть. */}
+                {reExplainError && (
+                  <div className={styles.error}>
+                    Не удалось получить интерактивный план: {reExplainError}
+                  </div>
+                )}
+                {reExplainLoading && (
+                  <div className={styles.error}>
+                    Выполняется re-EXPLAIN через PG connection...
+                  </div>
+                )}
+                {/* Toggle для переключения обратно с pev2 на TEXT view. */}
+                {pev2PlanJson && (
+                  <div style={{ textAlign: "right" }}>
+                    <button
+                      type="button"
+                      onClick={() => setPev2PlanJson(null)}
+                      style={{
+                        padding: "4px 10px",
+                        background: "transparent",
+                        border: "1px solid var(--o-border-2)",
+                        borderRadius: 4,
+                        color: "var(--o-text-2)",
+                        fontSize: 11,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ← Вернуться к текстовому плану
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <PlanTextView planText={textPlan.text} meta={textPlan.meta} />
+            )}
 
             {textPlan.sql_text && (
               <div className={styles.statementCard}>

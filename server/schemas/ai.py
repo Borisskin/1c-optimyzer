@@ -82,25 +82,34 @@ Major|Minor|Info). Каждый экран использует номенкла
 
 
 class PlanExplainRequest(BaseModel):
-    """POST /v1/ai/explain_plan — вход."""
+    """POST /v1/ai/explain_plan — вход.
+
+    Sprint 8 Phase B: добавлено поле engine для выбора AI prompt
+    (mssql terminology vs postgres terminology + 1С-specific knowledge).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     sql_text: str = Field(min_length=1, max_length=50000)
-    # Содержимое плана: либо SHOWPLAN_XML (от SSMS .sqlplan/paste), либо
-    # SHOWPLAN_TEXT (от 1С planSQLText в DBMSSQL ТЖ событиях). plan_format
-    # говорит как интерпретировать. Поле названо plan_xml исторически
+    # Содержимое плана: SHOWPLAN_XML (от SSMS .sqlplan/paste), SHOWPLAN_TEXT
+    # (от 1С MSSQL planSQLText), EXPLAIN ANALYZE TEXT (от 1С PG planSQLText),
+    # или EXPLAIN FORMAT JSON (от pgAdmin / re-EXPLAIN Sprint 8 Phase B.4/B.5).
+    # plan_format говорит как интерпретировать. Поле названо plan_xml исторически
     # (Phase A/B/C), переименование сломало бы Sprint 6/7 clients.
     plan_xml: str = Field(min_length=1, max_length=500000)
-    plan_format: Literal["xml", "text"] = Field(
+    plan_format: Literal["xml", "text", "json"] = Field(
         default="xml",
-        description="xml = SHOWPLAN_XML от SSMS, text = SHOWPLAN_TEXT от 1С (ТЖ).",
+        description="xml = SSMS .sqlplan (MSSQL); text = SHOWPLAN_TEXT (MSSQL) или EXPLAIN ANALYZE (PG); json = EXPLAIN FORMAT JSON (PG).",
+    )
+    engine: Literal["mssql", "postgres"] = Field(
+        default="mssql",
+        description="Движок СУБД источника плана. Сервер выбирает соответствующий AI prompt: MSSQL терминология (Clustered Index Seek, Hash Match...) или PG (Seq Scan, Memoize...) + 1С-specific знание. Default 'mssql' для backward-compat с Sprint 7 clients.",
     )
     planview_warnings: list[dict] = Field(default_factory=list, max_length=200)
     missing_indexes: list[dict] = Field(default_factory=list, max_length=50)
     plan_summary: Optional[dict] = Field(
         default=None,
-        description="Summary block от PerformanceStudio (total_warnings, max_estimated_cost, warning_types). Только для xml формата — для text не заполняется.",
+        description="Summary block от PerformanceStudio (только для MSSQL xml формата — для text/PG не заполняется).",
     )
     configuration_context: Optional[ConfigurationContext] = None
     related_tj_summary: Optional[str] = Field(default=None, max_length=5000)

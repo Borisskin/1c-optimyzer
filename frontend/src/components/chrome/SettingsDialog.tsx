@@ -3,9 +3,11 @@ import { useAppStore } from "@/store/appStore";
 import { t } from "@/i18n/ru";
 import styles from "./SettingsDialog.module.css";
 import { AccountTab } from "./AccountTab";
+import { PgConnectionsTab } from "./PgConnectionsTab";
 import { PulseLogo } from "@/components/icons/PulseLogo";
 
-type SettingsTab = "account" | "about";
+// Sprint 8 Phase B — добавлен tab «postgres» для PG connections + re-EXPLAIN.
+type SettingsTab = "account" | "postgres" | "about";
 
 /**
  * Диалог настроек desktop приложения.
@@ -63,6 +65,13 @@ export function SettingsDialog() {
           </button>
           <button
             type="button"
+            className={`${styles.tab} ${tab === "postgres" ? styles.tab_active : ""}`}
+            onClick={() => setTab("postgres")}
+          >
+            PostgreSQL
+          </button>
+          <button
+            type="button"
             className={`${styles.tab} ${tab === "about" ? styles.tab_active : ""}`}
             onClick={() => setTab("about")}
           >
@@ -72,6 +81,8 @@ export function SettingsDialog() {
 
         <div className={styles.body}>
           {tab === "account" && <AccountTab />}
+
+          {tab === "postgres" && <PgConnectionsTab />}
 
           {tab === "about" && (
             <>

@@ -100,8 +100,73 @@
 }
 
 .listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   font-size: 12px;
   color: var(--o-text-3);
+}
+
+/* Sprint 8 Phase B — engine filter toggle (для mixed архивов MSSQL+PG). */
+.engineFilter {
+  display: inline-flex;
+  border: 1px solid var(--o-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--o-panel);
+}
+
+.engineFilterBtn {
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--o-border);
+  font-size: 11px;
+  color: var(--o-text-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.engineFilterBtn:last-child {
+  border-right: none;
+}
+
+.engineFilterBtn:hover {
+  background: var(--o-hover);
+  color: var(--o-text-1);
+}
+
+.engineFilterBtnActive {
+  background: var(--o-accent);
+  color: white;
+  font-weight: 600;
+}
+
+.engineFilterBtnActive:hover {
+  background: var(--o-accent);
+  color: white;
+}
+
+/* Sprint 8 Phase B — engine badge на каждой row. */
+.engineBadge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  color: white;
+}
+
+.engineBadgePg {
+  background: #336791; /* PostgreSQL blue */
+}
+
+.engineBadgeMssql {
+  background: #c25021; /* SQL Server-ish red */
 }
 
 .list {
