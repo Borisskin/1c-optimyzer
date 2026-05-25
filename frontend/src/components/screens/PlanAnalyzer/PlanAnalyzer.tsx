@@ -126,6 +126,9 @@ export function PlanAnalyzerScreen() {
   const [antipatterns, setAntipatterns] = useState<SqlAntipatternFinding[] | null>(
     null,
   );
+  // SQL секция в textPlan — collapsed по умолчанию. Сбрасывается при каждом
+  // новом плане из ТЖ (через setSqlTextOpen(false) в onPickTjPlan).
+  const [sqlTextOpen, setSqlTextOpen] = useState(false);
   const [antipatternsLoading, setAntipatternsLoading] = useState(false);
   const [antipatternsError, setAntipatternsError] = useState<string | null>(null);
   const [antipatternsEngine, setAntipatternsEngine] = useState<BackendPlanEngine | null>(
@@ -355,6 +358,9 @@ export function PlanAnalyzerScreen() {
       setPev2PlanJson(null);
       setReExplainError(null);
       setReExplainLoading(false);
+      // Сбрасываем collapse-state SQL секции — каждый новый план начинает
+      // с закрытой секцией (договорились: все подобные области collapsed).
+      setSqlTextOpen(false);
       setAiResponse(null);
       setAiError(null);
       setAiLoading(false);
@@ -609,12 +615,28 @@ export function PlanAnalyzerScreen() {
 
             {textPlan.sql_text && (
               <div className={styles.statementCard}>
-                <div className={styles.statementHeader}>
+                <div
+                  className={`${styles.statementHeader} ${styles.statementHeaderCollapsible}`}
+                  onClick={() => setSqlTextOpen((v) => !v)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSqlTextOpen((v) => !v);
+                    }
+                  }}
+                >
                   <span className={styles.statementLabel}>
                     SQL запроса · {textPlan.source_label}
                   </span>
+                  <span className={styles.collapseHint}>
+                    {sqlTextOpen ? "скрыть" : "показать"}
+                  </span>
                 </div>
-                <pre className={styles.statementTextBlock}>{textPlan.sql_text}</pre>
+                {sqlTextOpen && (
+                  <pre className={styles.statementTextBlock}>{textPlan.sql_text}</pre>
+                )}
               </div>
             )}
           </div>

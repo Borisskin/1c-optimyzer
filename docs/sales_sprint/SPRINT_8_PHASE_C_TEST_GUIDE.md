@@ -23,7 +23,7 @@ cd D:\1C-Optimyzer
 ```powershell
 # В отдельном окне PowerShell
 cd D:\1C-Optimyzer\server
-.\start.ps1  # или manual: uvicorn api.main:app --port 8001
+.\.venv\Scripts\uvicorn.exe api.main:app --reload --port 8001
 ```
 
 В `server/.env` должен быть валидный `ANTHROPIC_API_KEY=sk-...`. Без него AI карточка покажет «AI отключён» — это OK для тестов antipatterns без AI.

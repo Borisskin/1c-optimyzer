@@ -336,6 +336,24 @@
   flex-wrap: wrap;
 }
 
+.statementHeaderCollapsible {
+  cursor: pointer;
+  user-select: none;
+}
+
+.statementHeaderCollapsible:hover .statementLabel {
+  color: var(--o-text-2);
+}
+
+.collapseHint {
+  font-size: 10px;
+  color: var(--o-text-mute);
+  font-weight: 400;
+  text-transform: lowercase;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
 .statementLabel {
   font-size: 11px;
   text-transform: uppercase;
