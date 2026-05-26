@@ -5,6 +5,90 @@
 
 ---
 
+## ADR-061 — Regression UI: tab внутри ArchiveComparison, не отдельный screen
+
+**Status:** Accepted (Sprint 11 Phase F, 2026-05-26)
+
+**Context.** Sprint 11 Phase F добавляет UI для regression detection (operation-level). Архитектор предложил расширить ArchiveComparison новой секцией. Но альтернатива — отдельный screen «Регрессии» в sidebar группе АНАЛИЗ — тоже рассматривалась.
+
+**Decision.** Регрессии — tab внутри `ArchiveComparisonScreen`, рядом с существующими «Сводка» и «Slow Queries». User flow: юзер уже выбрал baseline + current → видит сводку → переключается на «Регрессии операций» для drill-down. Threshold + min_samples — input controls внутри таба.
+
+**Consequences.** + Естественное продолжение flow «выбрал архивы → сравнил» — никакой дублирующей навигации, + регрессии всегда привязаны к паре (baseline, current), + state localized в одном screen. − Tab может вырасти большим если добавим drill-down view (per-operation timeline, AI summary inline). Mitigation: при росте — выделить subroute `/comparison/regression` с deep linking.
+
+---
+
+## ADR-060 — Regression detection: operation_name + first_line_context fingerprint
+
+**Status:** Accepted (Sprint 11 Phase E, 2026-05-26)
+
+**Context.** Phase E добавляет operation-level regression tracking между двумя архивами. Нужен matching algorithm: какие operation events из baseline соответствуют каким из current. Простой match по `operation_name` — недостаточный (несколько операций с одним именем но разным business context = одна и та же или разные?).
+
+**Decision.** Fingerprint = `(operation_name, first_line_of_context_normalized)`. First line of context — это business-meaningful prefix (например «Документ.Реализация.Записать», «Печать накладной»). Нормализация убирает runtime values (timestamps, UUIDs, usernames, session IDs, document numbers) но сохраняет business context. Two operations match если их fingerprints равны.
+
+Edge case: same `operation_name` с разным business context (Печать кассовых vs Печать накладных) — это **разные** операции, UI показывает их раздельно. Это правильно для UX — разные регрессии нужно разбирать отдельно.
+
+**Consequences.** + Стабильный matching между запусками (runtime values не ломают), + правильное разделение business context'ов. − Если 1С меняет формат context'а (например добавляет новое поле в первой строке) — matching ломается; mitigation: extensive regex normalization. − Для очень коротких context'ов fingerprint совпадает у разных операций; mitigation: cap длины 200 chars (не критично, обычно достаточно).
+
+---
+
+## ADR-059 — Force refresh rate limiting: 5 min per-item + 10/hour per-session
+
+**Status:** Accepted (Sprint 11 Phase D, 2026-05-26)
+
+**Context.** Sprint 11 добавляет Force Refresh кнопку рядом с AI cards (юзер может попросить fresh AI response). Без rate limiting юзер может спамить кликами и привести к убыточной маржинальности (см. ADR-057). Архитектор предложил per-item cooldown.
+
+**Decision.** Two-tier rate limiting:
+1. **Per-item: 5 минут** на конкретный `cache_key`. За 5 мин юзер успевает прочитать ответ, обдумать нужен ли fresh, отсеиваются impulsive повторы.
+2. **Per-session: 10 force refreshes в час** total. Финальная защита от DoS если юзер найдёт способ обходить per-item (например генерирует разные cache_keys через разные SQL).
+
+Implementation: in-memory state в `services/rate_limiter.py` (singleton). UI получает status через `GET /v1/ai/force_refresh_status/{cache_key}` (polling каждые 5 сек). Cooldown hit → 429 с детализированным detail (`error`, `reason`, `wait_seconds`).
+
+**Consequences.** + Защищает от спам-кликов и DoS, + UX честная (юзер видит «Доступно через X:XX»), + 5 мин — sweet spot между frustration и protection. − In-memory state ломается при multi-worker uvicorn (для prod нужен Redis); приемлемо для desktop/dev сейчас. − UI polling 5 сек интервалом — небольшая нагрузка но immediate countdown UX worth it.
+
+---
+
+## ADR-058 — Cache key canonicalization: stable hash для логически идентичных входов
+
+**Status:** Accepted (Sprint 11 Phase A, 2026-05-26)
+
+**Context.** Sprint 11 caching эффективен только если два логически идентичных входа дают одинаковый cache_key. Например MSSQL XML plan с разным ActualRows (runtime stat) — это тот же план структурно, AI ответ должен быть тот же. Без канонизации каждый run = новый cache_key = всегда miss.
+
+**Decision.** 6 canonicalization функций в `services/ai_cache/canonicalize.py`:
+- `canonicalize_plan_mssql_xml`: удаляет runtime атрибуты (`Actual*`, `Thread`, `Brick`), канонизирует через `xml.etree.ElementTree.canonicalize()` (стандартный c14n)
+- `canonicalize_plan_mssql_text`: убирает SQLCMD line numbers, truncate float precision до 3 знаков, normalize whitespace
+- `canonicalize_plan_pg_text`: удаляет `(actual time=...)`, `Buffers:`, `Planning/Execution Time:`, `JIT:`, `Timing:`
+- `canonicalize_plan_pg_json`: рекурсивно strip runtime ключей (`Actual Rows`, `Total Time`, `Buffers`, `Workers Launched`), sort_keys=True
+- `canonicalize_sdbl`: убирает line/block comments, normalize whitespace
+- `canonicalize_logcfg_description`: lowercase, strip punctuation, collapse whitespace
+
+Cache key: `sha256(canonical_input | type | prompt_version | model)`. `prompt_version` критичен — повышение версии когда меняется system prompt → automatic invalidation (старые entries не находятся при lookup).
+
+`configuration_context` НЕ включён в canonical (разные конфы → разные имена объектов в hotspots, но детерминированный ответ при одинаковом плане полезен — юзер получит ту же structure с placeholder names). Trade-off для maximum cache hit rate.
+
+**Consequences.** + Логически одинаковые входы → cache hit (≥70% expected на типичных архивах), + invalidation через PROMPT_VERSION bump (не требует data migration), + использует stdlib (нет lxml dependency). − Edge case: если плана canonicalization дропает важную информацию которую AI учитывает — теоретически возможна потеря качества (mitigation: extensive test coverage). − Configuration context потеря — приемлемо для UX (см. trade-off).
+
+---
+
+## ADR-057 — AI caching: server-side single-tier (deviation от Sprint 11 spec two-tier)
+
+**Status:** Accepted (Sprint 11 Phase A, 2026-05-26)
+
+**Context.** Sprint 11 spec (написан архитектором) предлагал two-tier cache storage:
+- Tier 1: per-archive cache в DuckDB архива
+- Tier 2: global popular cache в SQLite
+
+Цель — cache travels с архивом + cross-archive promotion для popular entries. Но architectural premise — что backend sidecar в AI path. Reality: frontend идёт **напрямую** в server `/v1/ai/...`, минуя backend. Per-archive cache в backend DuckDB потребовал бы рефакторинга всего AI flow.
+
+**Decision.** Single-tier cache в **server side** (`server/services/ai_cache/`). SQLite файл `<project_root>/data/ai_cache.db`. Cache key — content-canonical (см. ADR-058), shared между всеми пользователями и архивами.
+
+Bizns обоснование (Sprint 11 prompt): без caching $60-90/мес AI cost per active user = 50%+ MRR = unprofitable. С caching ~70-80% hit rate → $5-10/мес = profitable. Single-tier single shared cache даёт **90% бизнес-бенефита** (cross-user hits + cross-archive hits) при **10% сложности** (не требует backend refactor).
+
+Trade-off vs spec: теряем «cache travels с архивом» (когда юзер шарит архив колеге, AI explanations не путешествуют). Это nice-to-have, не критично — колега тоже получит cache hit если содержимое плана совпадает.
+
+**Consequences.** + Простая архитектура (один SQLite файл, sync API + asyncio.to_thread wrappers), + shared cache даёт максимум hit rate (юзеры по всему миру переиспользуют AI ответы на одинаковые планы), + не требует backend refactor. − Если перейдём на multi-tenant SaaS — нужно изоляция per-tenant (mitigation: future migration). − Cache не путешествует с архивом (mitigation: cross-user hits всё равно покрывают common case).
+
+---
+
 ## ADR-001 — Технологический стек (Tauri 2 + React/TS + Python sidecar)
 
 **Status:** Accepted (Sprint 0)
