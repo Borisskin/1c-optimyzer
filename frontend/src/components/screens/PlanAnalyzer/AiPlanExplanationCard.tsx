@@ -20,6 +20,7 @@ import type {
   AiPlanSuggestedIndex,
   PlanSeverity,
 } from "@/api/cloud";
+import { ForceRefreshButton } from "@/components/primitives/ForceRefreshButton";
 import styles from "./AiPlanExplanationCard.module.css";
 
 interface Props {
@@ -30,6 +31,11 @@ interface Props {
   showIdleButton?: boolean;
   /** Колбек на клик «Получить AI-объяснение» — родитель вызывает analyze. */
   onRequest?: () => void;
+  /**
+   * Sprint 11 Phase D — Force refresh callback (родитель повторяет AI запрос
+   * с force_refresh=true). Если не передан — кнопка не показывается.
+   */
+  onForceRefresh?: () => Promise<void> | void;
 }
 
 const SEV_LABEL: Record<PlanSeverity, string> = {
@@ -64,6 +70,7 @@ export function AiPlanExplanationCard({
   error,
   showIdleButton,
   onRequest,
+  onForceRefresh,
 }: Props) {
   // Sprint 7 post-Phase F — collapse toggle. Карточка занимает много места,
   // юзер часто хочет её свернуть после прочтения ответа чтобы открыть план
@@ -95,6 +102,15 @@ export function AiPlanExplanationCard({
         <div className={styles.title}>AI-объяснение плана</div>
         <div className={styles.meta}>
           {headerMeta}
+          {onForceRefresh && (
+            <span onClick={(e) => e.stopPropagation()}>
+              <ForceRefreshButton
+                cacheKey={response?.cache_key ?? null}
+                onRefresh={onForceRefresh}
+                refreshing={loading}
+              />
+            </span>
+          )}
         </div>
       </div>
 

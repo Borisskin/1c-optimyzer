@@ -88,3 +88,29 @@ def client(app) -> "TestClient":
     from fastapi.testclient import TestClient
 
     return TestClient(app)
+
+
+# ============== Sprint 11 — AI cache isolation ==============
+#
+# Global cache singleton персистится между тестами и ломает AI mock тесты
+# (второй вызов с теми же args даёт cache hit вместо реального AI call).
+# Auto-use fixture сбрасывает кеш перед каждым тестом.
+@pytest.fixture(autouse=True)
+def _reset_ai_cache():
+    """Сбрасывает global AI cache singleton перед каждым тестом."""
+    from services.ai_cache import reset_cache_for_tests
+
+    reset_cache_for_tests()
+    yield
+    # Очищаем после теста (на всякий случай — следующий setup тоже сбросит)
+    reset_cache_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Sprint 11 Phase D — сбрасывает rate limiter перед каждым тестом."""
+    from services.rate_limiter import reset_rate_limiter_for_tests
+
+    reset_rate_limiter_for_tests()
+    yield
+    reset_rate_limiter_for_tests()

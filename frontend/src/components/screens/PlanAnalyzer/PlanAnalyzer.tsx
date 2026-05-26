@@ -210,13 +210,13 @@ export function PlanAnalyzerScreen() {
   );
 
   const requestAiExplanation = useCallback(
-    async (planResult: PlanAnalysisResult, planXml: string) => {
+    async (planResult: PlanAnalysisResult, planXml: string, forceRefresh = false) => {
       // AI explain работает только если есть оба: plan XML + хотя бы один statement.
       const firstStmt = planResult.statements[0];
       if (!firstStmt) return;
       setAiLoading(true);
       setAiError(null);
-      setAiResponse(null);
+      if (!forceRefresh) setAiResponse(null);
       try {
         const allWarnings = planResult.statements.flatMap((s) => s.warnings);
         const allMissing = planResult.statements.flatMap((s) => s.missing_indexes);
@@ -231,6 +231,8 @@ export function PlanAnalyzerScreen() {
           detected_antipatterns: antipatterns
             ? antipatterns.map((f) => ({ ...f }))
             : [],
+          // Sprint 11 Phase D — force refresh bypasses cache lookup
+          force_refresh: forceRefresh,
         });
         setAiResponse(resp);
       } catch (e) {
@@ -248,10 +250,10 @@ export function PlanAnalyzerScreen() {
   // Sprint 8 Phase B: engine передаётся в request — сервер выбирает правильный
   // prompt (MSSQL terminology vs PG terminology + 1С-specific knowledge).
   const requestAiExplanationText = useCallback(
-    async (state: TextPlanState) => {
+    async (state: TextPlanState, forceRefresh = false) => {
       setAiLoading(true);
       setAiError(null);
-      setAiResponse(null);
+      if (!forceRefresh) setAiResponse(null);
       try {
         // engine="unknown" → fallback на mssql (legacy default).
         const aiEngine: "mssql" | "postgres" =
@@ -268,6 +270,8 @@ export function PlanAnalyzerScreen() {
           detected_antipatterns: antipatterns
             ? antipatterns.map((f) => ({ ...f }))
             : [],
+          // Sprint 11 Phase D — force refresh bypasses cache lookup
+          force_refresh: forceRefresh,
         });
         setAiResponse(resp);
       } catch (e) {
@@ -448,6 +452,26 @@ export function PlanAnalyzerScreen() {
     requestAiExplanationText,
   ]);
 
+  // Sprint 11 Phase D — Force refresh callback для AiPlanExplanationCard.
+  // Server применяет rate limiting; UI просто посылает force_refresh=true.
+  const onForceRefreshAi = useCallback(async () => {
+    if (aiLoading) return;
+    if (textPlan) {
+      await requestAiExplanationText(textPlan, true);
+      return;
+    }
+    if (result && planXmlForViz) {
+      await requestAiExplanation(result, planXmlForViz, true);
+    }
+  }, [
+    aiLoading,
+    textPlan,
+    result,
+    planXmlForViz,
+    requestAiExplanation,
+    requestAiExplanationText,
+  ]);
+
   // Сброс состояния при смене таба — чтобы не показывался старый результат
   // из предыдущего таба (например MSSQL .sqlplan под списком ТЖ).
   const onTabChange = useCallback((tab: "file" | "paste" | "tj") => {
@@ -575,6 +599,7 @@ export function PlanAnalyzerScreen() {
               response={aiResponse}
               loading={aiLoading}
               error={aiError}
+              onForceRefresh={onForceRefreshAi}
               showIdleButton
               onRequest={onRequestAi}
             />

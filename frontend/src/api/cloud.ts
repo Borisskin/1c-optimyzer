@@ -257,6 +257,14 @@ export const cloud = {
       body: JSON.stringify(payload),
     });
   },
+
+  // Sprint 11 Phase D — Force Refresh status (для UI countdown).
+  async aiForceRefreshStatus(cacheKey: string): Promise<ForceRefreshStatus> {
+    return request<ForceRefreshStatus>(
+      `/v1/ai/force_refresh_status/${encodeURIComponent(cacheKey)}`,
+      { method: "GET" },
+    );
+  },
 };
 
 // ---------- Sprint 6 — AI types ----------
@@ -283,6 +291,8 @@ export interface AiExplainRequest {
   diagnostics: AiExplainDiagnosticInput[];
   configuration_context?: AiExplainConfigContext;
   related_tj_summary?: string | null;
+  /** Sprint 11 — bypass cache lookup. Server применяет rate limiting. */
+  force_refresh?: boolean;
 }
 
 export interface AiIssueExplanation {
@@ -306,6 +316,10 @@ export interface AiExplainResponse {
   suggested_rewrite: AiSuggestedRewrite;
   model_used: string;
   duration_ms: number;
+  /** Sprint 11 — cache metadata. */
+  was_cached?: boolean;
+  cache_age_seconds?: number | null;
+  cache_key?: string | null;
 }
 
 // ---------- Sprint 7 — Plan Analyzer AI types ----------
@@ -340,6 +354,8 @@ export interface AiExplainPlanRequest {
    * AI расширяет их конкретикой плана, не дублирует в hotspots.
    */
   detected_antipatterns?: Record<string, unknown>[];
+  /** Sprint 11 — bypass cache lookup. */
+  force_refresh?: boolean;
 }
 
 export interface AiPlanHotspot {
@@ -375,6 +391,10 @@ export interface AiExplainPlanResponse {
   model_used: string;
   duration_ms: number;
   plan_truncated: boolean;
+  /** Sprint 11 — cache metadata. */
+  was_cached?: boolean;
+  cache_age_seconds?: number | null;
+  cache_key?: string | null;
 }
 
 // ---------- Sprint 10 — TJ Config Builder AI types ----------
@@ -383,6 +403,8 @@ export interface AiLogcfgGenerateRequest {
   problem_description: string;
   platform_version?: string | null;
   dbms?: "mssql" | "postgres" | "both" | "unknown";
+  /** Sprint 11 — bypass cache lookup. */
+  force_refresh?: boolean;
 }
 
 export interface AiLogcfgEventConfig {
@@ -411,6 +433,19 @@ export interface AiLogcfgGenerateResponse {
   warnings: string[];
   model_used: string;
   duration_ms: number;
+  /** Sprint 11 — cache metadata. */
+  was_cached?: boolean;
+  cache_age_seconds?: number | null;
+  cache_key?: string | null;
+}
+
+/** Sprint 11 Phase D — Force Refresh status response. */
+export interface ForceRefreshStatus {
+  allowed: boolean;
+  per_item_remaining_seconds: number;
+  per_session_used: number;
+  per_session_limit: number;
+  per_session_remaining_seconds: number;
 }
 
 export function cabinetUrl(path = "/"): string {

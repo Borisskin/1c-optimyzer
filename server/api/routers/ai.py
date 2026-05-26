@@ -1,8 +1,12 @@
-"""/v1/ai/* — AI orchestration (Sprint 6 Phase D).
+"""/v1/ai/* — AI orchestration (Sprint 6 Phase D + Sprint 11 caching).
 
-В Sprint 6 — минимальный endpoint без auth/caching. Phase 1 INFRA добавит:
+Sprint 11 добавил:
+  - Caching (один и тот же запрос → cached response, без повторного AI call)
+  - Force Refresh с rate limiting (5 min per-item + 10/hour per-session)
+  - /force_refresh_status endpoint для UI countdown
+
+Phase 1 INFRA позже добавит:
   - JWT auth с user_id
-  - Caching (один и тот же запрос — один и тот же ответ)
   - Soft caps tracking
   - Multi-model routing (Sonnet/Opus в зависимости от tier)
 """
@@ -12,6 +16,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 
 from schemas.ai import (
     ExplainRequest,
@@ -28,15 +33,84 @@ from services.ai_explainer import (
     explain_query,
     generate_logcfg,
 )
+from services.rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/ai", tags=["ai"])
 
 
+# ============================================================================
+# Sprint 11 Phase D — Force Refresh rate limiting helpers
+# ============================================================================
+
+
+def _check_force_refresh_or_raise(force_refresh: bool, cache_key_hint: str) -> None:
+    """Если force_refresh — проверить rate limiter и raise 429 если cooldown.
+
+    cache_key_hint — мы НЕ знаем cache_key ДО вызова (он вычисляется внутри
+    ai_explainer). Используем эвристический key из request payload как proxy —
+    для force refresh цель — защитить от спам-кликов на одной AI карточке,
+    поэтому per-payload key достаточно.
+    """
+    if not force_refresh:
+        return
+    limiter = get_rate_limiter()
+    status_obj = limiter.check_and_record(cache_key_hint)
+    if not status_obj.allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "force_refresh_rate_limited",
+                "reason": status_obj.reason,
+                "per_item_remaining_seconds": status_obj.per_item_remaining_seconds,
+                "per_session_used": status_obj.per_session_used,
+                "per_session_limit": status_obj.per_session_limit,
+                "per_session_remaining_seconds": status_obj.per_session_remaining_seconds,
+                "message": (
+                    "Force refresh заблокирован cooldown'ом. "
+                    "AI ответы при одинаковых данных стабильны."
+                ),
+            },
+        )
+
+
+# ============================================================================
+# Sprint 11 Phase D — Force Refresh Status endpoint
+# ============================================================================
+
+
+class ForceRefreshStatusResponse(BaseModel):
+    """Статус force refresh для конкретного cache_key (UI countdown)."""
+
+    allowed: bool
+    per_item_remaining_seconds: int
+    per_session_used: int
+    per_session_limit: int
+    per_session_remaining_seconds: int
+
+
+@router.get(
+    "/force_refresh_status/{cache_key}", response_model=ForceRefreshStatusResponse
+)
+async def get_force_refresh_status(cache_key: str) -> ForceRefreshStatusResponse:
+    """UI запрашивает каждые 5 сек чтобы обновить countdown на кнопке."""
+    limiter = get_rate_limiter()
+    s = limiter.check(cache_key)
+    return ForceRefreshStatusResponse(
+        allowed=s.allowed,
+        per_item_remaining_seconds=s.per_item_remaining_seconds,
+        per_session_used=s.per_session_used,
+        per_session_limit=s.per_session_limit,
+        per_session_remaining_seconds=s.per_session_remaining_seconds,
+    )
+
+
 @router.post("/explain", response_model=ExplainResponse)
 async def post_explain(req: ExplainRequest) -> ExplainResponse:
     """Structured AI explanation поверх SDBL запроса + bsl-LS диагностик."""
+    # Sprint 11 — Force refresh rate limiting. Используем hash(sdbl) как proxy.
+    _check_force_refresh_or_raise(req.force_refresh, f"explain:{hash(req.query_sdbl)}")
     try:
         return await explain_query(req)
     except AiNotConfiguredError as e:
@@ -56,6 +130,9 @@ async def post_explain(req: ExplainRequest) -> ExplainResponse:
 @router.post("/explain_plan", response_model=PlanExplainResponse)
 async def post_explain_plan(req: PlanExplainRequest) -> PlanExplainResponse:
     """Sprint 7: Structured AI explanation поверх execution plan + PerformanceStudio warnings."""
+    _check_force_refresh_or_raise(
+        req.force_refresh, f"plan:{req.engine}:{hash(req.plan_xml)}"
+    )
     try:
         return await explain_plan_query(req)
     except AiNotConfiguredError as e:
@@ -75,6 +152,9 @@ async def post_explain_plan(req: PlanExplainRequest) -> PlanExplainResponse:
 @router.post("/generate_logcfg", response_model=LogcfgGenerateResponse)
 async def post_generate_logcfg(req: LogcfgGenerateRequest) -> LogcfgGenerateResponse:
     """Sprint 10: Генерация настройки logcfg.xml через Haiku по описанию проблемы производительности."""
+    _check_force_refresh_or_raise(
+        req.force_refresh, f"logcfg:{hash(req.problem_description)}"
+    )
     try:
         return await generate_logcfg(req)
     except AiNotConfiguredError as e:

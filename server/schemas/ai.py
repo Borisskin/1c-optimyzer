@@ -40,6 +40,11 @@ class ExplainRequest(BaseModel):
     diagnostics: list[DiagnosticInput] = Field(default_factory=list, max_length=100)
     configuration_context: Optional[ConfigurationContext] = None
     related_tj_summary: Optional[str] = Field(default=None, max_length=5000)
+    # Sprint 11 Phase B/C — bypass cache lookup (after rate-limit check).
+    force_refresh: bool = Field(
+        default=False,
+        description="Если true — пропускаем cache lookup и принудительно делаем AI call (cache всё равно обновится). Server-side rate limiter применяется отдельно.",
+    )
 
 
 class IssueExplanation(BaseModel):
@@ -69,6 +74,19 @@ class ExplainResponse(BaseModel):
     suggested_rewrite: SuggestedRewrite
     model_used: str  # для telemetry / debugging
     duration_ms: int
+    # Sprint 11 — cache metadata (для UI Force Refresh кнопки).
+    was_cached: bool = Field(
+        default=False,
+        description="True если ответ вернулся из cache (без AI call).",
+    )
+    cache_age_seconds: Optional[int] = Field(
+        default=None,
+        description="Сколько секунд прошло с момента генерации (только если was_cached=True).",
+    )
+    cache_key: Optional[str] = Field(
+        default=None,
+        description="Cache key — UI использует для force_refresh_status запроса.",
+    )
 
 
 # ---------------- Sprint 7: Plan Analyzer AI ----------------
@@ -125,6 +143,11 @@ class PlanExplainRequest(BaseModel):
             "rationale, recommendation}."
         ),
     )
+    # Sprint 11 Phase B — bypass cache lookup
+    force_refresh: bool = Field(
+        default=False,
+        description="Если true — пропускаем cache lookup и делаем AI call. Server-side rate limiter применяется до AI call.",
+    )
 
 
 class PlanHotspot(BaseModel):
@@ -174,6 +197,19 @@ class PlanExplainResponse(BaseModel):
     plan_truncated: bool = Field(
         default=False,
         description="True если plan XML был обрезан до AI_PLAN_MAX_CHARS (для больших планов)",
+    )
+    # Sprint 11 Phase B — cache metadata
+    was_cached: bool = Field(
+        default=False,
+        description="True если ответ вернулся из cache.",
+    )
+    cache_age_seconds: Optional[int] = Field(
+        default=None,
+        description="Сколько секунд назад был сгенерирован cached ответ.",
+    )
+    cache_key: Optional[str] = Field(
+        default=None,
+        description="Cache key (sha256 hex) — UI использует для force_refresh запросов.",
     )
 
 
@@ -257,6 +293,11 @@ class LogcfgGenerateRequest(BaseModel):
         default="unknown",
         description="СУБД. AI включит соответствующие события (DBMSSQL / DBPOSTGRS).",
     )
+    # Sprint 11 Phase C — bypass cache lookup
+    force_refresh: bool = Field(
+        default=False,
+        description="Если true — пропускаем cache lookup и делаем AI call.",
+    )
 
 
 class LogcfgGenerateResponse(BaseModel):
@@ -280,3 +321,16 @@ class LogcfgGenerateResponse(BaseModel):
     )
     model_used: str
     duration_ms: int
+    # Sprint 11 Phase C — cache metadata
+    was_cached: bool = Field(
+        default=False,
+        description="True если ответ вернулся из cache.",
+    )
+    cache_age_seconds: Optional[int] = Field(
+        default=None,
+        description="Сколько секунд назад был сгенерирован cached ответ.",
+    )
+    cache_key: Optional[str] = Field(
+        default=None,
+        description="Cache key (sha256 hex).",
+    )
