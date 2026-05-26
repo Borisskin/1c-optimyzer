@@ -20,6 +20,7 @@ from optimyzer_backend.rpc import plan_analyzer_rpc  # noqa: F401  — Sprint 7 
 from optimyzer_backend.rpc import pg_rpc  # noqa: F401  — Sprint 8 Phase B PG connections + re-EXPLAIN
 from optimyzer_backend.rpc import sql_antipatterns_rpc  # noqa: F401  — Sprint 8 Phase C SQL antipatterns
 from optimyzer_backend.rpc import logcfg_rpc  # noqa: F401  — Sprint 10 TJ Config Builder
+from optimyzer_backend.rpc import regression_rpc  # noqa: F401  — Sprint 11 Phase E Performance Regression
 
 
 def _err(code: int, message: str, request_id: Any = None, data: Any = None) -> dict:
