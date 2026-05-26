@@ -300,6 +300,48 @@ class LogcfgGenerateRequest(BaseModel):
     )
 
 
+# ---------------- Sprint 11 Phase F: Regression AI summary ----------------
+
+
+class RegressionExplainRequest(BaseModel):
+    """POST /v1/ai/explain_regression — короткий AI summary для top-N регрессий.
+
+    Используется в ArchiveComparison → tab «Регрессии операций».
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation_name: str = Field(min_length=1, max_length=500)
+    context_signature: str = Field(default="", max_length=500)
+    baseline_p95_ms: float = Field(ge=0)
+    baseline_count: int = Field(ge=0)
+    current_p95_ms: float = Field(ge=0)
+    current_count: int = Field(ge=0)
+    baseline_breakdown: Optional[str] = Field(
+        default=None,
+        max_length=5000,
+        description="Дополнительный breakdown по операции в baseline (SQL queries, locks, etc).",
+    )
+    current_breakdown: Optional[str] = Field(
+        default=None,
+        max_length=5000,
+        description="Дополнительный breakdown по операции в current.",
+    )
+    force_refresh: bool = False
+
+
+class RegressionExplainResponse(BaseModel):
+    """POST /v1/ai/explain_regression — короткое объяснение (1-2 параграфа)."""
+
+    summary: str = Field(description="AI summary что изменилось и возможные причины.")
+    model_used: str
+    duration_ms: int
+    # Cache metadata
+    was_cached: bool = False
+    cache_age_seconds: Optional[int] = None
+    cache_key: Optional[str] = None
+
+
 class LogcfgGenerateResponse(BaseModel):
     """POST /v1/ai/generate_logcfg — выход."""
 

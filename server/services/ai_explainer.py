@@ -37,6 +37,8 @@ from schemas.ai import (
     PlanHotspot,
     PlanRecommendation,
     PlanSuggestedIndex,
+    RegressionExplainRequest,
+    RegressionExplainResponse,
     SuggestedRewrite,
 )
 from services.ai_cache import (
@@ -66,10 +68,12 @@ logger = logging.getLogger(__name__)
 #   PLAN_PG    v1 (Sprint 11) — initial cache wrap для SYSTEM_PROMPT_EXPLAIN_PG_PLAN
 #   QUERY      v1 (Sprint 11) — initial cache wrap для SYSTEM_PROMPT_EXPLAIN
 #   LOGCFG     v1 (Sprint 11) — initial cache wrap для SYSTEM_PROMPT_LOGCFG
+#   REGRESSION v1 (Sprint 11) — Phase F AI summary для регрессий операций
 PROMPT_VERSION_PLAN_MSSQL = "v1"
 PROMPT_VERSION_PLAN_PG = "v1"
 PROMPT_VERSION_QUERY = "v1"
 PROMPT_VERSION_LOGCFG = "v1"
+PROMPT_VERSION_REGRESSION = "v1"
 
 
 def _plan_cache_type_for(req: PlanExplainRequest) -> CacheType:
@@ -1256,6 +1260,167 @@ async def generate_logcfg(
         prompt_version=PROMPT_VERSION_LOGCFG,
         model_used=response.model_used,
         ttl_days=30,
+        input_size_bytes=len(canonical.encode("utf-8")),
+    )
+
+    response.was_cached = False
+    response.cache_key = cache_key
+    return response
+
+
+# ============== Sprint 11 Phase F — Regression AI summary ==============
+
+# Модель — Haiku (короткий summary, не сложный analysis)
+AI_MODEL_REGRESSION = "claude-haiku-4-5"
+
+SYSTEM_PROMPT_REGRESSION = """Ты — эксперт по производительности 1С:Предприятие. Юзер сравнил два архива ТЖ (старый baseline и новый current), нашлась регрессия одной операции. Твоя задача — кратко (1-2 параграфа) объяснить на русском что могло измениться и возможные причины.
+
+Принципы:
+1. Будь конкретным — ссылайся на цифры из метрик (p95, count).
+2. Возможные причины ranking по вероятности: код операции изменился, появилось больше данных, изменились индексы/статистика, фоновая нагрузка от других сессий, конфигурация СУБД.
+3. Не более 2 параграфов. Без markdown.
+4. Если данных недостаточно — честно скажи (например count < 10).
+
+Возвращай ТОЛЬКО plain text — никакого JSON."""
+
+USER_PROMPT_REGRESSION_TEMPLATE = """Операция: {operation_name}
+Контекст: {context_signature}
+
+Baseline (старый архив):
+- p95: {baseline_p95}ms
+- Вызовов: {baseline_count}
+
+Current (новый архив):
+- p95: {current_p95}ms
+- Вызовов: {current_count}
+
+Regression ratio: {ratio}× (стало медленнее в {ratio} раз)
+
+{baseline_breakdown}
+
+{current_breakdown}
+
+Объясни ЧТО ИЗМЕНИЛОСЬ и возможные причины регрессии."""
+
+
+def _regression_canonical_for(req: RegressionExplainRequest) -> str:
+    """Canonical input для regression AI cache key."""
+    return (
+        f"op={req.operation_name}"
+        f"|ctx={req.context_signature}"
+        f"|baseline_p95={req.baseline_p95_ms:.0f}"
+        f"|baseline_count={req.baseline_count}"
+        f"|current_p95={req.current_p95_ms:.0f}"
+        f"|current_count={req.current_count}"
+    )
+
+
+async def _explain_regression_uncached(
+    req: RegressionExplainRequest,
+) -> RegressionExplainResponse:
+    """AI call для regression summary без cache layer."""
+    if not settings.anthropic_api_key:
+        raise AiNotConfiguredError(
+            "ANTHROPIC_API_KEY не задан — explain_regression недоступен"
+        )
+
+    ratio = (
+        req.current_p95_ms / req.baseline_p95_ms
+        if req.baseline_p95_ms > 0
+        else float("inf")
+    )
+
+    user_msg = USER_PROMPT_REGRESSION_TEMPLATE.format(
+        operation_name=req.operation_name,
+        context_signature=req.context_signature or "—",
+        baseline_p95=int(req.baseline_p95_ms),
+        baseline_count=req.baseline_count,
+        current_p95=int(req.current_p95_ms),
+        current_count=req.current_count,
+        ratio=f"{ratio:.1f}" if ratio != float("inf") else "∞",
+        baseline_breakdown=(
+            f"Baseline breakdown:\n{req.baseline_breakdown}"
+            if req.baseline_breakdown
+            else ""
+        ),
+        current_breakdown=(
+            f"Current breakdown:\n{req.current_breakdown}"
+            if req.current_breakdown
+            else ""
+        ),
+    )
+
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key,
+        timeout=settings.ai_request_timeout_s,
+    )
+    started = time.monotonic()
+    try:
+        response = await client.messages.create(
+            model=AI_MODEL_REGRESSION,
+            max_tokens=600,
+            system=SYSTEM_PROMPT_REGRESSION,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+    except anthropic.APIError as e:
+        raise AiExplainerError(f"Anthropic API error (regression): {e}") from e
+
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+    text_parts: list[str] = []
+    for block in response.content:
+        text = getattr(block, "text", None)
+        if text:
+            text_parts.append(text)
+    summary = "\n".join(text_parts).strip()
+
+    return RegressionExplainResponse(
+        summary=summary,
+        model_used=response.model,
+        duration_ms=elapsed_ms,
+    )
+
+
+async def explain_regression(
+    req: RegressionExplainRequest,
+    cache_service: Optional[CacheService] = None,
+) -> RegressionExplainResponse:
+    """Sprint 11 Phase F — cache wrapper над _explain_regression_uncached.
+
+    TTL=forever — операция + её метрики детерминируют объяснение.
+    """
+    cache = cache_service if cache_service is not None else get_cache()
+    canonical = _regression_canonical_for(req)
+    cache_key = cache.compute_key(
+        canonical,
+        CacheType.REGRESSION,
+        PROMPT_VERSION_REGRESSION,
+        AI_MODEL_REGRESSION,
+    )
+
+    if not req.force_refresh:
+        cached_entry = await cache.aget_entry(cache_key)
+        if cached_entry is not None:
+            cached = await cache.aget(cache_key)
+            if cached is not None:
+                response = RegressionExplainResponse(**cached)
+                response.was_cached = True
+                response.cache_age_seconds = cached_entry.age_seconds()
+                response.cache_key = cache_key
+                return response
+
+    response = await _explain_regression_uncached(req)
+
+    response_dict = response.model_dump()
+    response_dict.pop("was_cached", None)
+    response_dict.pop("cache_age_seconds", None)
+    response_dict.pop("cache_key", None)
+    await cache.aset(
+        cache_key=cache_key,
+        cache_type=CacheType.REGRESSION,
+        response=response_dict,
+        prompt_version=PROMPT_VERSION_REGRESSION,
+        model_used=response.model_used,
+        ttl_days=None,  # forever — операция детерминирована
         input_size_bytes=len(canonical.encode("utf-8")),
     )
 

@@ -177,6 +177,55 @@ export interface SlowQueryOnly {
   avg_ms: number;
 }
 
+// Sprint 11 Phase E — Performance Regression Tracking types
+export type RegressionChangeType =
+  | "regression"
+  | "improvement"
+  | "new"
+  | "disappeared"
+  | "stable";
+
+export type RegressionConfidence = "high" | "medium" | "low";
+
+export interface RegressionResultDto {
+  operation_name: string;
+  context_signature: string;
+  change_type: RegressionChangeType;
+  confidence: RegressionConfidence;
+  baseline_p50_ms: number | null;
+  baseline_p95_ms: number | null;
+  baseline_count: number | null;
+  current_p50_ms: number | null;
+  current_p95_ms: number | null;
+  current_count: number | null;
+  p95_ratio: number | null;
+  count_ratio: number | null;
+  priority_score: number;
+}
+
+export interface RegressionSummary {
+  total_operations_matched: number;
+  total_regressions: number;
+  total_improvements: number;
+  total_new: number;
+  total_disappeared: number;
+  total_stable: number;
+  threshold: number;
+  min_samples: number;
+}
+
+export interface RegressionComputeResult {
+  ok: boolean;
+  error?: string;
+  details?: string;
+  summary?: RegressionSummary;
+  regressions?: RegressionResultDto[];
+  improvements?: RegressionResultDto[];
+  new?: RegressionResultDto[];
+  disappeared?: RegressionResultDto[];
+  stable_count?: number;
+}
+
 export interface CompareSlowQueriesResult {
   ok: boolean;
   error?: string;
@@ -798,6 +847,22 @@ export const backend = {
     rpc<CompareSummaryResult>("compare_summary", { archive_id_a, archive_id_b }),
   compareSlowQueries: (archive_id_a: string, archive_id_b: string, limit = 50) =>
     rpc<CompareSlowQueriesResult>("compare_slow_queries", { archive_id_a, archive_id_b, limit }),
+
+  // Sprint 11 Phase E — Performance Regression Tracking
+  regressionCompute: (
+    baseline_archive_id: string,
+    current_archive_id: string,
+    threshold = 2.0,
+    min_samples = 5,
+    top_n = 50,
+  ) =>
+    rpc<RegressionComputeResult>("regression.compute", {
+      baseline_archive_id,
+      current_archive_id,
+      threshold,
+      min_samples,
+      top_n,
+    }),
 
   // Pre-built views (Sprint 2 Phase D)
   viewSlowQueries: (archive_id: string, filters?: ViewFiltersDto, sort_by = "total_duration", limit = 100) =>

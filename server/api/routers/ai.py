@@ -25,12 +25,15 @@ from schemas.ai import (
     LogcfgGenerateResponse,
     PlanExplainRequest,
     PlanExplainResponse,
+    RegressionExplainRequest,
+    RegressionExplainResponse,
 )
 from services.ai_explainer import (
     AiExplainerError,
     AiNotConfiguredError,
     explain_plan_query,
     explain_query,
+    explain_regression,
     generate_logcfg,
 )
 from services.rate_limiter import get_rate_limiter
@@ -143,6 +146,31 @@ async def post_explain_plan(req: PlanExplainRequest) -> PlanExplainResponse:
         )
     except AiExplainerError as e:
         logger.exception("AI explain_plan failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "ai_orchestration_failed", "message": str(e)},
+        )
+
+
+@router.post("/explain_regression", response_model=RegressionExplainResponse)
+async def post_explain_regression(
+    req: RegressionExplainRequest,
+) -> RegressionExplainResponse:
+    """Sprint 11 Phase F — короткое AI объяснение регрессии операции."""
+    _check_force_refresh_or_raise(
+        req.force_refresh,
+        f"regression:{hash(req.operation_name)}:{hash(req.context_signature)}",
+    )
+    try:
+        return await explain_regression(req)
+    except AiNotConfiguredError as e:
+        logger.warning("AI explain_regression вызван без ANTHROPIC_API_KEY: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "ai_not_configured", "message": str(e)},
+        )
+    except AiExplainerError as e:
+        logger.exception("AI explain_regression failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={"error": "ai_orchestration_failed", "message": str(e)},
