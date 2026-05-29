@@ -6,6 +6,7 @@ import { useState, useCallback } from "react";
 import type { LogcfgConfig } from "../types";
 import { cloud, CloudError } from "@/api/cloud";
 import type { AiLogcfgGenerateResponse } from "@/api/cloud";
+import { XmlPreview } from "./XmlPreview";
 import styles from "./AiWizardTab.module.css";
 
 interface Props {
@@ -157,6 +158,12 @@ export function AiWizardTab({ platformVersion, onApply }: Props) {
           {result.explanation && (
             <div className={styles.explanation}>{result.explanation}</div>
           )}
+
+          {/* Готовый logcfg.xml — тот же предпросмотр с подсветкой и кнопкой
+              «Сохранить в файл», что и в «Графическом конструкторе». */}
+          <div className={styles.xml_box}>
+            <XmlPreview config={result.config as unknown as LogcfgConfig} />
+          </div>
 
           {result.events_rationale.length > 0 && (
             <div className={styles.rationale}>

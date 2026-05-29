@@ -96,3 +96,23 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+/* ---- Панели табов (оба смонтированы; неактивный скрыт) ---- */
+.pane_hidden {
+  display: none;
+}
+
+/* AI-мастер — прокручиваемый документ (объяснение + готовый XML + обоснования). */
+.pane_scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Графический конструктор — тянется на всю высоту, своя внутренняя прокрутка. */
+.pane_fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

@@ -114,17 +114,16 @@ export function TjConfigBuilderScreen() {
         </button>
       </div>
 
-      {/* Контент таба */}
+      {/* Контент таба. Оба таба ВСЕГДА смонтированы — неактивный прячется через
+          CSS (display:none сохраняет React-state). Поэтому результат AI-мастера
+          не пропадает при переключении на «Графический конструктор» и обратно. */}
       <div className={styles.content}>
-        {activeTab === "builder" && (
+        <div className={activeTab === "ai" ? styles.pane_scroll : styles.pane_hidden}>
+          <AiWizardTab platformVersion={platformVersion} onApply={handleAiApply} />
+        </div>
+        <div className={activeTab === "builder" ? styles.pane_fill : styles.pane_hidden}>
           <GraphicalBuilderTab config={config} onChange={handleConfigChange} />
-        )}
-        {activeTab === "ai" && (
-          <AiWizardTab
-            platformVersion={platformVersion}
-            onApply={handleAiApply}
-          />
-        )}
+        </div>
       </div>
     </div>
   );

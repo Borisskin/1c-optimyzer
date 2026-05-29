@@ -182,6 +182,13 @@
   line-height: 1.55;
 }
 
+/* Контейнер для готового XML — фиксированная высота, внутри XmlPreview (flex:1). */
+.xml_box {
+  display: flex;
+  min-height: 0;
+  height: 340px;
+}
+
 .rationale {
   display: flex;
   flex-direction: column;
@@ -190,26 +197,31 @@
 
 .rationale_row {
   display: grid;
-  grid-template-columns: 80px 90px 1fr;
-  gap: 8px;
+  /* Колонки по содержимому (а не фиксированные 80/90px) — длинные имена событий
+     («DBMSSQL/DBPOSTGRS») и пороги («100 cs (1 сек)») больше не налезают друг на друга. */
+  grid-template-columns: max-content max-content minmax(160px, 1fr);
+  gap: 4px 12px;
   align-items: baseline;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .rationale_event {
   font-family: var(--o-font-mono);
   font-weight: 600;
   color: var(--o-accent);
+  white-space: nowrap;
 }
 
 .rationale_threshold {
   font-family: var(--o-font-mono);
   color: var(--o-text-2);
+  white-space: nowrap;
 }
 
 .rationale_why {
   color: var(--o-text-2);
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .warnings {
