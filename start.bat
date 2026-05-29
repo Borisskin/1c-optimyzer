@@ -1,5 +1,7 @@
 @echo off
-REM 1C-Optimyzer dev launcher - brings up the whole local stack in one command.
+REM 1C-Optimyzer dev launcher.
+REM Lifecycle is tied to this window: launch -> AI server (:8001) + app run together;
+REM close the app window -> the server is stopped too. Nothing is left running.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
 
@@ -10,6 +12,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-server.
 REM 2) Clean orphaned backend-sidecar python from previous sessions.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\kill-zombie-python.ps1" -Apply
 
-REM 3) Frontend: Tauri dev (webview + backend sidecar for DuckDB/parsing).
+REM 3) Run the app. `call` is REQUIRED so this script resumes after the app window
+REM    is closed (npm is a .cmd; without `call` control would not return here).
 cd /d "%~dp0frontend"
-npm run tauri dev
+call npm run tauri dev
+
+REM 4) App window closed -> stop the AI server so nothing keeps running in background.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\stop-server.ps1"
