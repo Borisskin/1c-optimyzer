@@ -25,6 +25,7 @@ from api.settings import settings
 from models.subscription import SubscriptionPlan
 from models.usage import Usage, UsageBilledAgainst
 from models.user import User
+from services import config_service
 from services.credits_service import total_remaining as credits_remaining
 
 
@@ -83,6 +84,20 @@ def decide(db: Session, user: User, *, cost: int = 1) -> UsageDecision:
         and sub.plan == SubscriptionPlan.PRO
         and sub.ends_at > datetime.utcnow()
     )
+
+    # S13: discovery-режим — всё бесплатно, без лимитов. Учёт (Usage) всё равно
+    # ведём для аналитики (B5), поэтому возвращаем billed_against, но allowed=True
+    # без проверки квот. В paid/mixed работает обычная логика ниже.
+    if config_service.is_discovery(db):
+        return UsageDecision(
+            allowed=True,
+            reason=None,
+            billed_against=(
+                UsageBilledAgainst.PRO_QUOTA if is_pro else UsageBilledAgainst.FREE_QUOTA
+            ),
+            options=[],
+        )
+
     if is_pro:
         # Pro: безлимит до soft cap (warning, но allowed остаётся True).
         used = ai_operations_this_month_billed(db, user, UsageBilledAgainst.PRO_QUOTA)

@@ -30,6 +30,7 @@ import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { useTelemetryFlush } from "@/hooks/useTelemetryFlush";
+import { useRemoteConfig } from "@/hooks/useRemoteConfig";
 import { telemetry } from "@/utils/telemetry";
 import { WelcomeModal, useWelcomeModal } from "@/components/overlays/WelcomeModal";
 import { EmptyArchiveState } from "@/components/overlays/EmptyArchiveState";
@@ -55,6 +56,8 @@ export function App() {
   useHeartbeat();
   // Telemetry — батчевый flush буфера событий каждые 5 минут.
   useTelemetryFlush();
+  // Remote Config (S13) — тянем конфиг управления с сервера при старте + раз в 6ч.
+  useRemoteConfig();
   // Welcome modal на первом запуске (Phase 2.2).
   const welcome = useWelcomeModal();
 

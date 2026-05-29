@@ -6,7 +6,7 @@ import pytest
 
 from models.device import DevicePlatform
 from models.usage import UsageBilledAgainst, UsageOperationType
-from services import device_service, usage_service
+from services import config_service, device_service, usage_service
 from tests.factories import (
     access_cookies_for,
     device_token_for,
@@ -106,6 +106,8 @@ def test_track_free_user_first_time(db_session):
 
 
 def test_track_denied_when_quota_exhausted(db_session):
+    # S13: деналы по лимиту работают в paid-режиме (discovery — безлимит).
+    config_service.update_config(db_session, {"monetization_mode": "paid"})
     user = make_user(db_session)
     for _ in range(5):
         usage_service.track(

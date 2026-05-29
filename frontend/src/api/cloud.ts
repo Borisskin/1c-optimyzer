@@ -284,7 +284,33 @@ export const cloud = {
       { method: "GET" },
     );
   },
+
+  // S13 — Remote Config: desktop тянет конфиг при старте + периодически.
+  // Публичный endpoint, без авторизации. Короткий таймаут — конфиг не критичен
+  // к моменту (при недоступности работаем на последнем известном, см. configStore).
+  async getRemoteConfig(): Promise<RemoteConfigPublic> {
+    return request<RemoteConfigPublic>("/v1/config", { method: "GET", timeoutMs: 10_000 });
+  },
 };
+
+// ---------- S13 — Remote Config ----------
+
+export type MonetizationMode = "discovery" | "paid" | "mixed";
+
+export interface RemoteConfigLimits {
+  ai_per_day: number | null;
+  ai_per_month: number | null;
+  per_type: Record<string, number | null>;
+}
+
+export interface RemoteConfigPublic {
+  monetization_mode: MonetizationMode;
+  ai_kill_switch: boolean;
+  limits: RemoteConfigLimits;
+  /** Тумблеры модулей: tj_analysis / plans / logcfg / regressions / query_analyzer / sql_console */
+  feature_flags: Record<string, boolean>;
+  config_version: number;
+}
 
 // ---------- Sprint 6 — AI types ----------
 

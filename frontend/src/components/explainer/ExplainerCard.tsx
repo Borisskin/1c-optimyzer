@@ -4,6 +4,7 @@ import { Icon } from "@/components/icons/Icon";
 import { backend, type AiExplanationResult, type RuleClassifyResult } from "@/api/backend";
 import { cloud, CloudError } from "@/api/cloud";
 import { useAccountStore } from "@/store/accountStore";
+import { useAiKillSwitch, isAiKillSwitchOn } from "@/store/configStore";
 import { triggerHeartbeat } from "@/hooks/useHeartbeat";
 import { PaywallModal } from "@/components/overlays/PaywallModal";
 
@@ -44,6 +45,9 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   }>({ open: false, reason: null, freeRemaining: null });
 
   const accessToken = useAccountStore((s) => s.accessToken);
+  // S13 — Remote Config: глобальный AI kill-switch прячет AI-кнопки (сервер
+  // всё равно вернёт 503, но не показываем заведомо обречённое действие).
+  const aiKillSwitch = useAiKillSwitch();
 
   useEffect(() => {
     if (!archiveId || !targetId) return;
@@ -89,6 +93,8 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
 
   const onRequestAi = useCallback(async () => {
     if (aiLoading || aiRequested) return;
+    // Defensive: если AI выключен глобально — не отправляем запрос.
+    if (isAiKillSwitchOn()) return;
 
     // Без активации AI запрещён — не можем учитывать генерации, не можем
     // enforce'ить лимиты. Показываем paywall с CTA «Зарегистрируйтесь».
@@ -183,6 +189,15 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
   // Compact mode: правил нет, AI не запрашивался, ошибок нет —
   // только тонкая inline-кнопка, никакой большой панели.
   if (!hasContent && !aiLoading && !aiRequested && !aiError) {
+    // AI выключен глобально — нейтральная плашка вместо кнопки.
+    if (aiKillSwitch) {
+      return (
+        <div style={loadingRowStyle}>
+          <Icon name="Info" size={13} color="var(--o-text-3)" />
+          <span>AI-консультация временно недоступна</span>
+        </div>
+      );
+    }
     return (
       <>
         <button type="button" style={compactBtnStyle} onClick={onRequestAi}>
@@ -238,8 +253,9 @@ export function ExplainerCard({ archiveId, anatomyKind, targetId, features, anat
       ) : null}
 
       {/* Кнопка «Объяснить через AI» — показываем когда есть rule body,
-          но AI ещё не запрашивался (юзер может захотеть второе мнение). */}
-      {!aiRequested && hasRuleBody && (
+          но AI ещё не запрашивался (юзер может захотеть второе мнение).
+          Скрыта при глобальном AI kill-switch. */}
+      {!aiRequested && hasRuleBody && !aiKillSwitch && (
         <button type="button" style={inlineAiBtnStyle} onClick={onRequestAi}>
           <Icon name="Brain" size={12} color="var(--o-accent)" />
           <span>Объяснить через AI</span>

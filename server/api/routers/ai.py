@@ -14,10 +14,13 @@ Phase 1 INFRA позже добавит:
 from __future__ import annotations
 
 import logging
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from api.db import get_db
 from schemas.ai import (
     ExplainRequest,
     ExplainResponse,
@@ -28,6 +31,7 @@ from schemas.ai import (
     RegressionExplainRequest,
     RegressionExplainResponse,
 )
+from services import config_service
 from services.ai_explainer import (
     AiExplainerError,
     AiNotConfiguredError,
@@ -41,6 +45,20 @@ from services.rate_limiter import get_rate_limiter
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/ai", tags=["ai"])
+
+
+def ai_enabled_guard(db: Annotated[Session, Depends(get_db)]) -> None:
+    """S13 — глобальный AI kill-switch из Remote Config. Если включён, AI-вызовы
+    мягко отклоняются (503), не ломая остальной продукт. Авторитетная проверка
+    на сервере (desktop дополнительно прячет кнопки по конфигу)."""
+    if config_service.is_ai_kill_switch_on(db):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "ai_temporarily_unavailable",
+                "message": "AI-функции временно недоступны. Попробуйте позже.",
+            },
+        )
 
 
 # ============================================================================
@@ -110,7 +128,10 @@ async def get_force_refresh_status(cache_key: str) -> ForceRefreshStatusResponse
 
 
 @router.post("/explain", response_model=ExplainResponse)
-async def post_explain(req: ExplainRequest) -> ExplainResponse:
+async def post_explain(
+    req: ExplainRequest,
+    _guard: Annotated[None, Depends(ai_enabled_guard)],
+) -> ExplainResponse:
     """Structured AI explanation поверх SDBL запроса + bsl-LS диагностик."""
     # Sprint 11 — Force refresh rate limiting. Используем hash(sdbl) как proxy.
     _check_force_refresh_or_raise(req.force_refresh, f"explain:{hash(req.query_sdbl)}")
@@ -131,7 +152,10 @@ async def post_explain(req: ExplainRequest) -> ExplainResponse:
 
 
 @router.post("/explain_plan", response_model=PlanExplainResponse)
-async def post_explain_plan(req: PlanExplainRequest) -> PlanExplainResponse:
+async def post_explain_plan(
+    req: PlanExplainRequest,
+    _guard: Annotated[None, Depends(ai_enabled_guard)],
+) -> PlanExplainResponse:
     """Sprint 7: Structured AI explanation поверх execution plan + PerformanceStudio warnings."""
     _check_force_refresh_or_raise(
         req.force_refresh, f"plan:{req.engine}:{hash(req.plan_xml)}"
@@ -155,6 +179,7 @@ async def post_explain_plan(req: PlanExplainRequest) -> PlanExplainResponse:
 @router.post("/explain_regression", response_model=RegressionExplainResponse)
 async def post_explain_regression(
     req: RegressionExplainRequest,
+    _guard: Annotated[None, Depends(ai_enabled_guard)],
 ) -> RegressionExplainResponse:
     """Sprint 11 Phase F — короткое AI объяснение регрессии операции."""
     _check_force_refresh_or_raise(
@@ -178,7 +203,10 @@ async def post_explain_regression(
 
 
 @router.post("/generate_logcfg", response_model=LogcfgGenerateResponse)
-async def post_generate_logcfg(req: LogcfgGenerateRequest) -> LogcfgGenerateResponse:
+async def post_generate_logcfg(
+    req: LogcfgGenerateRequest,
+    _guard: Annotated[None, Depends(ai_enabled_guard)],
+) -> LogcfgGenerateResponse:
     """Sprint 10: Генерация настройки logcfg.xml через Haiku по описанию проблемы производительности."""
     _check_force_refresh_or_raise(
         req.force_refresh, f"logcfg:{hash(req.problem_description)}"

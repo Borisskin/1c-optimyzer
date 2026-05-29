@@ -6,8 +6,15 @@ from datetime import datetime
 
 from models.credits import CreditsPackage
 from models.usage import Usage, UsageBilledAgainst, UsageOperationType
-from services import credits_service, soft_caps
+from services import config_service, credits_service, soft_caps
 from tests.factories import make_user, upgrade_to_pro
+
+
+def _enforce_limits(db_session) -> None:
+    """S13: движок лимитов (Free/Pro/Credits) активен только в paid/mixed.
+    В discovery (дефолт) всё бесплатно без лимитов — поэтому тесты приоритетов
+    и денилов переводим в paid-режим."""
+    config_service.update_config(db_session, {"monetization_mode": "paid"})
 
 
 def test_free_user_no_usage_can_run(db_session):
@@ -18,6 +25,7 @@ def test_free_user_no_usage_can_run(db_session):
 
 
 def test_free_user_at_limit_denied(db_session):
+    _enforce_limits(db_session)
     user = make_user(db_session)
     # Симулируем 5 уже выполненных AI
     for _ in range(5):
@@ -40,6 +48,7 @@ def test_free_user_at_limit_denied(db_session):
 
 
 def test_free_user_with_credits_uses_credits(db_session):
+    _enforce_limits(db_session)
     user = make_user(db_session)
     credits_service.grant_package(db_session, user, CreditsPackage.MINI)
     decision = soft_caps.decide(db_session, user)
@@ -78,6 +87,7 @@ def test_pro_with_exhausted_free_still_allowed(db_session):
 
 def test_credits_priority_for_free_user(db_session):
     """Free + Credits: используется Credits до исчерпания, потом Free."""
+    _enforce_limits(db_session)
     user = make_user(db_session)
     credits_service.grant_package(db_session, user, CreditsPackage.MINI)
     d1 = soft_caps.decide(db_session, user)

@@ -114,3 +114,15 @@ def _reset_rate_limiter():
     reset_rate_limiter_for_tests()
     yield
     reset_rate_limiter_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _reset_remote_config_cache():
+    """S13 — config_service держит module-level TTL-кеш снимка конфига. Между
+    тестами БД пересоздаётся, поэтому кеш надо сбрасывать, иначе snapshot из
+    чужой БД протекает (soft_caps.decide дёргает конфиг почти везде)."""
+    from services import config_service
+
+    config_service.invalidate_cache()
+    yield
+    config_service.invalidate_cache()

@@ -15,12 +15,21 @@ from services.yandex_oauth import (
 
 
 def test_build_authorize_url_contains_required_params():
+    # Сверяемся с settings (в этом проекте .env имеет приоритет над os.environ,
+    # поэтому хардкод значений из conftest не годится).
+    from urllib.parse import quote
+
+    from api.settings import settings
+
     url = build_authorize_url(state="xyz")
     assert url.startswith("https://oauth.yandex.ru/authorize?")
-    assert "client_id=test-client-id" in url
+    assert f"client_id={settings.yandex_client_id}" in url
     assert "state=xyz" in url
     assert "response_type=code" in url
-    assert "redirect_uri=http%3A%2F%2Ftestserver%2Foauth%2Fcallback" in url or "redirect_uri=http://testserver/oauth/callback" in url
+    assert (
+        f"redirect_uri={settings.yandex_redirect_uri}" in url
+        or f"redirect_uri={quote(settings.yandex_redirect_uri, safe='')}" in url
+    )
 
 
 @pytest.mark.asyncio

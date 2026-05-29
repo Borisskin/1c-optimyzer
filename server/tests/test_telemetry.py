@@ -122,8 +122,14 @@ def test_telemetry_batch_with_auth_links_user(client, db_session):
 # --- /v1/admin/telemetry/summary ---
 
 
-def _admin_auth_header(username: str = "admin", password: str = "test-admin-password") -> dict[str, str]:
-    creds = b64encode(f"{username}:{password}".encode()).decode()
+def _admin_auth_header(username: str | None = None, password: str | None = None) -> dict[str, str]:
+    # Берём креды из settings (в этом проекте .env имеет приоритет над os.environ),
+    # чтобы тест и require_admin использовали один источник истины.
+    from api.settings import settings
+
+    u = settings.admin_username if username is None else username
+    p = settings.admin_password if password is None else password
+    creds = b64encode(f"{u}:{p}".encode()).decode()
     return {"authorization": f"Basic {creds}"}
 
 

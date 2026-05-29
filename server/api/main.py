@@ -18,11 +18,16 @@ from api.routers import (
     credits,
     dashboard,
     devices,
-    license as license_router,
     subscriptions,
     telemetry,
     usage,
     webhooks,
+)
+from api.routers import (
+    config as config_router,
+)
+from api.routers import (
+    license as license_router,
 )
 from api.settings import settings
 
@@ -73,6 +78,8 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(webhooks.router)
     app.include_router(ai.router)  # Sprint 6 — /v1/ai/explain
+    app.include_router(config_router.public_router)  # S13 — GET /v1/config (desktop)
+    app.include_router(config_router.admin_config_router)  # S13 — /v1/admin/config
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:
