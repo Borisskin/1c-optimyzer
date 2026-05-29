@@ -64,6 +64,22 @@ def test_preset_longest(store: DuckDBStore):
     assert len(rows) == 3
 
 
+def test_preset_longest_excludes_cumulative_excpcntx(store: DuckDBStore):
+    # S12 F2 — EXCPCNTX/Context несут cumulative-длительность родительского
+    # контекста, не должны доминировать в «самых медленных». Исключаются.
+    events = [
+        _ev("DBMSSQL", datetime(2026, 5, 17, 18, 0, 0), 5_000_000, sql="SELECT 1"),
+        _ev("EXCPCNTX", datetime(2026, 5, 17, 18, 0, 1), 99_000_000_000),
+        _ev("CALL", datetime(2026, 5, 17, 18, 0, 2), 1_000_000),
+    ]
+    store.bulk_insert(events, start_id=1)
+    _, rows = store.run_preset("longest", limit=10)
+    types = [r[1] for r in rows]  # колонка event_type (индекс 1)
+    assert "EXCPCNTX" not in types
+    assert "DBMSSQL" in types and "CALL" in types
+    assert len(rows) == 2
+
+
 def test_preset_deadlocks_only(store: DuckDBStore):
     events = [
         _ev("CALL", datetime(2026, 5, 17, 18, 0, 0)),

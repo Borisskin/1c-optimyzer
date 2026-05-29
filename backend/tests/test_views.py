@@ -153,6 +153,49 @@ def test_duration_histogram_returns_fixed_order(seeded_archive: str) -> None:
     assert total == 10  # all 10 events have non-null duration_us
 
 
+@pytest.fixture
+def seeded_excpcntx(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    """Архив с EXCPCNTX (cumulative duration) — для проверки исключения (S12 F2)."""
+    archive_id = "test_excpcntx"
+    db_dir = tmp_path / "duckdb_excpcntx"
+    db_dir.mkdir()
+    monkeypatch.setattr(
+        "optimyzer_backend.sql.executor.default_db_dir", lambda: db_dir
+    )
+    db_path = db_dir / f"{archive_id}.duckdb"
+    conn = duckdb.connect(str(db_path))
+    conn.execute(
+        """
+        CREATE TABLE events (
+            id BIGINT, archive_id VARCHAR, ts TIMESTAMP, duration_us BIGINT,
+            event_type VARCHAR, session_id INTEGER, user_name VARCHAR, context VARCHAR,
+            context_normalized VARCHAR, process VARCHAR, process_role VARCHAR,
+            process_pid INTEGER, sql_text TEXT, sql_text_normalized TEXT,
+            sql_text_hash VARCHAR(32), rows_read BIGINT, rows_modified BIGINT,
+            extra JSON, source_file VARCHAR, source_line_start INTEGER
+        )
+        """
+    )
+    rows: list[tuple[Any, ...]] = [
+        # DBMSSQL 70 c → bucket ">60 с"
+        (1, archive_id, "2026-05-19 10:00:00", 70_000_000, "DBMSSQL", 1, "u", "c", "cn", "p", "rphost", 1, "SELECT 1", "SELECT 1", "h", 1, 0, None, "f", 1),
+        # EXCPCNTX 27 ч cumulative → без фикса раздул бы ">60 с"
+        (2, archive_id, "2026-05-19 10:00:01", 99_000_000_000, "EXCPCNTX", 1, "u", "c", "cn", "p", "rphost", 1, None, None, None, None, None, None, "f", 2),
+    ]
+    conn.executemany("INSERT INTO events VALUES (" + ",".join(["?"] * 20) + ")", rows)
+    conn.close()
+    return archive_id
+
+
+def test_duration_histogram_excludes_cumulative_excpcntx(seeded_excpcntx: str) -> None:
+    # S12 F2 — EXCPCNTX несёт cumulative duration; исключается из гистограммы,
+    # иначе раздувает верхний bucket ">60 с" ложными «10-часовыми» событиями.
+    result = duration_histogram(seeded_excpcntx, ViewFilters())
+    by_label = {row[0]: row[1] for row in result["rows"]}
+    assert by_label["> 60 с"] == 1  # только DBMSSQL; EXCPCNTX исключён
+    assert sum(by_label.values()) == 1  # всего 1 учтённое событие
+
+
 def test_errors_feed_returns_all_event_types(seeded_archive: str) -> None:
     """errors_feed теперь — лента всех событий ТЖ. Без event_types фильтра — всё."""
     result = errors_feed(seeded_archive, ViewFilters())

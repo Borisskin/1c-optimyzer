@@ -78,23 +78,24 @@ def detect_antipatterns(
     try:
         ast = sqlglot.parse_one(sql, dialect=sqlglot_dialect)
     except (sqlglot.errors.ParseError, sqlglot.errors.TokenError) as e:
+        # НЕ светим sqlglot-детали в UI и НЕ помечаем как BLOCKER. 1С генерирует
+        # специфичный T-SQL, который статический парсер sqlglot часто не разбирает
+        # (на боевых данных это большинство запросов). Это ограничение статического
+        # анализатора, а НЕ проблема запроса. RPC-слой вынесет это в отдельный флаг
+        # parse_failed; здесь — мягкое INFO без технических подробностей sqlglot.
+        logger.debug("sqlglot parse failed (dialect=%s): %s", sqlglot_dialect, e)
         return [
             SqlAntipattern(
                 code="parse_error",
-                title="Парсер не смог разобрать запрос",
+                title="Статический разбор недоступен",
                 description=(
-                    f"sqlglot ParseError для dialect={engine}: {str(e)[:200]}"
+                    "Запрос использует синтаксис, который статический анализатор "
+                    "не разобрал. Анализ плана и AI-разбор доступны."
                 ),
-                severity=AntipatternSeverity.BLOCKER,
+                severity=AntipatternSeverity.INFO,
                 dialect=engine,
-                rationale=(
-                    "Парсер sqlglot не справился с этим SQL. Возможные причины: "
-                    "не тот dialect, экзотический синтаксис, обрезанный текст."
-                ),
-                recommendation=(
-                    f"Проверьте что выбран правильный движок ({engine}) и "
-                    "что SQL не обрезан в логах."
-                ),
+                rationale="",
+                recommendation="",
             )
         ]
 

@@ -27,6 +27,9 @@ interface Props {
   error: string | null;
   engine: PlanEngine | null;
   is1cContext: boolean;
+  /** S12 F1: статический парсер не разобрал запрос (специфичный T-SQL 1С).
+   *  Показываем нейтральный статус вместо «запрос чистый» (это было бы враньё). */
+  parseFailed?: boolean;
 }
 
 const SEV_LABEL: Record<SqlAntipatternSeverity, string> = {
@@ -114,6 +117,7 @@ export function SqlAntipatternsCard({
   error,
   engine,
   is1cContext,
+  parseFailed = false,
 }: Props) {
   if (loading) {
     return (
@@ -154,7 +158,9 @@ export function SqlAntipatternsCard({
           {is1cContext && <span className={styles.ctx1c}>1С-контекст</span>}
         </div>
         <div className={styles.empty}>
-          Антипаттернов не обнаружено — запрос чистый.
+          {parseFailed
+            ? "Статический разбор антипаттернов недоступен для этого запроса — специфичный синтаксис 1С. Анализ плана и AI-разбор доступны."
+            : "Антипаттернов не обнаружено — запрос чистый."}
         </div>
       </div>
     );

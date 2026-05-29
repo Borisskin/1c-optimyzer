@@ -36,14 +36,15 @@ class TestEngineDispatch:
         assert "like_with_leading_wildcard" in codes
         assert "leading_wildcard_like" not in codes  # legacy TSQL не должен быть
 
-    def test_parse_error_returns_blocker(self) -> None:
+    def test_parse_error_is_soft_info(self) -> None:
+        # S12 F1: parse_error больше НЕ BLOCKER. Это ограничение статического
+        # парсера (частое на специфичном SQL), а не проблема запроса — мягкий INFO.
         sql = "INVALID NOT-SQL @#$%"
         findings = detect_antipatterns(sql, engine="postgres")
-        # Парсер может либо упасть → parse_error, либо вернуть []
         if findings:
             for f in findings:
                 if f.code == "parse_error":
-                    assert f.severity == AntipatternSeverity.BLOCKER
+                    assert f.severity == AntipatternSeverity.INFO
 
     def test_empty_string_returns_empty(self) -> None:
         assert detect_antipatterns("", engine="postgres") == []

@@ -369,9 +369,14 @@ class DuckDBStore:
             )
             params = [self.archive_id, limit]
         elif preset == "longest":
+            # EXCPCNTX/Context несут cumulative-длительность родительского
+            # контекста (не самого события) — без исключения они доминируют в
+            # топе как ложные «самые медленные» (на боевых данных — события до
+            # ~10 часов). Консистентно с _NON_CUMULATIVE_DURATION_EXPR в sql/views.py.
             sql = (
                 "SELECT ts, event_type, duration_us, session_id, user_name, context, sql_text "
                 "FROM events WHERE archive_id = ? AND duration_us IS NOT NULL "
+                "AND event_type NOT IN ('EXCPCNTX', 'Context') "
                 "ORDER BY duration_us DESC LIMIT ?"
             )
             params = [self.archive_id, limit]

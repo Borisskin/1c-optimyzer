@@ -233,8 +233,16 @@ _DURATION_BUCKETS_US: list[tuple[str, int | None]] = [
 
 
 def duration_histogram(archive_id: str, filters: ViewFilters) -> dict[str, Any]:
-    """Bucketed distribution of durations. Использует CASE expression."""
-    where, params = filters.where_clause(["duration_us IS NOT NULL"])
+    """Bucketed distribution of durations. Использует CASE expression.
+
+    EXCPCNTX/Context исключены: они несут cumulative-длительность родительского
+    контекста (не самого события), из-за чего попадали в верхние bucket'ы (">60с")
+    и искажали распределение. Консистентно с _NON_CUMULATIVE_DURATION_EXPR в
+    агрегатных view (process_roles / top_business_operations / activity_heatmap).
+    """
+    where, params = filters.where_clause(
+        ["duration_us IS NOT NULL", "event_type NOT IN ('EXCPCNTX', 'Context')"]
+    )
 
     case_parts: list[str] = []
     prev = 0

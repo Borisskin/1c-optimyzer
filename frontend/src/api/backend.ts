@@ -802,6 +802,9 @@ export interface SqlAntipatternsResponse {
   error?: string;
   engine?: PlanEngine;
   is_1c_context?: boolean;
+  /** S12 F1: статический парсер sqlglot не разобрал запрос (частое на специфичном
+   *  T-SQL от 1С). Это НЕ антипаттерн и НЕ ошибка — мягкий статус для UI. */
+  parse_failed?: boolean;
   findings?: SqlAntipatternFinding[];
 }
 

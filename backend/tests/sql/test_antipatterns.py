@@ -32,17 +32,39 @@ class TestClean:
 
 
 class TestParseError:
-    def test_broken_sql_returns_blocker(self) -> None:
+    def test_broken_sql_is_soft_info(self) -> None:
+        # S12 F1: parse_error — мягкий INFO (не BLOCKER) и БЕЗ sqlglot-деталей в
+        # description. На специфичном T-SQL от 1С это частый случай, не должно
+        # выглядеть как «найдена критичная проблема» и не должно светить sqlglot.
         sql = "SELECT FROM WHERE )( ((( ALL FROM"  # реально невалидный синтаксис
         results = detect_antipatterns(sql)
-        # Либо parse_error, либо tolerant парсер вернёт пустоту — в обоих случаях
-        # критериально мы не должны бросить exception.
         for r in results:
             if r.code == "parse_error":
-                assert r.severity == AntipatternSeverity.BLOCKER
+                assert r.severity == AntipatternSeverity.INFO
+                assert "sqlglot" not in r.description.lower()
                 return
         # Если sqlglot tolerant-распарсил — ОК, не падает.
         assert isinstance(results, list)
+
+
+class TestDetectRpcParseFailed:
+    """S12 F1 — RPC выносит parse_error в флаг parse_failed, не в findings."""
+
+    def test_unparseable_sql_sets_parse_failed(self) -> None:
+        from optimyzer_backend.rpc.sql_antipatterns_rpc import detect_rpc
+
+        resp = detect_rpc("SELECT FROM WHERE )( ((( ALL FROM", engine="mssql")
+        assert resp["ok"] is True
+        assert resp["parse_failed"] is True
+        # parse_error НЕ должен просочиться в findings как «антипаттерн»
+        assert all(f["code"] != "parse_error" for f in resp["findings"])
+
+    def test_valid_sql_parse_failed_false(self) -> None:
+        from optimyzer_backend.rpc.sql_antipatterns_rpc import detect_rpc
+
+        resp = detect_rpc("SELECT id FROM dbo.Doc WHERE id = 1", engine="mssql")
+        assert resp["ok"] is True
+        assert resp["parse_failed"] is False
 
 
 class TestNotInWithSubquery:

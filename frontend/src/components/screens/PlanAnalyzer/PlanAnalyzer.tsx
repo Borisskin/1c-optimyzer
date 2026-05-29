@@ -131,6 +131,9 @@ export function PlanAnalyzerScreen() {
     null,
   );
   const [is1cContext, setIs1cContext] = useState(false);
+  // S12 F1 — статический парсер sqlglot не разобрал 1С-SQL: мягкий статус
+  // («разбор недоступен»), не ошибка и не антипаттерн.
+  const [antipatternsParseFailed, setAntipatternsParseFailed] = useState(false);
   const pushToast = useAppStore((s) => s.pushToast);
 
   // Sprint 7 Phase D fix — scroll to result после клика по плану из ТЖ.
@@ -181,11 +184,13 @@ export function PlanAnalyzerScreen() {
         setAntipatterns(null);
         setAntipatternsEngine(null);
         setIs1cContext(false);
+        setAntipatternsParseFailed(false);
         return;
       }
       setAntipatternsLoading(true);
       setAntipatternsError(null);
       setAntipatternsEngine(engine);
+      setAntipatternsParseFailed(false);
       try {
         const resp = await backend.sqlAntipatternsDetect(sql, engine);
         if (!resp.ok) {
@@ -195,6 +200,7 @@ export function PlanAnalyzerScreen() {
         }
         setAntipatterns(resp.findings ?? []);
         setIs1cContext(Boolean(resp.is_1c_context));
+        setAntipatternsParseFailed(Boolean(resp.parse_failed));
       } catch (e) {
         setAntipatternsError(String(e));
         setAntipatterns([]);
@@ -607,6 +613,7 @@ export function PlanAnalyzerScreen() {
               error={antipatternsError}
               engine={antipatternsEngine}
               is1cContext={is1cContext}
+              parseFailed={antipatternsParseFailed}
             />
 
             {textPlan.engine === "postgres" ? (
@@ -711,6 +718,7 @@ export function PlanAnalyzerScreen() {
               error={antipatternsError}
               engine={antipatternsEngine}
               is1cContext={is1cContext}
+              parseFailed={antipatternsParseFailed}
             />
 
             {/* Phase B: SSMS-style visualization (html-query-plan) */}

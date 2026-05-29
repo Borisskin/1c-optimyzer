@@ -104,9 +104,17 @@ def detect_rpc(
         else detect_1c_context(effective_sql)
     )
 
+    # parse_error — это не антипаттерн, а сигнал что статический парсер sqlglot не
+    # разобрал запрос (частое на специфичном T-SQL от 1С — ~80%+ боевых запросов).
+    # Выносим в отдельный флаг parse_failed и убираем из findings, чтобы UI не
+    # показывал это как «найденную проблему» с техническими деталями sqlglot.
+    parse_failed = any(f.code == "parse_error" for f in findings)
+    findings = [f for f in findings if f.code != "parse_error"]
+
     return {
         "ok": True,
         "engine": engine,
         "is_1c_context": is_1c,
+        "parse_failed": parse_failed,
         "findings": [f.to_dict() for f in findings],
     }
