@@ -27,19 +27,15 @@ const EXAMPLE_PROMPTS = [
 function formatAiError(e: unknown): string {
   if (e instanceof CloudError) {
     if (e.reason === "network") {
-      return (
-        "Сервер AI недоступен (localhost:8001 не отвечает). " +
-        "Запустите сервер: cd server && .venv\\Scripts\\uvicorn.exe api.main:app --port 8001"
-      );
+      return "Сервис ИИ сейчас недоступен. Попробуйте ещё раз через минуту.";
     }
     const payload = e.payload as Record<string, unknown> | undefined;
     if (payload?.detail && typeof payload.detail === "object") {
       const det = payload.detail as Record<string, unknown>;
       if (det.error === "ai_not_configured") {
-        return (
-          "AI отключён: ANTHROPIC_API_KEY не задан в .env. " +
-          "Добавьте ключ и перезапустите сервер."
-        );
+        // Тех-детали — только разработчику в консоль, не в UI.
+        console.warn("[ai] server: ai_not_configured (ANTHROPIC_API_KEY missing)");
+        return "Функции ИИ временно недоступны.";
       }
     }
     return e.message;

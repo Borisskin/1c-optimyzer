@@ -30,8 +30,20 @@ foreach ($id in $ExcludePid) { [void]$ProtectedPids.Add($id) }
 
 try {
     $listeners = Get-NetTCPConnection -LocalPort 8001 -State Listen -ErrorAction Stop
-    foreach ($conn in $listeners) {
-        [void]$ProtectedPids.Add([int]$conn.OwningProcess)
+    # Защищаем активный sidecar на :8001 ТОЛЬКО если он реально отвечает на HTTP.
+    # Зависший сервер (порт открыт, но /health не отвечает) НЕ защищаем — иначе он
+    # становится бессмертным: скрипт его «оберегает» и почистить уже нельзя.
+    $healthy = $false
+    try {
+        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:8001/health" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
+        $healthy = ($resp.StatusCode -eq 200)
+    } catch { $healthy = $false }
+    if ($healthy) {
+        foreach ($conn in $listeners) {
+            [void]$ProtectedPids.Add([int]$conn.OwningProcess)
+        }
+    } else {
+        Write-Host "[kill-zombie-python] :8001 is listening but NOT healthy -> not protected (treated as wedged)."
     }
 } catch {
     # Никто не слушает 8001 — это нормально, сервер может быть выключен.

@@ -99,16 +99,32 @@ export class CloudError extends Error {
 
 async function request<T>(
   path: string,
-  init: RequestInit & { token?: string },
+  init: RequestInit & { token?: string; timeoutMs?: number },
 ): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.token) headers.set("authorization", `Bearer ${init.token}`);
   if (init.body) headers.set("content-type", "application/json");
+
+  // Таймаут на запрос. Без него «зависший» сервер (порт открыт, но HTTP не
+  // отвечает) даёт бесконечный спиннер в UI. AbortController гарантирует выход.
+  // AI-вызовы передают увеличенный timeoutMs (см. методы ниже).
+  const timeoutMs = init.timeoutMs ?? 20_000;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), timeoutMs);
+
   let resp: Response;
   try {
-    resp = await fetch(`${baseUrl()}${path}`, { ...init, headers });
+    resp = await fetch(`${baseUrl()}${path}`, { ...init, headers, signal: ac.signal });
   } catch (err) {
-    throw new CloudError(`Сетевая ошибка: ${(err as Error).message}`, 0, "network");
+    const e = err as Error;
+    const isTimeout = e.name === "AbortError";
+    // Тех-детали (порт, причина) — только в консоль разработчика, НЕ в UI.
+    console.warn(
+      `[cloud] ${path}: ${isTimeout ? `таймаут ${timeoutMs} мс` : "ошибка сети — " + e.message}`,
+    );
+    throw new CloudError("Не удалось связаться с сервером.", 0, "network");
+  } finally {
+    clearTimeout(timer);
   }
   let bodyJson: unknown = undefined;
   const text = await resp.text();
@@ -233,6 +249,7 @@ export const cloud = {
       method: "POST",
       token: token ?? undefined,
       body: JSON.stringify(payload),
+      timeoutMs: 90_000, // AI-вызов: сервер сам ограничен 60с на Anthropic + буфер
     });
   },
 
@@ -245,6 +262,7 @@ export const cloud = {
       method: "POST",
       token: token ?? undefined,
       body: JSON.stringify(payload),
+      timeoutMs: 90_000, // AI-вызов: сервер сам ограничен 60с на Anthropic + буфер
     });
   },
 
@@ -255,6 +273,7 @@ export const cloud = {
     return request<AiLogcfgGenerateResponse>("/v1/ai/generate_logcfg", {
       method: "POST",
       body: JSON.stringify(payload),
+      timeoutMs: 90_000, // AI-вызов: сервер сам ограничен 60с на Anthropic + буфер
     });
   },
 
