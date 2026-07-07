@@ -77,10 +77,12 @@ cd ..\..
 - **Architect:** Claude Opus 4.7
 - **Executor:** Claude Code
 
-## License
+## Лицензия
 
-TBD (см. `docs/PROJECT_CLOSURE_MODULE_1.md` раздел 4 — open source status pending)
+[AGPL-3.0](LICENSE). Подробности — в файле LICENSE.
+
+Для коммерческого лицензирования (использование без ограничений AGPL): nazarov.soft@gmail.com
 
 ---
 Сергей Назаров, телеграм: @giottas
-© 2026 anymasoft. All rights reserved (pending license decision).
+© 2024-2026 Sergei Nazarov
