@@ -7,6 +7,7 @@ name = "optimyzer-server"
 version = "0.6.0"
 description = "Backend API for Optimyzer web cabinet, auth, billing, license activation"
 requires-python = ">=3.11"
+license = { text = "AGPL-3.0-only" }
 authors = [{ name = "AnymaSoft" }]
 dependencies = [
     # web

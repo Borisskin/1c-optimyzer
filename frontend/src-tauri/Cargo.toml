@@ -3,7 +3,7 @@ name = "optimyzer-app"
 version = "0.1.0"
 description = "1C-Optimyzer desktop shell"
 authors = ["anymasoft"]
-license = "Proprietary"
+license = "AGPL-3.0-only"
 edition = "2021"
 rust-version = "1.77"
 
