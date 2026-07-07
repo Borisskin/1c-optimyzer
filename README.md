@@ -82,5 +82,5 @@ cd ..\..
 TBD (см. `docs/PROJECT_CLOSURE_MODULE_1.md` раздел 4 — open source status pending)
 
 ---
-
+Сергей Назаров, телеграм: @giottas
 © 2026 anymasoft. All rights reserved (pending license decision).
