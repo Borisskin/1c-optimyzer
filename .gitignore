@@ -55,9 +55,8 @@ backend/tests/fixtures/real-archive/
 # К 1C-Optimyzer не относятся.
 /Design_NonProduct/
 # PDF методики ЦУП / "Корпоративный инструментальный пакет" — материалы из ИТС.
-# Не публиковать в репо (copyright + большие файлы). Все sprint-промпты,
-# handoff'ы и методология — уже в docs/sprint_prompts/ под git.
-/*.pdf
+# Не публиковать в репо (copyright + большие файлы).
+*.pdf
 # Пустая папка-остаток от устаревшего дубликата (Sprint 3.5 hoist).
 # Windows handle не отпускает; исчезнет после ребута. Не трогаем git.
 /МоделированиеТЖ/
@@ -80,3 +79,19 @@ backend/tests/fixtures/real-archive/
 /tools/planview-built/
 # Кешированный download для скрипта setup-planview-binary.ps1.
 /tools/sprint7_discovery/PerformanceStudio-win-x64.zip
+
+# Рабочие материалы Сергея рядом с кодом — не часть репозитория 1C-Optimyzer.
+/ТЖ/
+/data/
+/.s12_ai_out/
+*.err
+
+# Одноразовые промпт-файлы и рабочие заметки в корне (задачи для Claude Code) —
+# не публикуются, живут только локально.
+/Оптимайзер_*.md
+/Статья_*.md
+/OPTIMYZER_*.md
+find_pattern.ps1
+fix_form_badge.ps1
+patch_form_chip.ps1
+unpatch_form_chip.ps1

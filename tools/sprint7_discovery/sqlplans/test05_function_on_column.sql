@@ -1,4 +1,0 @@
-﻿SET SHOWPLAN_XML ON;
-GO
-SELECT TOP 100 T1.[_Description] FROM dbo.[_Reference10] T1 WHERE UPPER(T1.[_Code]) = N'ABC';
-GO
