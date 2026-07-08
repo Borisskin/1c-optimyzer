@@ -2,7 +2,7 @@
 
 **Анализ архивов технологического журнала 1С — performance investigation workbench.**
 
-[![Infostart](https://infostart.ru/bitrix/templates/sandbox_empty/assets/tpl/abo/img/logo.svg)](#) Публикация на Infostart: [ссылка будет добавлена после публикации](#)
+[![Infostart](https://infostart.ru/bitrix/templates/sandbox_empty/assets/tpl/abo/img/logo.svg)](https://infostart.ru/public/2733405/) Публикация на Infostart: [infostart.ru/public/2733405](https://infostart.ru/public/2733405/)
 
 ## Status
 
