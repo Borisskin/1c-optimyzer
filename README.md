@@ -2,13 +2,11 @@
 
 **Анализ архивов технологического журнала 1С — performance investigation workbench.**
 
-👉 **Хочешь поднять локально?** Читай [`QUICKSTART.md`](QUICKSTART.md) — пошагово все 5 компонентов (desktop / cabinet / server / landing).
+[![Infostart](https://infostart.ru/bitrix/templates/sandbox_empty/assets/tpl/abo/img/logo.svg)](#) Публикация на Infostart: [ссылка будет добавлена после публикации](#)
 
 ## Status
 
-🚀 **Active development.** Sprint 2 (Performance Investigation Workbench) завершён 2026-05-19. Module 1 production-ready.
-
-После Sprint 1 проект кратко был paused — это решение отменено в Sprint 2 reactivation. См. [`docs/PROJECT_REACTIVATION_SPRINT_2.md`](docs/PROJECT_REACTIVATION_SPRINT_2.md).
+🚀 **Active development.**
 
 ## Что работает
 
@@ -62,14 +60,9 @@ cd ..\..
 
 ## Documentation
 
-- [`docs/SPRINT_2_REPORT.md`](docs/SPRINT_2_REPORT.md) — полный отчёт Sprint 2 + DoD checklist
-- [`docs/PROJECT_REACTIVATION_SPRINT_2.md`](docs/PROJECT_REACTIVATION_SPRINT_2.md) — обоснование reactivation после Sprint 1 closure
-- [`docs/SPRINT_2_PROMPT_OPTIMYZER.md`](docs/SPRINT_2_PROMPT_OPTIMYZER.md) — sprint promt с детальным планом
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) — все архитектурные решения (ADR-001..019)
-- [`docs/PROJECT_CLOSURE_MODULE_1.md`](docs/PROJECT_CLOSURE_MODULE_1.md) — предыдущий closure document (overruled by reactivation)
-- [`docs/SPRINT_0_REPORT.md`](docs/SPRINT_0_REPORT.md), [`docs/SPRINT_1_REPORT.md`](docs/SPRINT_1_REPORT.md) — отчёты по предыдущим спринтам
-- [`docs/ARCHITECT_NOTES.md`](docs/ARCHITECT_NOTES.md) — observations архитектора
-- [`design/`](design/) — visual design specification (18 screens)
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — архитектурные решения (ADR)
+- [`docs/user-guide/`](docs/user-guide/) — руководство пользователя (TJ Config Builder, поддержка PostgreSQL)
+- [`docs/configuration/pg-connection-setup.md`](docs/configuration/pg-connection-setup.md) — настройка подключения к PostgreSQL
 
 ## Команда
 
