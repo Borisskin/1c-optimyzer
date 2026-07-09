@@ -6,7 +6,9 @@
 >
 > Публикация на Infostart: [infostart.ru/public/2733405](https://infostart.ru/public/2733405/)
 
-👉 **Хочешь поднять локально?** Читай [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — запуск с нуля пошагово.
+📥 **Скачать и установить:** [последний релиз (.msi)](https://github.com/anymasoft/1c-optimyzer/releases/latest) — скачайте, запустите, следуйте мастеру установки. Python/Node/зависимости не нужны, всё уже внутри.
+
+👉 **Хочешь собрать/запустить из исходников?** Читай [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — запуск с нуля пошагово.
 
 ## Status
 
