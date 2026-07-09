@@ -6,6 +6,8 @@
 >
 > Публикация на Infostart: [infostart.ru/public/2733405](https://infostart.ru/public/2733405/)
 
+👉 **Хочешь поднять локально?** Читай [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — запуск с нуля пошагово.
+
 ## Status
 
 🚀 **Active development.**
