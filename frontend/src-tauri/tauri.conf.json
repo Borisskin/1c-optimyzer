@@ -33,7 +33,13 @@
     "resources": [
       "binaries/jre-21/**/*",
       "binaries/bsl-ls/*.jar",
-      "binaries/planview/**/*"
-    ]
+      "binaries/planview/**/*",
+      "binaries/backend/**/*"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller"
+      }
+    }
   }
 }

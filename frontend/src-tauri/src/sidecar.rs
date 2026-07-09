@@ -1,7 +1,8 @@
 // Запуск Python sidecar + JSON-RPC over stdio (Sprint 1 — ADR-012).
 //
-// Sprint 0 — простой dev-mode: `python -m optimyzer_backend` из ../../backend.
-// Sprint 3 — заменим на bundled PyInstaller exe в bundle/binaries.
+// Prod: bundled PyInstaller onedir exe (binaries/backend/optimyzer_backend.exe
+// в resource_dir) — конечному пользователю не нужен Python. Dev fallback:
+// `python -m optimyzer_backend` из ../../backend (venv, затем системный python).
 //
 // Sprint 1: помимо responses (с id) парсим notifications (без id) и эмитим их
 // через Tauri events `rpc-notification:<method>` для frontend подписки.
@@ -13,7 +14,8 @@ use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter};
+use tauri::path::BaseDirectory;
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::oneshot;
 
 type Pending = HashMap<i64, oneshot::Sender<Result<Value, String>>>;
@@ -54,33 +56,56 @@ impl SidecarHandle {
     }
 }
 
+/// Bundled onedir exe (относительно resource_dir): `binaries/backend/optimyzer_backend.exe`.
+/// Собирается `scripts/build-backend-binary.ps1` (PyInstaller) и копируется в
+/// `frontend/src-tauri/binaries/backend/`, откуда tauri.conf.json bundle.resources
+/// упаковывает его в установщик. В dev-режиме (`npm run tauri dev`) resource_dir
+/// не заполнен — используется fallback на venv/системный python.
+fn bundled_backend_exe(app: &AppHandle) -> Option<std::path::PathBuf> {
+    let rel = "binaries/backend/optimyzer_backend.exe";
+    let path = app.path().resolve(rel, BaseDirectory::Resource).ok()?;
+    path.is_file().then_some(path)
+}
+
 pub fn spawn(app: &AppHandle) -> Result<SidecarHandle> {
-    let backend_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("backend");
-    let venv_python = if cfg!(windows) {
-        backend_dir.join(".venv").join("Scripts").join("python.exe")
+    let mut cmd = if let Some(exe) = bundled_backend_exe(app) {
+        // Prod: bundled exe, никакого Python на машине пользователя не нужно.
+        let work_dir = exe.parent().map(|p| p.to_path_buf());
+        let mut c = Command::new(&exe);
+        if let Some(dir) = work_dir {
+            c.current_dir(dir);
+        }
+        c
     } else {
-        backend_dir.join(".venv").join("bin").join("python")
-    };
-    let python: std::ffi::OsString = if venv_python.is_file() {
-        venv_python.into()
-    } else if cfg!(windows) {
-        "python".into()
-    } else {
-        "python3".into()
+        // Dev fallback: venv python (../../backend/.venv) либо системный python.
+        let backend_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("backend");
+        let venv_python = if cfg!(windows) {
+            backend_dir.join(".venv").join("Scripts").join("python.exe")
+        } else {
+            backend_dir.join(".venv").join("bin").join("python")
+        };
+        let python: std::ffi::OsString = if venv_python.is_file() {
+            venv_python.into()
+        } else if cfg!(windows) {
+            "python".into()
+        } else {
+            "python3".into()
+        };
+        let mut c = Command::new(&python);
+        c.args(["-m", "optimyzer_backend"]).current_dir(&backend_dir);
+        c
     };
 
-    let mut child = Command::new(&python)
-        .args(["-m", "optimyzer_backend"])
-        .current_dir(&backend_dir)
+    let mut child = cmd
         .env("PYTHONIOENCODING", "utf-8")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
-        .map_err(|e| anyhow!("Не удалось запустить sidecar ({}): {e}", python.to_string_lossy()))?;
+        .map_err(|e| anyhow!("Не удалось запустить sidecar: {e}"))?;
 
     let stdin = child
         .stdin

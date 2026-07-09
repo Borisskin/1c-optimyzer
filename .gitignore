@@ -95,3 +95,7 @@ find_pattern.ps1
 fix_form_badge.ps1
 patch_form_chip.ps1
 unpatch_form_chip.ps1
+
+# Готовые установщики (.msi) — собираются локально/CI, не публикуются в git
+# (сотни МБ). Раздаются через GitHub Releases.
+/dist-installer/
