@@ -33,6 +33,14 @@ fn sidecar_status(state: State<'_, AppState>) -> Result<bool, String> {
     Ok(guard.is_some())
 }
 
+/// Путь к файлу-логу локального модуля анализа (sidecar). Пользователь/поддержка
+/// может приложить его при диагностике падений (см. sidecar.rs — туда пишется
+/// весь stderr бэкенда).
+#[tauri::command]
+fn backend_log_path() -> Result<String, String> {
+    Ok(sidecar::log_path().to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn classify_path(path: String) -> Result<serde_json::Value, String> {
     let p = std::path::Path::new(&path);
@@ -170,6 +178,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             rpc_call,
             sidecar_status,
+            backend_log_path,
             classify_path,
             get_bsl_ls_paths,
             get_planview_path,

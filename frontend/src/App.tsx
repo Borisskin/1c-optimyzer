@@ -25,7 +25,7 @@ import { DeadlockAnatomyScreen } from "@/components/screens/DeadlockAnatomy/Dead
 import { PlanAnalyzerScreen } from "@/components/screens/PlanAnalyzer/PlanAnalyzer";
 import { DevToolsScreen } from "@/components/screens/DevTools/DevTools";
 import { TjConfigBuilderScreen } from "@/components/screens/TjConfigBuilder/TjConfigBuilder";
-import { backend, onProgress, type ProgressEvent } from "@/api/backend";
+import { backend, onProgress, onSidecarRestarted, type ProgressEvent } from "@/api/backend";
 import { useAppStore } from "@/store/appStore";
 import { t, format } from "@/i18n/ru";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
@@ -175,6 +175,39 @@ export function App() {
     });
     return unlisten;
   }, [pushToast, setArchive, setIngest, setStorageStats]);
+
+  // Авто-восстановление после аварийного перезапуска backend-процесса (sidecar).
+  // Новый процесс стартует с пустым in-memory state — переоткрываем загруженный
+  // архив (.duckdb + SQLite-история переживают крах), чтобы экраны продолжили
+  // работать без ручной перезагрузки папки.
+  useEffect(() => {
+    const unlisten = onSidecarRestarted(async () => {
+      const current = useAppStore.getState().archive;
+      if (!current) {
+        pushToast(t.errors.backendRestarted, "warn");
+        return;
+      }
+      try {
+        const reattached = await backend.openStoredArchive(current.archive_id);
+        setArchive(reattached);
+        try {
+          const stats = await backend.getStorageStats(current.archive_id);
+          setStorageStats(stats);
+        } catch {
+          /* stats не критичны для восстановления */
+        }
+        pushToast(t.errors.backendRestartedReattached, "warn");
+      } catch {
+        // Архива нет в истории (например, крах во время загрузки) — просим
+        // перезагрузить папку.
+        setArchive(null);
+        setStorageStats(null);
+        setIngest(null);
+        pushToast(t.errors.backendRestartedReloadNeeded, "warn");
+      }
+    });
+    return unlisten;
+  }, [pushToast, setArchive, setStorageStats, setIngest]);
 
   const loadDirectoryFromPath = useCallback(
     async (path: string) => {

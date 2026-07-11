@@ -498,6 +498,10 @@ export const t = {
     queryFailed: "Запрос не выполнен: {detail}",
     classifyFailed: "Не удалось проверить путь: {detail}",
     loadFailed: "Загрузка не удалась: {detail}",
+    backendRestarted: "Модуль анализа был перезапущен.",
+    backendRestartedReattached: "Модуль анализа перезапущен, архив восстановлен.",
+    backendRestartedReloadNeeded:
+      "Модуль анализа был перезапущен. Загрузите папку с логами заново.",
   },
 } as const;
 

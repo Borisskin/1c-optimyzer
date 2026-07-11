@@ -84,6 +84,81 @@ def default_db_dir() -> Path:
     return p
 
 
+# По умолчанию DuckDB забирает до 80% RAM. На машине пользователя рядом работают
+# WebView2, парсер ТЖ и ОС — суммарно это могло приводить к исчерпанию памяти и
+# аварийному завершению процесса при загрузке большого ТЖ (симптом на фронте —
+# "Ошибка RPC: Идет закрытие канала. (os error 232)"). Оставляем запас и включаем
+# сброс на локальный диск, чтобы тяжёлые запросы спиллили, а не падали.
+_MEMORY_LIMIT_FRACTION = 0.60
+
+
+def _physical_ram_bytes() -> int | None:
+    """Объём физической RAM в байтах (Windows/POSIX) или None."""
+    try:
+        import ctypes
+
+        class _MemStatusEx(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        stat = _MemStatusEx()
+        stat.dwLength = ctypes.sizeof(_MemStatusEx)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):  # type: ignore[attr-defined]
+            return int(stat.ullTotalPhys)
+    except Exception:
+        pass
+    try:
+        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+    except (ValueError, AttributeError, OSError):
+        return None
+
+
+def _resolve_memory_limit() -> str | None:
+    """Абсолютный лимит памяти для DuckDB (напр. '4800MiB') или None (дефолт).
+
+    Переопределяется env-переменной ``OPTIMYZER_DUCKDB_MEMORY_LIMIT`` (значение
+    трактуется как есть, напр. '2GB'). Иначе — доля физической RAM.
+    """
+    override = os.environ.get("OPTIMYZER_DUCKDB_MEMORY_LIMIT")
+    if override:
+        return override
+    ram = _physical_ram_bytes()
+    if not ram:
+        return None
+    mib = int(ram * _MEMORY_LIMIT_FRACTION / (1024 * 1024))
+    mib = max(512, mib)  # не опускаемся ниже 512 MiB
+    return f"{mib}MiB"
+
+
+def _configure_connection(conn: duckdb.DuckDBPyConnection) -> None:
+    """Ограничивает память DuckDB и задаёт локальный temp для спилла.
+
+    Обе настройки best-effort: при любой ошибке остаёмся на дефолтах DuckDB
+    (не роняем ingest из-за настройки лимита).
+    """
+    limit = _resolve_memory_limit()
+    if limit:
+        try:
+            conn.execute(f"SET memory_limit='{limit}'")
+        except Exception:
+            pass
+    try:
+        tmp = default_db_dir() / "tmp"
+        tmp.mkdir(parents=True, exist_ok=True)
+        conn.execute(f"SET temp_directory='{tmp.as_posix()}'")
+    except Exception:
+        pass
+
+
 # DuckDB не разрешает в одном процессе открыть один и тот же файл с разной
 # конфигурацией (read_write vs read_only). После ingestion store держит
 # read_write connection живым, поэтому SQLExecutor / schema_introspection
@@ -263,6 +338,7 @@ class DuckDBStore:
     def open(self) -> duckdb.DuckDBPyConnection:
         if self._conn is None:
             self._conn = duckdb.connect(str(self.db_path))
+            _configure_connection(self._conn)
             self._conn.execute(SCHEMA_DDL)
             _migrate_context_normalized(self._conn)
             _migrate_plan_text(self._conn)

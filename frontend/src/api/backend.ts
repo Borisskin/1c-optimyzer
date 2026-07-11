@@ -1116,3 +1116,33 @@ export function onProgress(cb: (e: ProgressEvent) => void): () => void {
     unlisten?.();
   };
 }
+
+/** Подписка на событие аварийного перезапуска локального backend-процесса.
+ *
+ *  Rust-слой (sidecar.rs) эмитит 'sidecar-restarted' после авто-перезапуска
+ *  упавшего sidecar'а. UI использует это, чтобы переоткрыть загруженный архив
+ *  (in-memory state нового процесса пуст, но .duckdb + SQLite-история на диске
+ *  переживают крах). Возвращает функцию отписки.
+ */
+export function onSidecarRestarted(cb: () => void): () => void {
+  let unlisten: UnlistenFn | undefined;
+  let cancelled = false;
+  listen("sidecar-restarted", () => {
+    cb();
+  }).then((fn) => {
+    if (cancelled) {
+      fn();
+    } else {
+      unlisten = fn;
+    }
+  });
+  return () => {
+    cancelled = true;
+    unlisten?.();
+  };
+}
+
+/** Путь к файлу-логу локального backend-процесса (для диагностики падений). */
+export function backendLogPath(): Promise<string> {
+  return invoke<string>("backend_log_path");
+}
