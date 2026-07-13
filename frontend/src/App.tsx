@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "@/components/chrome/TopBar";
 import { Sidebar } from "@/components/chrome/Sidebar";
@@ -180,11 +180,32 @@ export function App() {
   // Новый процесс стартует с пустым in-memory state — переоткрываем загруженный
   // архив (.duckdb + SQLite-история переживают крах), чтобы экраны продолжили
   // работать без ручной перезагрузки папки.
+  // Защита от бесконечной петли «краш → рестарт → переоткрытие → тот же краш»:
+  // если открытие архива само роняет sidecar, повторное автопереоткрытие лишь
+  // воспроизводит падение. Считаем перезапуски в окне и после порога прекращаем
+  // автовосстановление, показывая понятную ошибку вместо зацикливания.
+  const reattachTimesRef = useRef<number[]>([]);
+  const CRASH_LOOP_WINDOW_MS = 30_000;
+  const CRASH_LOOP_LIMIT = 3;
+
   useEffect(() => {
     const unlisten = onSidecarRestarted(async () => {
       const current = useAppStore.getState().archive;
       if (!current) {
         pushToast(t.errors.backendRestarted, "warn");
+        return;
+      }
+      // Учитываем перезапуск и отсекаем «шторм» повторных падений на этом архиве.
+      const now = Date.now();
+      const recent = reattachTimesRef.current.filter((ts) => now - ts < CRASH_LOOP_WINDOW_MS);
+      recent.push(now);
+      reattachTimesRef.current = recent;
+      if (recent.length >= CRASH_LOOP_LIMIT) {
+        reattachTimesRef.current = [];
+        setArchive(null);
+        setStorageStats(null);
+        setIngest(null);
+        pushToast(t.errors.backendCrashLoop, "err");
         return;
       }
       try {
