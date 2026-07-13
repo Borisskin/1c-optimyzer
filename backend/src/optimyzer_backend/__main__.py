@@ -36,9 +36,9 @@ def _log(msg: str) -> None:
 
 def main() -> int:
     _log(f"[optimyzer-backend] started, python={sys.version.split()[0]}")
-    disp = Dispatcher.default()
 
     try:
+        disp = Dispatcher.default()
         for raw in sys.stdin:
             line = raw.strip()
             if not line:

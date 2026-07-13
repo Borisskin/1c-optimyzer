@@ -66,6 +66,10 @@ struct Inner {
     stderr_tail: Mutex<VecDeque<String>>,
     /// Моменты последних перезапусков — для ограничения частоты (anti-storm).
     respawn_history: Mutex<VecDeque<Instant>>,
+    /// Код выхода последнего умершего процесса. Ключевая диагностика: нативный
+    /// сбой (0xC0000005 = 3221225477 — access violation, часто DuckDB/antivirus),
+    /// OOM-kill, либо чистый выход 0. Без него причина падения не видна.
+    last_exit: Mutex<Option<i32>>,
     app: AppHandle,
     log_path: PathBuf,
 }
@@ -137,13 +141,18 @@ impl Inner {
             .ok()
             .and_then(|t| t.iter().rev().find(|l| !l.trim().is_empty()).cloned());
         let log = self.log_path.display();
+        let code = self.last_exit.lock().ok().and_then(|c| *c);
+        let code_str = match code {
+            Some(c) => format!(" (код завершения {c}, 0x{:08X})", c as u32),
+            None => String::new(),
+        };
         match last {
             Some(detail) => format!(
-                "Локальный модуль анализа завершился аварийно и был перезапущен. \
+                "Локальный модуль анализа завершился аварийно{code_str} и был перезапущен. \
                  Повторите операцию. Последнее сообщение: {detail}. Журнал: {log}"
             ),
             None => format!(
-                "Локальный модуль анализа завершился аварийно и был перезапущен. \
+                "Локальный модуль анализа завершился аварийно{code_str} и был перезапущен. \
                  Повторите операцию. Журнал: {log}"
             ),
         }
@@ -260,6 +269,16 @@ fn build_command(app: &AppHandle) -> Result<Command> {
         c
     };
     cmd.env("PYTHONIOENCODING", "utf-8");
+    // Sidecar — консольный exe (console=True, иначе PyInstaller рвёт stdin).
+    // Без этого флага GUI-приложение при каждом (пере)запуске мигает чёрным
+    // окном консоли — особенно заметно в цикле перезапусков. Флаг не мешает
+    // перенаправлению stdin/stdout/stderr через pipes.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
     Ok(cmd)
 }
 
@@ -311,6 +330,7 @@ pub fn spawn(app: &AppHandle) -> Result<SidecarHandle> {
         proc: Mutex::new(Proc { stdin, child }),
         stderr_tail: Mutex::new(VecDeque::with_capacity(STDERR_TAIL_LINES)),
         respawn_history: Mutex::new(VecDeque::new()),
+        last_exit: Mutex::new(None),
         app: app.clone(),
         log_path: log,
     });
@@ -369,7 +389,24 @@ fn start_reader(stdout: ChildStdout, inner: Arc<Inner>, my_gen: u64) {
         if inner.generation.load(Ordering::SeqCst) != my_gen {
             return; // уже сменилось поколение, ничего не делаем
         }
-        append_log(&inner.log_path, "[supervisor] stdout sidecar закрыт (процесс завершился)");
+        // Снимаем код выхода умершего процесса ДО respawn — главная диагностика.
+        let exit_code = inner
+            .proc
+            .lock()
+            .ok()
+            .and_then(|mut p| p.child.try_wait().ok().flatten())
+            .and_then(|s| s.code());
+        if let Ok(mut le) = inner.last_exit.lock() {
+            *le = exit_code;
+        }
+        let code_desc = match exit_code {
+            Some(c) => format!("код={c} (0x{:08X})", c as u32),
+            None => "код неизвестен".to_string(),
+        };
+        append_log(
+            &inner.log_path,
+            &format!("[supervisor] stdout sidecar закрыт (процесс завершился, {code_desc})"),
+        );
         let message = inner.crash_message();
         inner.drain_pending(&message);
         // Поднимаем свежий процесс, чтобы следующие действия пользователя работали.
