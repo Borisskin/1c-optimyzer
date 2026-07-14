@@ -8,10 +8,11 @@
  *   • telemetry batch send (Phase 1.6)
  *
  * Конфигурация base URL — через переменную VITE_CLOUD_API_BASE (vite env).
- * В dev по умолчанию — http://127.0.0.1:8001.
+ * В dev задаётся через .env (localhost); по умолчанию — прод, чтобы релизная
+ * сборка без переопределения env не уходила на несуществующий localhost.
  */
 
-const DEFAULT_BASE = "http://localhost:8001";
+const DEFAULT_BASE = "https://api.optimyzer.pro";
 
 function baseUrl(): string {
   // Vite exposes env vars prefixed VITE_*.
@@ -497,7 +498,7 @@ export function cabinetUrl(path = "/"): string {
   // В проде это account.optimyzer.pro. В dev — vite сервер на :5173.
   const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
     ?.VITE_CABINET_URL;
-  const base = (env && env.replace(/\/+$/, "")) || "http://localhost:5173";
+  const base = (env && env.replace(/\/+$/, "")) || "https://account.optimyzer.pro";
   return `${base}${path}`;
 }
 
@@ -506,7 +507,7 @@ function landingBase(): string {
   // В проде задаётся через VITE_LANDING_URL=https://optimyzer.pro при build.
   const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
     ?.VITE_LANDING_URL;
-  return (env && env.replace(/\/+$/, "")) || "http://localhost:8000";
+  return (env && env.replace(/\/+$/, "")) || "https://optimyzer.pro";
 }
 
 export function pricingUrl(): string {
