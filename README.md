@@ -88,5 +88,5 @@ cd ..\..
 Source-available. Код доступен для ознакомления. Коммерческое использование без разрешения автора запрещено. Для получения лицензии: nazarov.soft@gmail.com
 
 ---
-Сергей Назаров, телеграм: @giottas · канал: [t.me/smart_saas](https://telegram.me/smart_saas)
+Сергей Назаров, телеграм: @giottas · канал: [SaaS за час](https://telegram.me/smart_saas)
 © 2024-2026 Sergei Nazarov
