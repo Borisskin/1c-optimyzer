@@ -5,7 +5,9 @@ export const t = {
   app: {
     name: "1C-Optimyzer",
     edition: "standalone",
-    version: "v0.5.0",
+    // Реальная версия сборки (из package.json), впекается Vite. Не хардкодить —
+    // иначе интерфейс/heartbeat/телеметрия покажут версию, расходящуюся с релизом.
+    version: `v${__APP_VERSION__}`,
     screenPlaceholder: 'Экран "{id}" появится в следующих обновлениях',
     // Текст показываем, если юзер попадёт на скрытый экран
     // «Анализ запроса» через CommandPalette или прямой setScreen.
@@ -234,7 +236,7 @@ export const t = {
       quit: "Выйти",
       openSettings: "Настройки",
     },
-    aboutToast: "Optimyzer v0.5.0 — Анализатор производительности 1С",
+    aboutToast: `Optimyzer v${__APP_VERSION__} — Анализатор производительности 1С`,
     hints: {
       file: "Файл",
       list: "Список",
