@@ -11,6 +11,8 @@
 > Разрабатываем работающие продукты под заказ - AI-автоматизация, 1С, Telegram-боты и интеграции.
 > Портфолио и связь: **[nazarov.soft](https://anymasoft.github.io/ai-agency/)**
 
+> 📣 **Телеграм-канал автора:** [t.me/smart_saas](https://telegram.me/smart_saas) — про разработку с AI, 1С и запуск продуктов.
+
 📥 **Скачать и установить:** [последний релиз (.msi)](https://github.com/anymasoft/1c-optimyzer/releases/latest) — скачайте, запустите, следуйте мастеру установки. Python/Node/зависимости не нужны, всё уже внутри.
 
 👉 **Хочешь собрать/запустить из исходников?** Читай [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — запуск с нуля пошагово.
@@ -86,5 +88,5 @@ cd ..\..
 Source-available. Код доступен для ознакомления. Коммерческое использование без разрешения автора запрещено. Для получения лицензии: nazarov.soft@gmail.com
 
 ---
-Сергей Назаров, телеграм: @giottas
+Сергей Назаров, телеграм: @giottas · канал: [t.me/smart_saas](https://telegram.me/smart_saas)
 © 2024-2026 Sergei Nazarov
