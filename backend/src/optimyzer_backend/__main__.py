@@ -30,11 +30,32 @@ def _err(code: int, message: str, request_id: Any = None, data: Any = None) -> d
     return {"jsonrpc": "2.0", "id": request_id, "error": err}
 
 
+def _force_utf8_stdio() -> None:
+    """Перевести stdin/stdout/stderr на UTF-8.
+
+    На Windows текстовый слой стандартных потоков привязан к кодировке консоли
+    (cp1251/cp866), которая не умеет часть символов Unicode (например, ``×`` U+00D7,
+    попадающий в нормализованный SQL и тексты запросов). Без этого запись ответа
+    JSON-RPC в stdout падает с UnicodeEncodeError и роняет sidecar. Протокол между
+    фронтендом и sidecar — строго UTF-8, поэтому фиксируем кодировку явно.
+    """
+    for stream, kwargs in (
+        (sys.stdin, {"encoding": "utf-8", "errors": "replace"}),
+        (sys.stdout, {"encoding": "utf-8", "newline": "\n"}),
+        (sys.stderr, {"encoding": "utf-8", "errors": "replace"}),
+    ):
+        try:
+            stream.reconfigure(**kwargs)  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
+
+
 def _log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
 def main() -> int:
+    _force_utf8_stdio()
     _log(f"[optimyzer-backend] started, python={sys.version.split()[0]}")
 
     try:
@@ -63,8 +84,18 @@ def main() -> int:
 
 
 def _write(resp: dict) -> None:
-    sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
-    sys.stdout.flush()
+    payload = json.dumps(resp, ensure_ascii=False) + "\n"
+    try:
+        sys.stdout.write(payload)
+        sys.stdout.flush()
+    except UnicodeEncodeError:
+        # Страховка на случай, если текстовый слой stdout не удалось перевести на
+        # UTF-8 (перенаправленный поток и т.п.): пишем UTF-8 байты в буфер напрямую.
+        buf = getattr(sys.stdout, "buffer", None)
+        if buf is None:
+            raise
+        buf.write(payload.encode("utf-8"))
+        buf.flush()
 
 
 if __name__ == "__main__":
