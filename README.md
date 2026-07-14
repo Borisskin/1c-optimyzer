@@ -11,7 +11,7 @@
 > Разрабатываем работающие продукты под заказ - AI-автоматизация, 1С, Telegram-боты и интеграции.
 > Портфолио и связь: **[nazarov.soft](https://anymasoft.github.io/ai-agency/)**
 
-> 📣 **Телеграм-канал автора:** [t.me/smart_saas](https://telegram.me/smart_saas) — про разработку с AI, 1С и запуск продуктов.
+> 📣 **Телеграм-канал автора:** [SaaS за час | AI-продвижение и монетизация Telegram-каналов](https://telegram.me/smart_saas)
 
 📥 **Скачать и установить:** [последний релиз (.msi)](https://github.com/anymasoft/1c-optimyzer/releases/latest) — скачайте, запустите, следуйте мастеру установки. Python/Node/зависимости не нужны, всё уже внутри.
 
