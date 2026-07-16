@@ -28,6 +28,8 @@ class FolderSource(LogSource):
         if not root.is_dir():
             raise NotADirectoryError(f"Не папка: {root}")
         self.root = root
+        # Заполняется в discover(); см. комментарий там.
+        self.scan_stats: dict[str, int] = {"name_matched": 0, "empty": 0, "not_tj": 0}
 
     def discover(self) -> list[LogFile]:
         """Обходит self.root рекурсивно, возвращает только TJ-логи.
@@ -42,6 +44,10 @@ class FolderSource(LogSource):
         чем приходит большой rphost-файл).
         """
         results: list[LogFile] = []
+        # Статистика отбраковки — нужна, чтобы отличить «папка не та» от
+        # «папка та, но ТЖ ничего не записал» (частый кейс: logcfg настроен
+        # на события, которых за период не было — файлы создаются пустыми).
+        self.scan_stats = {"name_matched": 0, "empty": 0, "not_tj": 0}
 
         for entry in self._iter_entries():
             name_match = LOG_NAME_RE.match(entry.name)
@@ -49,15 +55,21 @@ class FolderSource(LogSource):
                 continue
 
             timestamp = name_match.group(1)
-
-            try:
-                if not is_tj_log_file(entry):
-                    continue
-            except OSError:
-                continue
+            self.scan_stats["name_matched"] += 1
 
             try:
                 size = entry.stat().st_size
+            except OSError:
+                continue
+
+            if size == 0:
+                self.scan_stats["empty"] += 1
+                continue
+
+            try:
+                if not is_tj_log_file(entry):
+                    self.scan_stats["not_tj"] += 1
+                    continue
             except OSError:
                 continue
 

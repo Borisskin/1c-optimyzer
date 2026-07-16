@@ -111,6 +111,46 @@ class _IngestionCancelled(Exception):
     """
 
 
+def _no_logs_message(source: Any) -> str:
+    """Человеческое объяснение, почему discovery ничего не дал.
+
+    Голое «Лог-файлы не найдены» вводит в заблуждение, когда папка выбрана
+    верно, но ТЖ ничего не записал: logcfg настроен на события, которых за
+    период не было, — файлы создаются пустыми и отбраковываются. Пользователи
+    в этом случае думают, что сломалось приложение, и переустанавливают его.
+    """
+    stats = getattr(source, "scan_stats", None) or {}
+    empty = stats.get("empty", 0)
+    not_tj = stats.get("not_tj", 0)
+    matched = stats.get("name_matched", 0)
+
+    if matched and empty == matched:
+        return (
+            f"Найдено файлов ТЖ: {matched}, но все они пустые. "
+            "Технологический журнал создал файлы, но не записал ни одного события — "
+            "скорее всего, в logcfg.xml заданы события, которых за этот период не было "
+            "(например, только долгие запросы к СУБД). Проверьте настройки logcfg.xml "
+            "и период сбора."
+        )
+    if matched and empty:
+        return (
+            f"Подходящих лог-файлов не найдено: из {matched} файлов ТЖ "
+            f"{empty} пустых, {not_tj} не похожи на технологический журнал. "
+            "Проверьте logcfg.xml и период сбора."
+        )
+    if not_tj:
+        return (
+            f"В папке найдено файлов с именем вида ГГММДДЧЧ.log: {matched}, "
+            "но они не похожи на технологический журнал (не распознан формат событий). "
+            "Убедитесь, что указана папка с логами ТЖ."
+        )
+    return (
+        "Лог-файлы не найдены в указанной папке. Ожидаются файлы вида ГГММДДЧЧ.log "
+        "во вложенных папках процессов (например, rphost_1234). "
+        "Обычно нужно указать корневую папку каталога ТЖ."
+    )
+
+
 def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
     """Фоновый ingestion: discover → parse → index. Прогресс через ProgressReporter.
 
@@ -159,12 +199,13 @@ def _run_ingestion(*, state: dict[str, Any], source_factory) -> None:
         state["size_bytes"] = bytes_total
 
         if not log_files:
+            message = _no_logs_message(source)
             state["status"] = "error"
-            state["errors"].append("Лог-файлы не найдены в указанной папке")
+            state["errors"].append(message)
             progress(
                 "error", 0, 0, 0, 0, 0, None,
                 force=True,
-                error_message="Лог-файлы не найдены в указанной папке",
+                error_message=message,
             )
             return
 

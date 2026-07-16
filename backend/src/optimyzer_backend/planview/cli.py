@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -52,8 +53,11 @@ def _candidate_paths() -> list[Path]:
     1. ENV `OPTIMYZER_PLANVIEW_EXE` — override для tests / debug
     2. Bundled resource (production): задаётся через ENV
        `OPTIMYZER_PLANVIEW_BUNDLED_PATH` от Tauri sidecar at startup
-    3. Dev fallback — собранный CLI в research/PerformanceStudio/...
-    4. Dev fallback — в frontend/src-tauri/binaries/planview/ (если уже скачан)
+    3. Production self-relative: sidecar-exe лежит в <install>/binaries/backend/,
+       planview — рядом, в <install>/binaries/planview/. Не зависит от ENV,
+       поэтому работает даже если Tauri его не передал.
+    4. Dev fallback — собранный CLI в research/PerformanceStudio/...
+    5. Dev fallback — в frontend/src-tauri/binaries/planview/ (если уже скачан)
     """
     out: list[Path] = []
     env_override = os.environ.get("OPTIMYZER_PLANVIEW_EXE")
@@ -63,6 +67,16 @@ def _candidate_paths() -> list[Path]:
     bundled_env = os.environ.get("OPTIMYZER_PLANVIEW_BUNDLED_PATH")
     if bundled_env:
         out.append(Path(bundled_env))
+
+    # Production (PyInstaller frozen): ищем бинарь относительно самого sidecar-exe.
+    # Раскладка инсталлятора: <install>/binaries/backend/optimyzer_backend.exe
+    #                        <install>/binaries/planview/planview.exe
+    if getattr(sys, "frozen", False):
+        try:
+            backend_dir = Path(sys.executable).resolve().parent
+            out.append(backend_dir.parent / "planview" / "planview.exe")
+        except (OSError, IndexError):
+            pass
 
     # Repo-relative fallback (dev).
     # backend/src/optimyzer_backend/planview/cli.py → 5 уровней до repo root.

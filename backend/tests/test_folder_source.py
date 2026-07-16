@@ -195,3 +195,44 @@ def test_folder_handles_permission_denied(tmp_path: Path) -> None:
         assert any(lf.path == accessible for lf in files)
     finally:
         os.chmod(secret_dir, stat.S_IRWXU)
+
+
+# --- Пустые логи ТЖ (Инфостарт, июль 2026) -----------------------------------
+# Кейс из прода: logcfg настроен на события (долгие запросы к СУБД), которых за
+# период не было. ТЖ создаёт папки процессов и файлы ГГММДДЧЧ.log нулевого
+# размера. Файлы отбраковываются, discovery пуст, и пользователь видел
+# «Лог-файлы не найдены» — думал, что сломалось приложение, и переустанавливал.
+
+
+def test_empty_log_files_counted_in_scan_stats(tmp_path: Path) -> None:
+    _make_log(tmp_path / "rphost_1234" / "26071510.log", b"")
+    _make_log(tmp_path / "rphost_1234" / "26071511.log", b"")
+
+    source = FolderSource(tmp_path)
+    assert source.discover() == []
+    assert source.scan_stats["name_matched"] == 2
+    assert source.scan_stats["empty"] == 2
+    assert source.scan_stats["not_tj"] == 0
+
+
+def test_empty_logs_produce_explanatory_message(tmp_path: Path) -> None:
+    from optimyzer_backend.rpc.handlers import _no_logs_message
+
+    _make_log(tmp_path / "rphost_1234" / "26071510.log", b"")
+    source = FolderSource(tmp_path)
+    source.discover()
+
+    message = _no_logs_message(source)
+    assert "пустые" in message
+    assert "logcfg" in message
+    # Старая формулировка вводила в заблуждение — её быть не должно.
+    assert message != "Лог-файлы не найдены в указанной папке"
+
+
+def test_non_tj_files_counted_separately(tmp_path: Path) -> None:
+    _make_log(tmp_path / "app" / "26071510.log", b"nginx access log line\n")
+
+    source = FolderSource(tmp_path)
+    assert source.discover() == []
+    assert source.scan_stats["not_tj"] == 1
+    assert source.scan_stats["empty"] == 0

@@ -269,6 +269,17 @@ fn build_command(app: &AppHandle) -> Result<Command> {
         c
     };
     cmd.env("PYTHONIOENCODING", "utf-8");
+    // Путь к bundled planview.exe. Без него sidecar в проде уходил в
+    // repo-relative dev-fallback (<install>/binaries/frontend/src-tauri/...),
+    // не находил бинарь и молча отключал анализ плана MSSQL.
+    if let Ok(planview) = app
+        .path()
+        .resolve("binaries/planview/planview.exe", BaseDirectory::Resource)
+    {
+        if planview.is_file() {
+            cmd.env("OPTIMYZER_PLANVIEW_BUNDLED_PATH", &planview);
+        }
+    }
     // Sidecar — консольный exe (console=True, иначе PyInstaller рвёт stdin).
     // Без этого флага GUI-приложение при каждом (пере)запуске мигает чёрным
     // окном консоли — особенно заметно в цикле перезапусков. Флаг не мешает

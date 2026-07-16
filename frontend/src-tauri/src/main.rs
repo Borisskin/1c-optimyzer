@@ -142,10 +142,11 @@ struct PlanviewPath {
 ///
 /// `available=false` — бинарь не в resource_dir. Это нормально для dev-mode
 /// (`npm run tauri dev` не копирует bundle.resources). Sidecar fallback:
-/// repo-relative `frontend/src-tauri/binaries/planview/PlanViewer.Cli.exe`.
+/// repo-relative `frontend/src-tauri/binaries/planview/planview.exe`.
 #[tauri::command]
 fn get_planview_path(app: AppHandle) -> Result<PlanviewPath, String> {
-    let exe_rel = "binaries/planview/PlanViewer.Cli.exe";
+    // Имя файла в бандле — planview.exe (не PlanViewer.Cli.exe).
+    let exe_rel = "binaries/planview/planview.exe";
     let exe_path = app
         .path()
         .resolve(exe_rel, BaseDirectory::Resource)
