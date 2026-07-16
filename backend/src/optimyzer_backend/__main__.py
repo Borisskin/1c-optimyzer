@@ -14,6 +14,7 @@ from optimyzer_backend.rpc import views_rpc  # noqa: F401  — pre-built views
 from optimyzer_backend.rpc import comparison_rpc  # noqa: F401  — multi-archive compare
 from optimyzer_backend.rpc import explainer_rpc  # noqa: F401  — Sprint 3 explainer
 from optimyzer_backend.rpc import ai_settings_rpc  # noqa: F401  — BYOK: ключ юзера
+from optimyzer_backend.rpc import ai_rpc  # noqa: F401  — BYOK: AI локально, ключом юзера
 from optimyzer_backend.rpc import query_analyzer_rpc  # noqa: F401  — Sprint 4 query analyzer
 from optimyzer_backend.rpc import configuration_rpc  # noqa: F401  — Sprint 5 configuration metadata
 from optimyzer_backend.rpc import bsl_ls_rpc  # noqa: F401  — Sprint 6 bsl-LS adapter
