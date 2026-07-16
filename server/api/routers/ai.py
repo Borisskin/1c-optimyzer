@@ -14,6 +14,9 @@ Phase 1 INFRA позже добавит:
 from __future__ import annotations
 
 import logging
+import os
+import threading
+from datetime import date, datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -21,6 +24,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.db import get_db
+from api.deps import get_current_user
 from schemas.ai import (
     ExplainRequest,
     ExplainResponse,
@@ -44,7 +48,66 @@ from services.rate_limiter import get_rate_limiter
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1/ai", tags=["ai"])
+# ВАЖНО (безопасность/деньги): все /v1/ai/* требуют авторизации.
+#
+# До этого эндпоинты были открыты: единственной проверкой был глобальный
+# kill-switch, поэтому любой, кто знает адрес api.optimyzer.pro, мог слать
+# запросы и тратить наш ANTHROPIC_API_KEY. Сам ключ при этом никогда не
+# покидал сервер (утечки ключа не было), но расход оплачивали мы.
+#
+# get_current_user отдаёт 401 без валидного Bearer access token, что полностью
+# исключает анонимные вызовы. Дополнительно — потолок трат (_daily_budget_guard)
+# как предохранитель на случай скомпрометированного аккаунта.
+#
+# ---------------------------------------------------------------------------
+# Предохранитель по тратам: глобальный дневной потолок AI-вызовов.
+#
+# Второй рубеж после авторизации. Авторизация отсекает анонимов, но не спасёт,
+# если аккаунт скомпрометирован или свой же клиент зациклится в ретраях.
+# Потолок ограничивает максимальный дневной ущерб фиксированной суммой.
+# ---------------------------------------------------------------------------
+
+AI_DAILY_CALL_LIMIT = int(os.environ.get("OPTIMYZER_AI_DAILY_CALL_LIMIT", "500"))
+
+_budget_lock = threading.Lock()
+_budget_day: date | None = None
+_budget_calls: int = 0
+
+
+def _daily_budget_guard() -> None:
+    """Считает AI-вызовы за сутки (UTC) и отклоняет всё сверх лимита.
+
+    Кэш-хиты сюда тоже попадают — это осознанно: лимит грубый и защищает
+    кошелёк, а не оптимизирует UX. Порог задаётся OPTIMYZER_AI_DAILY_CALL_LIMIT.
+    """
+    global _budget_day, _budget_calls
+    today = datetime.now(timezone.utc).date()
+    with _budget_lock:
+        if _budget_day != today:
+            _budget_day = today
+            _budget_calls = 0
+        if _budget_calls >= AI_DAILY_CALL_LIMIT:
+            logger.error(
+                "AI дневной потолок исчерпан: %s вызовов (лимит %s). "
+                "Запросы отклоняются до конца суток UTC.",
+                _budget_calls,
+                AI_DAILY_CALL_LIMIT,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "ai_daily_limit_reached",
+                    "message": "AI-функции временно недоступны. Попробуйте завтра.",
+                },
+            )
+        _budget_calls += 1
+
+
+router = APIRouter(
+    prefix="/v1/ai",
+    tags=["ai"],
+    dependencies=[Depends(get_current_user), Depends(_daily_budget_guard)],
+)
 
 
 def ai_enabled_guard(db: Annotated[Session, Depends(get_db)]) -> None:

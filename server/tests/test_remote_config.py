@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import base64
 
 from api.settings import settings
@@ -10,6 +12,20 @@ from models.remote_config import MonetizationMode
 from models.usage import UsageBilledAgainst
 from services import config_service, soft_caps
 from tests.factories import make_user, upgrade_to_pro
+
+
+
+
+# /v1/ai/* закрыты авторизацией (см. tests/test_ai_auth_required.py). Тесты в
+# этом модуле проверяют не логин, а kill-switch/rate-limit, поэтому подменяем
+# зависимость авторизации на фикстурном app.
+@pytest.fixture(autouse=True)
+def _authed_ai(app):
+    from api.deps import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: object()
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 def _basic(user: str, password: str) -> str:

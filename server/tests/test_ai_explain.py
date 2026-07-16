@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from api.deps import get_current_user
 from api.main import app
 from schemas.ai import (
     ConfigurationContext,
@@ -18,6 +19,13 @@ from services import ai_explainer
 
 
 client = TestClient(app)
+
+# /v1/ai/* требуют авторизации (роутер закрыт get_current_user), иначе любой
+# мог бы тратить наш ANTHROPIC_API_KEY. Тесты ниже проверяют AI-логику, а не
+# логин, поэтому зависимость подменяется. Обязательность самой авторизации
+# закреплена отдельно — tests/test_ai_auth_required.py (не ослаблять!).
+app.dependency_overrides[get_current_user] = lambda: object()
+
 
 
 SAMPLE_DIAG = DiagnosticInput(

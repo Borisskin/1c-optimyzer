@@ -14,6 +14,20 @@ from services.rate_limiter import (
 )
 
 
+
+
+# /v1/ai/* закрыты авторизацией (см. tests/test_ai_auth_required.py). Тесты в
+# этом модуле проверяют не логин, а kill-switch/rate-limit, поэтому подменяем
+# зависимость авторизации на фикстурном app.
+@pytest.fixture(autouse=True)
+def _authed_ai(app):
+    from api.deps import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: object()
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
 @pytest.fixture
 def limiter() -> ForceRefreshRateLimiter:
     return ForceRefreshRateLimiter()
