@@ -55,10 +55,32 @@ def get_engine() -> ExplainerEngine:
 
 
 def get_client() -> ClaudeExplainerClient:
+    """AI-клиент на ключе ПОЛЬЗОВАТЕЛЯ (BYOK).
+
+    Приоритет: ключ из настроек приложения → затем ENV (dev). Наш сервер и наш
+    ключ в этой цепочке не участвуют — см. ai_settings_rpc.
+    """
     global _client
     if _client is None:
-        _client = ClaudeExplainerClient()
+        # Локальный импорт: ai_settings_rpc импортирует этот модуль для сброса
+        # клиента, а импорт на уровне модуля дал бы цикл.
+        from optimyzer_backend.rpc.ai_settings_rpc import (
+            get_stored_api_key,
+            get_stored_model,
+        )
+
+        user_key = get_stored_api_key()
+        # None → настройка не задавалась, отдаём None и клиент возьмёт ENV (dev).
+        # "" → пользователь явно удалил ключ: передаём пустую строку как явный
+        #      override, чтобы AI выключился, а не подхватил ключ из окружения.
+        _client = ClaudeExplainerClient(api_key=user_key, model=get_stored_model())
     return _client
+
+
+def reset_client() -> None:
+    """Сбрасывает кеш клиента — вызывается после смены ключа в настройках."""
+    global _client
+    _client = None
 
 
 def get_cache() -> ExplainerCache:
