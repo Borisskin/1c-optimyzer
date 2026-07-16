@@ -95,7 +95,7 @@ export function QueryAnalyzerScreen() {
       setAiLoading(true);
       setAiError(null);
       try {
-        const ai = await cloud.aiExplain({
+        const ai = await backend.aiExplain<AiExplainResponse>({
           query_sdbl: sdbl,
           diagnostics: bsl.diagnostics.map((d) => ({
             code: d.code,

@@ -5,6 +5,7 @@
 import { useState, useCallback } from "react";
 import type { LogcfgConfig } from "../types";
 import { cloud, CloudError } from "@/api/cloud";
+import { backend } from "@/api/backend";
 import type { AiLogcfgGenerateResponse } from "@/api/cloud";
 import { XmlPreview } from "./XmlPreview";
 import styles from "./AiWizardTab.module.css";
@@ -59,7 +60,7 @@ export function AiWizardTab({ platformVersion, onApply }: Props) {
     setStatus("loading");
     setErrorMsg(null);
     try {
-      const resp = await cloud.aiGenerateLogcfg({
+      const resp = await backend.aiGenerateLogcfg<AiLogcfgGenerateResponse>({
         problem_description: desc,
         platform_version: platformVersion ?? null,
         dbms,

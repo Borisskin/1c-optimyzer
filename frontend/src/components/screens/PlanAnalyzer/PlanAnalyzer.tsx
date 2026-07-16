@@ -222,7 +222,7 @@ export function PlanAnalyzerScreen() {
       try {
         const allWarnings = planResult.statements.flatMap((s) => s.warnings);
         const allMissing = planResult.statements.flatMap((s) => s.missing_indexes);
-        const resp = await cloud.aiExplainPlan({
+        const resp = await backend.aiExplainPlan<AiExplainPlanResponse>({
           sql_text: firstStmt.statement_text,
           plan_xml: planXml,
           plan_format: "xml",
@@ -260,7 +260,7 @@ export function PlanAnalyzerScreen() {
         // engine="unknown" → fallback на mssql (legacy default).
         const aiEngine: "mssql" | "postgres" =
           state.engine === "postgres" ? "postgres" : "mssql";
-        const resp = await cloud.aiExplainPlan({
+        const resp = await backend.aiExplainPlan<AiExplainPlanResponse>({
           sql_text: state.sql_text,
           plan_xml: state.text,
           plan_format: "text",

@@ -116,6 +116,64 @@ async function rpc<T = unknown>(method: string, params: Record<string, unknown> 
   return invoke<T>("rpc_call", { method, params });
 }
 
+// ===== AI (BYOK) =====
+
+/** Состояние ключа. Сам ключ наружу не отдаётся — только маска sk-ant-…WXYZ. */
+export interface AiSettingsState {
+  ok: boolean;
+  has_key: boolean;
+  key_masked: string;
+  model?: string | null;
+}
+
+export interface AiSettingsSaveResult {
+  ok: boolean;
+  has_key?: boolean;
+  key_masked?: string;
+  /** Причина отказа (ключ пустой / не похож на ключ Anthropic). */
+  error?: string;
+}
+
+export interface AiStatus {
+  ok: boolean;
+  /** false — ключ не задан, UI показывает подсказку «введите ключ». */
+  enabled: boolean;
+  model: string;
+}
+
+export interface AiCallResult<T = Record<string, unknown>> {
+  ok: boolean;
+  result?: T;
+  /** "ai_not_configured" — нет ключа; "ai_failed" — вызов не удался. */
+  error?: string;
+  message?: string;
+}
+
+/** Ключ Anthropic не задан — UI зовёт настройки вместо показа ошибки. */
+export class AiNotConfiguredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AiNotConfiguredError";
+  }
+}
+
+/**
+ * Вызов AI через sidecar с разворачиванием конверта {ok,result,error}.
+ *
+ * Возвращает полезную нагрузку напрямую — как раньше делал серверный клиент,
+ * чтобы места вызова не пришлось переписывать. Ошибки поднимаются исключением:
+ * отсутствие ключа — отдельным типом, чтобы UI мог предложить настройки.
+ */
+async function aiCall<T>(method: string, payload: Record<string, unknown>): Promise<T> {
+  const res = await rpc<AiCallResult<T>>(method, payload);
+  if (!res.ok) {
+    const msg = res.message ?? "AI недоступен";
+    if (res.error === "ai_not_configured") throw new AiNotConfiguredError(msg);
+    throw new Error(msg);
+  }
+  return res.result as T;
+}
+
 export interface SQLExecuteResult {
   ok: boolean;
   error?: string;
@@ -837,6 +895,25 @@ export const backend = {
     rpc<QueryResult>("query_events_preset", { archive_id, preset, limit }),
   getStorageStats: (archive_id: string) => rpc<StorageStats>("get_storage_stats", { archive_id }),
   sidecarStatus: () => invoke<boolean>("sidecar_status"),
+
+  // ===== AI на ключе пользователя (BYOK) =====
+  // Раньше AI ходил на наш сервер (cloud.ts) — ключ был наш, и мы платили за
+  // каждый вызов. Теперь вызовы идут отсюда, с машины пользователя, его ключом:
+  // нам это ничего не стоит, а AI работает без нашей инфраструктуры.
+  aiSettingsGet: () => rpc<AiSettingsState>("ai_settings_get"),
+  aiSettingsSetKey: (api_key: string) => rpc<AiSettingsSaveResult>("ai_settings_set_key", { api_key }),
+  aiSettingsClearKey: () => rpc<AiSettingsState>("ai_settings_clear_key"),
+  aiStatus: () => rpc<AiStatus>("ai_status"),
+
+  // Разворачивают {ok,result,...} и отдают полезную нагрузку — форма ответа
+  // совпадает с прежним серверным API, поэтому места вызова не переписываются.
+  aiExplain: <T = unknown>(payload: Record<string, unknown>) => aiCall<T>("ai_explain", payload),
+  aiExplainPlan: <T = unknown>(payload: Record<string, unknown>) =>
+    aiCall<T>("ai_explain_plan", payload),
+  aiExplainRegression: <T = unknown>(payload: Record<string, unknown>) =>
+    aiCall<T>("ai_explain_regression", payload),
+  aiGenerateLogcfg: <T = unknown>(payload: Record<string, unknown>) =>
+    aiCall<T>("ai_generate_logcfg", payload),
 
   // SQL Engine (Sprint 2 Phase B)
   executeSql: (archive_id: string, sql: string, max_rows = 10000) =>

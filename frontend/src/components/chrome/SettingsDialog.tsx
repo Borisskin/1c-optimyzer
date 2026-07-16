@@ -4,10 +4,13 @@ import { t } from "@/i18n/ru";
 import styles from "./SettingsDialog.module.css";
 import { AccountTab } from "./AccountTab";
 import { PgConnectionsTab } from "./PgConnectionsTab";
+import { AiKeyTab } from "./AiKeyTab";
 import { PulseLogo } from "@/components/icons/PulseLogo";
 
 // Sprint 8 Phase B — добавлен tab «postgres» для PG connections + re-EXPLAIN.
-type SettingsTab = "account" | "postgres" | "about";
+// BYOK — добавлен tab «ai»: ключ Anthropic пользователя (AI больше не идёт
+// через наш сервер, см. optimyzer_backend/rpc/ai_settings_rpc.py).
+type SettingsTab = "account" | "ai" | "postgres" | "about";
 
 /**
  * Диалог настроек desktop приложения.
@@ -65,6 +68,13 @@ export function SettingsDialog() {
           </button>
           <button
             type="button"
+            className={`${styles.tab} ${tab === "ai" ? styles.tab_active : ""}`}
+            onClick={() => setTab("ai")}
+          >
+            AI
+          </button>
+          <button
+            type="button"
             className={`${styles.tab} ${tab === "postgres" ? styles.tab_active : ""}`}
             onClick={() => setTab("postgres")}
           >
@@ -81,6 +91,8 @@ export function SettingsDialog() {
 
         <div className={styles.body}>
           {tab === "account" && <AccountTab />}
+
+          {tab === "ai" && <AiKeyTab />}
 
           {tab === "postgres" && <PgConnectionsTab />}
 

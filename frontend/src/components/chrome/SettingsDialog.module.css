@@ -182,3 +182,117 @@
   border-color: var(--o-accent);
   background: var(--o-subtle);
 }
+
+/* ===== Вкладка «AI» — ключ Anthropic пользователя (BYOK) ===== */
+
+.aiTab {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aiStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 2px;
+}
+
+.aiOn {
+  color: var(--o-ok);
+  background: var(--o-ok-bg);
+  border: 1px solid var(--o-ok);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.aiOff {
+  color: var(--o-text-2);
+  background: var(--o-subtle);
+  border: 1px solid var(--o-border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.aiMask {
+  font-family: var(--o-font-mono, monospace);
+  font-size: 12px;
+  color: var(--o-text-2);
+  background: var(--o-codebox-bg);
+  border: 1px solid var(--o-border);
+  border-radius: var(--o-radius-sm, 4px);
+  padding: 2px 8px;
+}
+
+.aiLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--o-text-2);
+  margin-top: 4px;
+}
+
+.aiRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.aiInput {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: var(--o-radius-md);
+  border: 1px solid var(--o-border);
+  background: var(--o-panel);
+  color: var(--o-text-1);
+  font-family: var(--o-font-mono, monospace);
+  font-size: 13px;
+}
+
+.aiInput:focus {
+  outline: none;
+  border-color: var(--o-accent);
+}
+
+.btnPrimary {
+  padding: 7px 14px;
+  border-radius: var(--o-radius-md);
+  border: 1px solid var(--o-accent);
+  background: var(--o-accent);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--o-accent-hover);
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.aiError {
+  color: var(--o-err);
+  font-size: 12.5px;
+  margin: 2px 0 0;
+}
+
+.aiSaved {
+  color: var(--o-ok);
+  font-size: 12.5px;
+  margin: 2px 0 0;
+}
+
+.aiHint {
+  font-size: 12px;
+  color: var(--o-text-2);
+  margin: 6px 0 0;
+}
